@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+build/
+.turbo/
+.next/
+out/
+*.tsbuildinfo
+
+# Environment variables (NEVER commit real secrets)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.staging
+.env.development
+!.env.example
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+.cache/
+.temp/
+tmp/
+
+# Wallets / Keys (safety net — should never exist in repo but just in case)
+*.key
+*.pem
+keystore.json
+mnemonic.txt
+seed.txt
+
+# VTT transcripts (large, not source code)
+*.vtt

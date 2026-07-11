@@ -1,0 +1,27 @@
+{
+  "name": "pouch",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.17.1",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "dev:web": "pnpm --filter @pouch/web dev",
+    "dev:api": "pnpm --filter @pouch/api dev",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:domain": "pnpm --filter @pouch/domain test",
+    "test:watch": "turbo run test:watch --parallel",
+    "db:generate": "pnpm --filter @pouch/infra-db db:generate",
+    "db:migrate": "pnpm --filter @pouch/infra-db db:migrate",
+    "db:studio": "pnpm --filter @pouch/infra-db db:studio"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.15",
+    "eslint": "^9.31.0",
+    "turbo": "^2.5.5",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

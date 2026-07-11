@@ -1,0 +1,61 @@
+import { describe, expect, it } from 'vitest';
+
+import { IntentParser } from '../src/intent-parser';
+
+describe('IntentParser', () => {
+  it('parses a gift card cash-out request from natural language', () => {
+    const parser = new IntentParser();
+
+    const result = parser.parse('Cash out $50 to Amazon');
+
+    expect(result.ok).toBe(true);
+
+    if (!result.ok) {
+      return;
+    }
+
+    expect(result.value).toEqual({
+      action: 'cash_out',
+      category: 'giftcard',
+      brand: 'amazon',
+      amount: {
+        value: 50,
+        currency: 'USD',
+      },
+    });
+  });
+
+  it('returns a structured error when the amount is missing', () => {
+    const parser = new IntentParser();
+
+    const result = parser.parse('Cash out to Amazon');
+
+    expect(result.ok).toBe(false);
+
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error).toEqual({
+      type: 'INVALID_INTENT_AMOUNT',
+      message: 'Could not determine the USD amount to cash out.',
+    });
+  });
+
+  it('returns a structured error when the message is not a supported cash-out request', () => {
+    const parser = new IntentParser();
+
+    const result = parser.parse('What is the weather today?');
+
+    expect(result.ok).toBe(false);
+
+    if (result.ok) {
+      return;
+    }
+
+    expect(result.error).toEqual({
+      type: 'UNSUPPORTED_INTENT',
+      message: 'Only cash-out purchase requests are supported right now.',
+    });
+  });
+});
