@@ -315,7 +315,11 @@ GEMINI_API_KEY=AIza...        # admin's own API key
 LLM_MODEL=gemini-2.0-flash    # model override (default: gemini-2.0-flash)
 ```
 
-**Gemini chosen for development** because of its generous free tier (good for iterative testing without cost). The `LLMProvider` interface is provider-agnostic — adding OpenAI or Anthropic later is one new file, no domain changes.
+**Gemini chosen for development** because of its generous free tier: `gemini-2.0-flash` offers **1,500 requests/day free** — enormous headroom for demo iteration. Pinned explicitly (not "latest") because Google changes free tier limits without warning (2.5 Flash was cut from 250→20 RPD overnight in late 2025).
+
+**Fallback chain for resilience:** Gemini 2.0 Flash → Groq (Llama 3.3 70B, free) → Cloudflare Workers AI (10k Neurons/day free). The `LLMProvider` interface supports chaining. If primary fails, the next provider is tried. Regex is always the final fallback.
+
+The `LLMProvider` interface is provider-agnostic — adding OpenAI or Anthropic later is one new file, no domain changes.
 
 ### System prompt
 
@@ -626,12 +630,109 @@ The API response shape (`AgentChatResponse`) is extended to include `trace: Trac
 
 ---
 
+## 14. UX differentiation — the compound "wow moment"
+
+Research confirmed that no existing product combines all four of these capabilities. Each exists separately; the fusion is Pouch's defensible moat.
+
+| Capability | Bitrefill | Cryptorefills (x402) | Coinbase AgentKit | **Pouch** |
+|---|---|---|---|---|
+| Consumer chat UX | No (catalog browse) | No (M2M only) | Partial (demo) | **Yes (core)** |
+| Gift-card catalog | Yes (8,000+) | Yes | No | **Yes** |
+| Any token / any chain | No (manual select) | No (USDC/Base) | No (Base/USDC) | **Yes (UA)** |
+| Shows agent reasoning | No | No (invisible) | Partial | **Yes (scratchpad)** |
+| Zero popup signing | No (wallet handoff) | No | Confirmation step | **Yes (Magic)** |
+
+### The "agent scratchpad" — our primary differentiator
+
+Bitrefill/Cryptorefills force the user to pick token/chain manually and do a wallet handoff (open MetaMask, scan QR, return). Coinbase AgentKit does raw transfers only. **Nobody shows the agent's reasoning as it works.**
+
+Pouch's inline agent trace streams in plain language what the agent is doing:
+> *"Searching catalog... Found Amazon $50. Checking your balances: 14.2 ARB (Arbitrum), 0.01 ETH (Base), 120 USDC (Solana). Consolidating via Universal Account... Cheapest route found. Signing via Magic (no popup)... ✅ Amazon gift card delivered: [AMZN-XXXX]"*
+
+This transparency builds trust AND is genuinely delightful — it's the "show your work" pattern from ChatGPT reasoning, applied to money. It's the antidote to x402's invisibility.
+
+### Frontend stack (2026, all free/open-source)
+
+| Layer | Technology | Why |
+|---|---|---|
+| Streaming core | **Vercel AI SDK 6** (`useChat` + `streamText`) | Parts-based message model (`message.parts[]`) is built for agent traces. Multi-step tool loops via `stopWhen`. |
+| Chat primitives | **shadcn chat components** (June 2026) | `MessageScroller` solves auto-scroll-follows-stream. `Bubble` for messages. |
+| Agent trace | **AI Elements** (`ChainOfThought`, `Tool`) | Purpose-built for the parts model. Collapsible step trace. shadcn-based, zero friction. |
+| Transport | **SSE** (native Next.js) | One-way server→client streaming. No WebSocket complexity. |
+| Animation | **Motion** (ex-Framer Motion) | `AnimatePresence` for live step enter/exit — the one thing CSS can't do well. |
+| State | `useChat` + React Context | Sufficient for one conversation. No Zustand needed for MVP. |
+
+---
+
+## 15. Free tier stack ($0 hosting, ~$5-10 mainnet gas)
+
+The entire demo runs on free tiers. The only unavoidable real cost is mainnet gas (~$5-10 USDC on Base).
+
+| Service | Purpose | Free tier limits | Enough for demo? |
+|---|---|---|---|
+| **Vercel** (Hobby) | Next.js frontend + API routes | 100GB BW, 1M invocations/mo | ✅ <5% usage |
+| **Render** (Free) or Vercel serverless | Hono backend | 750 hrs/mo (cold starts) | ✅ pre-warm before demo |
+| **Supabase** (Free) | Postgres + auth | 500MB, 50k MAU | ✅ ~10-50 orders = nothing |
+| **Gemini** (2.0 Flash) | LLM agent | 1,500 req/day | ✅ 75+ demo sessions/day |
+| **Groq** (free) | LLM fallback #1 | ~30 RPM | ✅ |
+| **Cloudflare Workers AI** | LLM fallback #2 | 10k Neurons/day (~2M tokens) | ✅ |
+| **Particle Network** | Universal Accounts | Free SDK, free testnet | ✅ testnet for dev |
+| **Magic.link** | Embedded wallet | 1,000 MAU | ✅ 20-100x headroom |
+| **Openfort** (free) | Gas sponsorship paymaster | 2,000 ops/month | ✅ |
+| **Bitrefill** | Gift-card off-ramp | API free; test mode limited | ⚠️ ~$1 per real order |
+| **Sentry** (free) | Error tracking | 5k errors/mo | ✅ catches demo-day crashes |
+| **UptimeRobot** (free) | Uptime monitoring | 50 monitors | ✅ ping Supabase before demo |
+
+### ⚠️ ZeroDev SRA — pricing risk
+
+Research revealed ZeroDev SRA has **no documented free tier** (production starts ~$500/mo). This puts the ZeroDev bounty ($500) at risk. Options:
+1. Contact ZeroDev in their Discord for hackathon credits.
+2. If no credits, pivot the SRA feature to use Particle's deposit address or skip the deposit page.
+3. Openfort (2,000 free ops/mes) is the safe alternative for gas sponsorship.
+
+The writing-plans step will sequence this: try ZeroDev credits first, fallback to Openfort-only.
+
+### Mainnet demo cost breakdown
+
+- **Gas on Base:** ~$0.50-0.99 per smart-account UserOperation × 5-10 demo orders = **~$5-10 USDC**
+- **Bitrefill real purchase (optional, for final demo):** cheapest is $1 T-Mobile/AT&T top-up
+- **Total real money: ~$5-10**
+
+Dev strategy: mock Bitrefill fulfillment in development (return fake gift card codes). Only do 1-2 real purchases for the final demo video/live.
+
+---
+
 ## References
 
+**Web3 integration:**
 - `ua-7702-magic-demo` (Particle official): https://github.com/Particle-Network/ua-7702-magic-demo
 - `universal-account-example` (Node.js scripts): https://github.com/Particle-Network/universal-account-example
 - Particle UA docs: https://developers.particle.network/universal-accounts/overview
-- Bitrefill API: https://docs.bitrefill.com/
-- Hackathon program: https://www.encodeclub.com/programmes/uxmaxx-hackathon
+- Magic Transaction Signing (zero popup default): https://docs.magic.link/embedded-wallets/wallets/features/transaction-signing
+- Magic Polymarket recipe (gasless pattern): https://docs.magic.link/recipes/embedded-wallets/polymarket
+
+**Competitive landscape:**
+- Bitrefill (incumbent, no chain abstraction): https://www.bitrefill.com/
+- Bitrefill MCP server (AI-ready commerce): https://docs.bitrefill.com/docs/ecommerce-mcp
+- Cryptorefills x402 (AI agent payments, USDC/Base only): https://github.com/Cryptorefills/agents
+- Coinbase AgentKit (conversational crypto, raw transfers only): https://github.com/coinbase/agentkit
+- PayAgent (closest hackathon precedent, ETHGlobal): https://ethglobal.com/showcase/payagent-taoj2
+
+**Frontend stack:**
+- Vercel AI SDK 6 (parts model, multi-step tools): https://ai-sdk.dev/docs/ai-sdk-core/tools-and-tool-calling
+- AI Elements (ChainOfThought, Tool components): https://elements.ai-sdk.dev/
+- shadcn chat components (June 2026): https://ui.shadcn.com/docs/changelog/2026-06-chat-components
+- Motion (animation): https://motion.dev/
+
+**Free tier references:**
+- Gemini rate limits: https://ai.google.dev/gemini-api/docs/rate-limits
+- Magic pricing: https://magic.link/pricing
+- Supabase pricing: https://supabase.com/pricing
+- Openfort pricing: https://www.openfort.io/pricing
+- ZeroDev pricing (no free tier): https://zerodev.app/faqs
+- Cloudflare Workers AI: https://developers.cloudflare.com/workers-ai/platform/pricing/
+
+**Hackathon:**
+- UXmaxx Hackathon program: https://www.encodeclub.com/programmes/uxmaxx-hackathon
 - Competitive research: 23 active projects identified, 0 in off-ramp niche
 - Historical research: 0 hackathon winners in crypto-to-gift-card or AI-agent-off-ramp categories
