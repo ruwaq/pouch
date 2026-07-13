@@ -1,9 +1,10 @@
 import { isOk, ok, type Result } from '@pouch/shared';
-import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, IntentParser, OrderRepository } from '@pouch/domain';
+import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, IntentParserStrategy, OrderRepository } from '@pouch/domain';
 
 export interface AgentChatResponse extends CashOutResult {
   intent: CashOutIntent;
   reply: string;
+  trace: CashOutResult['trace'];
 }
 
 export interface AgentChatServiceLike {
@@ -24,7 +25,7 @@ function toDisplayBrand(brand: string | undefined): string {
 
 export class AgentChatService implements AgentChatServiceLike {
   constructor(
-    private readonly parser: IntentParser,
+    private readonly parser: IntentParserStrategy,
     private readonly executor: CashOutExecutor,
     private readonly orders: OrderRepository,
   ) {}

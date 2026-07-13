@@ -44,6 +44,7 @@ class DemoProvider implements OffRampProvider {
       id: 'order-demo-1',
       providerOrderId: 'provider-order-1',
       providerId: this.id,
+      ...(request.userId ? { userId: request.userId } : {}),
       product: this.product,
       faceValue: request.amount,
       payment: {
@@ -132,6 +133,7 @@ function buildWebhookApp() {
     id: 'invoice-verified',
     providerOrderId: 'provider-order-verified',
     providerId: 'bitrefill',
+    userId: 'demo-user',
     product: {
       id: 'amazon-us',
       providerId: 'bitrefill',
@@ -230,6 +232,9 @@ describe('API app', () => {
     });
     expect(body.reply).toContain('Amazon');
     expect(body.reply).toContain('$50.00');
+    expect(Array.isArray(body.trace)).toBe(true);
+    expect(body.trace.length).toBeGreaterThan(0);
+    expect(body.trace[0]).toMatchObject({ status: 'complete' });
   });
 
   it('rejects invalid request bodies', async () => {
@@ -357,7 +362,7 @@ describe('API app', () => {
       }),
     });
 
-    const response = await app.request('/orders/order-demo-1');
+    const response = await app.request('/orders/order-demo-1?userId=demo-user');
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -385,7 +390,7 @@ describe('API app', () => {
       }),
     });
 
-    const response = await app.request('/orders/invoice-verified');
+    const response = await app.request('/orders/invoice-verified?userId=demo-user');
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
@@ -398,14 +403,20 @@ describe('API app', () => {
     });
   });
 
-  it('returns 404 when GET /orders/:id does not exist', async () => {
+  it('returns 404 when GET /orders/:id does not exist or is not owned', async () => {
     const app = buildAgentApp();
 
-    const response = await app.request('/orders/missing-order');
+    // Create an order owned by demo-user
+    await app.request('/agent/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Cash out $50 to Amazon', userId: 'demo-user' }),
+    });
+
+    // A different user gets 404 (ownership enforced, not a leak)
+    const response = await app.request('/orders/order-demo-1?userId=other-user');
 
     expect(response.status).toBe(404);
-    await expect(response.json()).resolves.toEqual({
-      error: 'Order not found',
-    });
+    await expect(response.json()).resolves.toEqual({ error: 'Order not found' });
   });
 });
