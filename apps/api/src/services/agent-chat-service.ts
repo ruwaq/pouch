@@ -1,5 +1,5 @@
+import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, IntentParserStrategy, Order, OrderRepository, ReplyStrategy } from '@pouch/domain';
 import { isOk, ok, type Result } from '@pouch/shared';
-import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, IntentParserStrategy, OrderRepository } from '@pouch/domain';
 
 export interface AgentChatResponse extends CashOutResult {
   intent: CashOutIntent;
@@ -28,6 +28,7 @@ export class AgentChatService implements AgentChatServiceLike {
     private readonly parser: IntentParserStrategy,
     private readonly executor: CashOutExecutor,
     private readonly orders: OrderRepository,
+    private readonly replyStrategy?: ReplyStrategy,
   ) {}
 
   async handleMessage(message: string, userId: string): Promise<Result<AgentChatResponse, DomainError>> {
@@ -44,12 +45,38 @@ export class AgentChatService implements AgentChatServiceLike {
     }
 
     const persistedOrder = await this.orders.findById(execution.value.orderId);
-    const displayBrand = toDisplayBrand(persistedOrder?.product.brand ?? intent.value.brand);
+
+    const reply = await this.composeReply(intent.value, execution.value, persistedOrder);
 
     return ok({
       ...execution.value,
       intent: intent.value,
-      reply: `Starting your ${displayBrand} cash-out for $${intent.value.amount.value.toFixed(2)}. Order ${execution.value.orderId} is now ${execution.value.status}.`,
+      reply,
     });
+  }
+
+  private async composeReply(
+    intent: CashOutIntent,
+    result: CashOutResult,
+    order: Order | null,
+  ): Promise<string> {
+    const template = (): string => {
+      const displayBrand = toDisplayBrand(order?.product.brand ?? intent.brand);
+      return `Starting your ${displayBrand} cash-out for $${intent.amount.value.toFixed(2)}. Order ${result.orderId} is now ${result.status}.`;
+    };
+
+    if (!this.replyStrategy) {
+      return template();
+    }
+
+    try {
+      return await this.replyStrategy.buildReply({
+        intent,
+        result,
+        order,
+      });
+    } catch {
+      return template();
+    }
   }
 }
