@@ -1,6 +1,7 @@
 import type { Result } from '@pouch/shared';
 
 import type { DomainError } from './errors';
+import type { TraceStep } from './trace';
 
 export type UserId = string;
 export type ProviderId = string;
@@ -45,6 +46,7 @@ export interface OrderRequest {
   productId: string;
   amount: Amount;
   idempotencyKey: string;
+  userId?: UserId;
   recipient?: {
     name?: string;
     email?: string;
@@ -53,6 +55,7 @@ export interface OrderRequest {
 
 export interface Order {
   id: string;
+  userId?: UserId;
   providerOrderId?: string;
   providerId: ProviderId;
   product: Product;
@@ -159,4 +162,5 @@ export interface LoggerPort {
 export interface CashOutResult {
   orderId: string;
   status: Extract<OrderStatus, 'payment_pending' | 'delivered'>;
+  trace: TraceStep[];
 }

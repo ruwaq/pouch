@@ -12,7 +12,7 @@ export interface TraceStep {
 export interface TraceRecorderPort {
   readonly steps: TraceStep[];
   start(label: string, options?: { badge?: string; detail?: string }): TraceStep;
-  complete(stepId: string): void;
+  complete(stepId: string, options?: { badge?: string; detail?: string }): void;
   fail(stepId: string, detail: string): void;
 }
 
@@ -40,15 +40,19 @@ export class TraceRecorder implements TraceRecorderPort {
     return step;
   }
 
-  complete(stepId: string): void {
-    this.setTerminal(stepId, 'complete');
+  complete(stepId: string, options: { badge?: string; detail?: string } = {}): void {
+    this.setTerminal(stepId, 'complete', options);
   }
 
   fail(stepId: string, detail: string): void {
-    this.setTerminal(stepId, 'error', detail);
+    this.setTerminal(stepId, 'error', { detail });
   }
 
-  private setTerminal(stepId: string, status: 'complete' | 'error', detail?: string): void {
+  private setTerminal(
+    stepId: string,
+    status: 'complete' | 'error',
+    options: { badge?: string; detail?: string },
+  ): void {
     const step = this.stepList.find((entry) => entry.id === stepId);
 
     if (!step) {
@@ -60,8 +64,12 @@ export class TraceRecorder implements TraceRecorderPort {
     step.status = status;
     step.durationMs = Date.now() - startedAt;
 
-    if (detail) {
-      step.detail = detail;
+    if (options.badge) {
+      step.badge = options.badge;
+    }
+
+    if (options.detail) {
+      step.detail = options.detail;
     }
   }
 }
