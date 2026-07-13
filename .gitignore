@@ -59,3 +59,4 @@ seed.txt
 
 # VTT transcripts (large, not source code)
 *.vtt
+.zcode/

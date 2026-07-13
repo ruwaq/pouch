@@ -1,0 +1,623 @@
+Meeting Técnico: Chain Abstraction with ZeroDev: Transaction Flows with Less Friction
+Video URL: https://www.youtube.com/watch?v=pe0pRb7KWcw
+================================================================================
+
+Welcome everyone to the UXMax hackathon run with our headline partner particle network. Great to see you all here. Today's session chain abstraction with zero dev transaction flows with less friction presented by the zero dev team. The whole theme of UXMax is user experience making onchain feel effortless. This one sits right in the pocket.
+
+ZeroDev's tooling simplifies signing gas and execution so onchain interactions feel lighter and smoother. It's best suited to teams in the general track who want their DAP to feel less like a wallet obstacle course and more like a normal app. Bit of housekeeping. The session is recorded and goes up on the platform afterwards. You can watch it on YouTube afterwards as well.
+
+Drop questions in the chat as we go and we'll take them at the end. Over to Canal. Take it away. Hi. Uh I'm Kunal uh from the offchain labs/zerdev team.
+
+uh for the next like 30 minutes I will spend like spend some time on like a poll app on this page and uh I'll go through like each pass will sort of delete a layer of friction which is like signing gas execution and then sort of removing the chain itself and it will show the difference every time. Most of the diffs are actually one line. So let's go. Uh I uh so I guess like a lot of like the apps D app devs have known this like this funnel of death where uh you install the extension then you need to back up the seed phrase and then you you have to like buy ENOSX withdraw it to the right chain hopefully pick the right chain switch network a proof pop up there's like seven different steps and if you think like you know there's a 70% retention per step over all these steps you're only left your users are only like 10% of the users are left there right so and when they like bounce they don't like file a bug with the chain itself right they just in uninstall your app so you did all this hard part of you know integrating wallet stacks and stuff And then this whole funnel just ate your whole uh all the users you you just acquired. So um yeah uh so I want to just go over like a couple of primitives and I think you guys already like know about this already like smart accounts are uh more like a EOS which the validation is like the the hardcoded easy recover uh verified onchain.
+
+So you have something like a validate user op which sort of uh replaces the EOA flow and once that the validation is code you get uh things like the curve check can't express like a pay master covering gas you have like recovery you have like m execution session keys so all of them are already uh covered by like ERC C4337 which has been around for a while. uh this is besides the protocol but then you also have um so I guess like concretely a user signs like a user uh operation and then uh a bundler picks it up and then calls the handle user op and then the smart contract itself has like a validate user op function where the custom logic lives and then uh then you have the 7702 which just like the old account abstraction UX meant deploying like a whole different like smart contract address and migrating every time. So it was kind of like dead on arrival for like existing users which also had to migrate. Um but this is solved in with like 7702 where uh you have the it's it's like a normal EOA address that's been like 7702 delegated to kernel. So that way there are no more new accounts.
+
+That's that what makes this like shippable to like real users instead of you know like just having another demo. Um I go okay so the zero dev stack today is four things and each one deletes a layer you're about to like watch fall. uh the wallet SDK which has like the pass key oppp and uh the gas policies which are like we have like this pay masters which is configured in a dashboard which is not code just a UI and then the kernel which allows batching session keys and intent. Uh and then the intense one is like chain abstracted balances and which is like in the background there's like a solver filling and executing for you and so these all are like sort of signing gas execution chain all are like four parts of this one cohesive like product uh and then let's go into uh okay so this is the demo itself and so this is a live demo so let's just bear with me here um I guess like as a hacker first you need to like create a project on the zerov dashboard but I'm not going to show that much because it's covered in the docs and stuff but I'll show like the demo so the first step is so this is like a like a regular d app on arbitum uh one And what we do is like the first thing is where you're using a normal like wallet like MetaMask or Ra or whatever and uh you connect it you have like your connected wallet address and then you say oh okay for this app you have to approve or like you have to pay like 0.00001 001 USDC and just to show the flow of the app and I think this is I'll show the app flow the normal flow which you're used to here. So you're signing your transaction and then you're voting on approval here and let's say you sign it here and boom.
+
+So you have voted for one of them and then uh uh and then let's say you go on bit uh yeah so I guess uh there is so you sort of like hold this shape in your head you have two different calls uh two popups you require gas and every step we basically kill one part of it and uh then you have let's say act one where you have just the signing now instead of using your uh seed phrase or your private key here you sign using I guess this is already logged in but uh if I remove my oops I'll I'll go I'll clear the site data. So you'll see it sign with face ID. I have my face ID here in my password manager. So I save it here. It saves it and it creates or your address is a smart uh account.
+
+And this is your address. You can copy it down somewhere. And then let's say you vote for this and This didn't refund. I guess this one is not working. But uh I guess this step was to delete like the signing.
+
+So you use like the web a like pass key. So the key is generated in the the secure enclave. Um uh yeah it is it is like generated in the secure enclave. it like never leaves the device. So in this case it's like the browser and then 3 seconds like no extension is needed and that sort of drops the first step of the funnel where uh and then um so you have your your this is your 7702 wallet address.
+
+I have to check why does it sign? Let me see. I will enable gas policies here. and maybe wait for a second for it to Okay. Anyway, um yeah.
+
+So, I guess this is I can move on to the next step where you don't need the gas to be. So, it's like the same wallet address here. So if you go to RB scan, follow that and then uh let's go back here and let's try the next step and hopefully it works. Uh this one also doesn't refund. Um I guess I'll have to just run through the demo itself like had to record it.
+
+But um yeah um so you needed like so just recapping back to like uh the first step you needed like an approve and a vote which is two user ops two confirmations and when uh you're approved but not voted. Uh so you sort of watch like that account collapse that and you have like one tap. Let me see the one tap thing. Okay, I think they all will start failing but uh go back to the presentation here and um and then you have this guess I can like show the code itself. Um, so you have the the demo wallet here and you see the kernel getting the kernel client.
+
+So this is all coming from the zerov SDK and we're using the zerodev wallet react here and you have the config here where you're building the intent config. Intent config is the one where just here where you're ending ch. So you're voting hash saved and now this so this is like I guess I fast forwarded to the next thing and um okay so I'll guess I I'll just go through the slides first. Um, so I guess like the fix for the user having no gas is sort of sponsoring on a dashboard. So if you go to the dashboard and you see there's like all these policies for sponsorship in case you know you want to sponsor for a specific wallet address for a specific contract policy.
+
+You can do this using the UI or you can also do it uh programmatically using the SDK. Um and then you have you can do it for every single chain. So let's say for the demo itself let's just say sponsor all policies. Let's see if this worked. Not sure.
+
+Um but uh so yeah so the fix is like let's say you had this you had this wallet policy where you added like a wallet and you can like sponsor or non-sponsor in case you want to blacklist an address and then whatever like address you have ci like save the policy here. And so yeah, this way your users don't have to pay for any of the transactions and we your app can sponsor it for you. And then you have execution And then this is the one where you're instead of sending multiple transactions, you can send it in a single batch. So you're calling like it's essentially like multi call under the hood. And um so you have like this get kernel client which pulls the connections client like the kernel client similar to vagme which is straight out of the the zero defev store.
+
+So there's not like any additional setup and then the send transaction which is what you call can have like an array of calls and that means that that that approve and that vote could have two different calls there and the kernel encodes it as a like a single like execution batch submits the user op and that one bundler has so you have basically one bundler roundtrip one pay master sponsorship and so you have two different like logical actions but one atomic transaction and I didn't need to like hand roll any of the multicols. Uh so yeah, I think uh I guess s the session keys basically means that you have a key in your cache or something and you you don't even have that pass key popup just it just goes. So you can sort of scope it for a day. You could scope it for like a specific token or a specific amount session key. So that way you are like you you you're not losing out in security there.
+
+And then uh the last step would be the chains where uh you would have like uh this is probably like the biggest step here. And in the demo, the USDC balance for this account was on base. And the idea is that um the app is an arbitrum. So the fix would be to like have a UI which shows bridge, wait for finality, switch accounts, hold gas on both legs and then with end chains your users funds are always going to be on the wrong one. Right?
+
+So uh we have this under the hood we have this thing called CAB which is chain abstracted balance which summarizes all your USC across base and arbitrum on in one number. So you see this number chain extracted number is basically just calling this function on multiple chains. Uh this way your users don't they haven't lost any balance or they forgot about something on a different chain on or let's say a chain they don't use anymore and uh the code we use is like this function called like send user intent and uh you didn't have to like build a user transaction I guess send user content you would have this uh this function which is and then you can like encode the calls. Now you have both these accounts and these functions and the only thing you have both the functions here and this way you can like you have this USC USDC on base and then you go back. Uh so what happens like under the hood is like I guess like in the SDK itself if you the you didn't had to build the bridge transaction yourselves you just signed like one intent which is calls is approve plus vote which is like plus bridging and then the output tokens is 0.001 001 USDC which is what you required and so this way you just have the desired end state which is what you wanted and the destination and not how to route it under the hood.
+
+What we do is this is uh your uh there's like a network of solvers which compete to fulfill it and then one fronts you the balance on uh USDC on arbitum and then executes your calls and then uh your side never had that balance on arbitum. it went straight into the vote call. Uh, and then like behind the scenes and the successor settlement reclaims base to repay the solver. And this is all like this would be all familiar to you if you're like familiar with like this intentbased bridges like across or relay. But it's just like it happens now without you even touching any of the specific bridges which might not connect to a chain your users are already on.
+
+And this I guess um what next would be yeah so this is like I guess this demo didn't really work but like the idea is you start with metam mask popups need then you can have add like seed phrases instead of seat phrases you add like you have like the pass keys or the Google log in which is similar to the pass key or like you could do the magic link thing and once instead of getting the gas token you could like sponsor users on your behalf so the project pays and then your users have a more seamless experience and then you have instead of having those end popups you can like sort of batch calls make them into sessions and and then instead of your users worrying about the uh the chain you have intents where you can like vote for or like execute any action from any chain you want. And so you have like that that example of having that USDC live wherever it is, but then you can sort of move it around without the users knowing them. Um, so yeah, you have all the primitives here. Um, I guess I can like post this link in the channel or something so so that people can try it out once I fix it. But I think that's it.
+
+I think this is just u the recap. You have this. Oh, I guess this is like the you have the filler and the whole flow and then the settlement happens and then yeah, these are some examples of what things you can build. You can have like a checkout which is chain agnostic or like a face ID on boarding flow or like some kind of automations especially with like vaults or any like defy stuff. Yeah, I think these are like some links.
+
+Uh I'll also link the hackathon repo which uh I'll post in the chat and then yeah any questions? I I think I think there was a question from our discord which we copied and pasted. Um it it said what's what's the best way to sponsor gas and know I think what they're trying to refer to is um the the 0.001 USDC thing. I know it's a very small amount but you know what's stopping or how does zero zero dev control the number of accounts being generated by a single user? um how do you stop you know your I guess generosity from being abused?
+
+Yeah. So um you can like there's a lot of like uh domain and IP and like those kind of blocking you can do. So that is your your be like first line of defense. Um but then uh in your app itself you could like or you could have like some kind of rate limits on like the amount per hour or like so that you know uh there's no like denial of service attack that way. Uh those are some of the ways if you have like there's other some like custom filters too which you can add.
+
+Uh wow. Okay. So if you see like these there's like in the dashboard you this is like the most the easiest one to break which is like you sponsor all transactions you have like chain policies you have which exact contract you're sponsoring so they can't just misuse for their own contract interactions. Um you have the wallet policy and then the wallet each policy you can have like this much gap spend or this much uh you can have like how many requests they are sending and these are all like some policies and then you have like uh you have this access control which you can have on origin or IP or anything they can use or they also they're logging into your app using an email right So yeah, another another way you can like stop them. So yeah.
+
+Yeah. Wow. I mean that's that that defense is pretty in depth. Thank you so much. Also I just wanted to say thank you so much to the uh attendees.
+
+We have so many people joining today from all around the world. Makes me really happy seeing the seeing the uh attendance take a go up into the triple digits. So I want to say a big thank you to the audience. Big thank you to Canal and the Zero ZeroDev team for that walkthrough. I know the demo didn't work, but what that means is that it is a good demo because easy demos wouldn't break.
+
+Um the recording lands on the platform shortly if you want to rewind. Um and you said that you would put the link um in the in the chat or in the Discord, send it to us. Yeah, I'll put it in the discord like the link of the app so that people can use it. Okay. Yeah.
+
+Thank you so much everyone. You know, check it out. where we are. You should already have your project created and team added and be uh past the first milestone. So, the mid hackathon checkpoint.
+
+Quick key date uh to remember. Final submissions are due at uh midnight on the 19th of July, Sunday. That's the hard deadline. Get it in early. Don't fight the clock at 11:59.
+
+The finale and prize giving Thursday 30th of July. Top teams pitched live to the judging panel before Particle Network announces the winners. There are still more workshops to come. Tomorrow we have another one with open for um embedded wallets for seamless app payments. Um 22nd of July we have social login uh UX with magic uh wallets that feel web 2.
+
+Um and office hours and the team are in Discord if you're stuck. Keep building. Ship something that feels good to use. And that's the whole point of UX Max.
+
+
+####################################################################################################
+####################################################################################################
+
+
+Meeting Técnico: How Arbitrum Supports Founders
+Video URL: https://www.youtube.com/watch?v=9uCkgVvt7NA
+================================================================================
+
+Good afternoon everyone and welcome. Great to have you here for today's session in the UXMax hackathon. I'm Mouhammad from Encode hosting today and I'm delighted to be joined by the legendary Swagimus the de developer relations evangelist at the arbitrum foundation. So today's session is how arbitrum supports its founders. Swagimus is going to walk through the many different ways arbitrum backs founders from their flagship builder support program openhouse to subsidized audit support, hands-on mentorship, demo days, and much much more.
+
+If you're building something on arbitrum that you'd like to take long-term beyond just the hackathon, this one is for you. So, quick reminder on where we are in UX Max, your next milestone is the mid hackathon checkpoint uh on the 5th of July. So, that is Sunday. That's a required submission. So, make sure you've got your progress in.
+
+After that, final submissions are due on the 19th of July. And that is the big important one for today. Sessions like today are exactly what help sharpen those submissions. So, do think of questions. I'm sure we'll be answering them as we go on.
+
+Don't be shy. Fire your questions. We'll answer them all. Now, quickly, one thing worth flagging. If any of you are in London, I know we're quite int international, but if any of you are in London, Arbitum are running their own openhouse London, an in-person founder house from the 10th of July to the 12th run in partnership with us in code.
+
+It's an applicationonly 3-day experience for teams already building on Arbitum. So you can accelerate your execution, get mentorship, deepen your ecosystem connections, and there's around 300k in uh dollars in prizes and grants across tracks like DeFi, stable coins, AI apps, and dev tooling. Good news, applications are still open. So don't be don't be shy. It's screening based and rolling.
+
+So if you see a wait list, that just means they review applications, not that it's full. head to the encode uh luma calendar or the arbitum luma calendar to apply. Uh Swagimus might you're you're more than welcome to uh say more information as well. Uh as for housekeeping and what today is going to look like, we'll run this for about an hour. Um drop any questions into the chat uh as we go.
+
+Swagimus will answer them throughout. No need to wait till the end. And as always, head over to our Discord for any updates or to ask questions there. With that, over to you, Swagimus. Awesome.
+
+Thanks so much. That was a wonderful introduction. Uh thank you for leading the audience into that. Um I'm here today to talk about how we arbitrum support founders. And to do that, let me share my screen real quick to pull up my slides.
+
+All right, here we go. Um so I'm with Arbitum, uh and I am a developer evangelist at the Albert Foundation. Specifically, I'm also a green frog on the internet. So uh you know that's that's quite cool. Of course Swag is not my real name.
+
+It's a pseudonym. I am pseudonmous. Um and today I want to talk about how arbitrary supports founders because there are so many different ways um in which we can support founders and I think it's quite hard to actually summarize all of that or find all that information if you are uh at different stages of your project or in different uh ecosystem verticals etc. So I want to the first point I want to make and stress is that arbitrum is a launch partner and it's not just a chain. We are the only launch partner that has this proven uh model that dozens of projects have have gone through and gone on to be successful.
+
+Uh arbitum is u where you can go from an idea to a product from a product to traction and from traction to becoming a part of the ecosystem. Uh the builder path start starts with uh hackathons like this with workshops, feedback, product product. Uh throughout various different programs, teams get direct access to mentors, partners, technical experts and the best teams out of those keep momentum high through grants, audits, guest support, intros and amplification and and so much more. So um what I want to really uh talk about here is openhouse, which is our flagship founder enablement program. And uh if you never heard of openhouse, I will give you a brief rundown of this.
+
+what what is it all about? What is openhouse? Openhouse consists of three phases uh and it is a regional program. So we've run uh openhouse before in India in New York earlier this year and now we are headed to London. And this program comes in three phases.
+
+It starts with an online buildathon. It's a 3-week online buildathon and it specifically is a buildathon not a hackathon which means you can bring any existing projects to this and keep on building on top of that right you do not have to start from scratch. It's actually very interesting. Um, if you uh if you looked at Eve Global, which is one of the the biggest hackathon organizers in the Ethereum ecosystem, they also recently shifted their hackathon uh system away from doing hackathons only to also allowing a track for more established or more existing projects. So, it's very interesting to see this uh shift in the ecosystem that we are also pioneering here.
+
+Um so, this build is three weeks. Um the biggest value ad that this builder builderon brings are uh feedback sessions and I will I will talk about that in a second. The second phase is the founder house which uh we are headed to in London next week. Um today is actually the last day to apply and I will talk a bit more about how to do that later on. The founder house is is a three-day inerson event.
+
+Um and the first uh part of this openhouse program is our mentorship program which comes after the founder house. So you go to the buildathon, build an MVP, go to the founder house, stress test your assumptions and your product direction and take that into a mentorship program which culminates in a demo day in front of VCs. So let's dive a little bit more into all of these things. Uh like I mentioned the buildathon. Uh the one thing I want to stress there are the feedback sessions.
+
+Uh you know sometimes people run hackathons. Uh I'm sure Ankote does not do it this way but some some people run hackathons where you just sign up you build something and then you just hope and pray that somehow what you have built makes sense and is a good idea. And uh what we try to do is we try to have really frequent feedback sessions where you can check in uh and and and talk to us, talk about your project, your progress, get some hands-on actionable feedback from us uh instead of just sitting there building in the dark and getting no feedback at all. Right? So we've had five feedback sessions throughout these three weeks and they have been so helpful for the builders and founders to figure out their product direction to have early uh ideation and iteration on their projects and it's it's it makes a mountain of a difference.
+
+Uh so that's really kind of the selling point of the buildathon. You go there and you really get feedback after the buildathon. Ideally you have an MVP project and that's what you take into the founder house, right? The founder house is not a hackathon. It's not a hacker house.
+
+It is different. It's it's a three-day inerson event and we have various different sessions for founders specifically, right? Things that founders actually care about. Figuring out product market fit, um a little bit of how to fund raise, how to pitch, how to put together a go to market plan, right? So, we have various different sessions covering all these aspects plus mentorship on site.
+
+So you can go to mentors that for example focus on product direction or on go to market and talk to them and tell them about your plans and they will give you feedback. And it's not just us the foundation there. We have many amazing sponsors that aren't just sponsors for the sake of being a sponsor but also have decades of experience. Well not decades but let's say a decade of experience in in the crypto industry and they know how to scale and build a successful project. And those will be the mentors that uh that you get to touch base with.
+
+It is applications based. So, if you want to come there, you can't just show up. You have to apply and answer a few questions because we do want to filter out um you know, the the most promising teams, but also the teams that we can have the most impact on, right? Um so, uh if you're building something interesting, we would love to hear it. We would love to see you apply and hopefully get you approved.
+
+Um if you participated in the buildathon, the top three winners from the buildathon are are getting guaranteed spots. Um but yeah, anyone can apply and hopefully make it in there. It's very very limited capacity in in London at the encode hub. Um after the founder house uh you will have stress tested your assumptions your product direction and put up to you know some kind of go to market plan and that's when you move on to the mentorship program. Uh this is an 8-week uh online remote program featuring curated investor introductions and even more hands-on guidance on your product development, on growth strategies, on putting together a pitch deck, how to actually pitch to VCs and not just to us, right?
+
+Um, so a lot more resources, many more uh mentors and partners that uh that you can tap into and it all culminates in a demo day in front of some of the top tier VCs in in the crypto industry uh with also 100k up for grabs for the three best teams. So this is a complete funnel. Of course, you don't have to run through this step by step. If you already have an MVP, you can apply straight to a founder house. If you already stress tested your assumptions about product market, you can directly apply to the mentorship program.
+
+You can slot in wherever you want. Uh but you can also go through all of them if you are at the very beginning. So that's what the open house is all about and we headed to uh London uh next week. Uh let's take a brief look back at open house India and New York to give you like a little bit of an impression of what we did there and what what what kind of things are going to happen there. Right.
+
+Um just showing some pictures. These are the winners of the India founder house. Um this is the New York fan house in action. As you can probably tell it's very busy. It is intense.
+
+Um, so be prepared. Uh, here we have the Robin Hood chain team at the New York Founder House giving a presentation on what they're doing with Robin Hood chain on Arbitum. If you didn't know, they are building a an arbitrum chain um using our text stack for for Robin Hood chain uh which is very exciting. They're live on test net right now and soon will be on mainet. And now let's look at openhouse London.
+
+Uh like I mentioned, we have some amazing sponsors. Uh first and foremost, Robin Hood chain, they are massive name in the industry. We are very happy to be working with them. Uh there are other names uh like AWS for cloud infrastructure and scaling. Uh GMX, Alchemy, Zero Defens Dune.
+
+A lot of amazing names in the industry that all focus on different verticals in the industry. Uh and one thing I want to specifically shout out is Seit. If you're not familiar, it's the center for um uh financial innovation and technology in the UK. So they are a local agency and they can bring a unique angle to the founder house to basically I don't know like answer some questions for founders that want to incorporate and build their startup in the UK to to kind of like help them out a bit and and uh talk about what what they have to like look out for basically. So it's a it's a unique offering.
+
+We're very happy we have them and uh it's going to be good. So um yeah uh let's look at the the tracks. Of course there are going to be prices. it while it is not a hackathon or a hacker house. Of course, we want to reward the most promising high impact teams there.
+
+We have three different tracks. The general track is just first, second, third place, the overall best projects 60, 40 and 20k, so 120k in total. We have the Robin Hood chain track for teams building on the Robin Hood chain. Uh we have a founder and residence pairs of 60K, innovation award of 30K. And we have an agentic track if there are any uh people building AI agentic projects which of course is huge right now.
+
+Uh we have a 20k uh price pool for that as well. All right, that's openhouse London. If you are interested, uh feel free to scan the QR code. Um I'm also going to put my telegram in the chat after uh this whole presentation. So you can also reach out directly to me if you have any questions or if you need the link again.
+
+Uh but feel free to scan this or screenshot it and and scan it later. I'm going to show this at the end again as well. Um and so let's talk a bit you know t take a take a bit bit of a step back right this is this is a flagship founder path you move from a buildathon through the founder house to the mentorship and then there's a lot of ecosystem follow through which I haven't talked about so this whole format is designed to take founders from an intent to build to actual product progress and then keeping the best teams close to our ecosystem. I think that um hackathons like this UXMax hackathon are a great starting point and stepping stone and we want to build on top of that and offer sort of like the full funnel of what comes after, right? Because if you complete a hackathon, you're going to feel great and then a week later you might be wondering, okay, but like what do I do now?
+
+Like what comes next, right? And that's that's kind of like an a question that I think the industry has not had um necessarily a great answer for for a long time, but I think there are now ways uh to to actually improve that. So um yeah, uh again, here's what you get at the Founder House given that it takes place next week. There's a lot here. I've talked about many of these things.
+
+Uh there's a lot there's so many uh good stuff, good resources here uh that you can tap into. So I highly encourage you to take advantage of that if you're building something in this hackathon or even outside of it uh for for for that matter uh that you want to take to the next level and build long term. Uh maybe you might be wondering who who is London for? I kind of just talked about it. It's for teams already building.
+
+Uh it's for teams that have an existing product or prototype. Bring something there. It's not a place where you start from scratch. Uh you should arrive ready to ship or validate your core product flow. Uh we have mentors from the altum foundation, offchain labs which is the the arbitum sort of like engineering organization.
+
+Uh a lot of sponsors, other ecosystem partners like entropy advisor are going to be there as well to deliver a talk. Um a bunch of different tracks. We have different categories as well. Uh whatever you build surprise us it doesn't matter. We we are just looking for really crack teams that want to keep building.
+
+Okay. Um I want to maybe uh talk about one proof point. Um because some of you might have heard of like similar programs and you might be wondering hey how is this different or has there been any successful projects out of this uh and here's a proof point uh there's a project called bond credit and they won the New York City founder house uh one of the they won the Robin Hood chain innovation award um and their journey is actually really interesting they came into the New York buildathon the online program and they didn't actually win they didn't win anything at the buildathon but they weren't deterred by And the the good part about this whole openhouse program is that there are multiple stages at which you can compete, right? So if you don't win initially, it doesn't mean you have a bad project. It doesn't mean you necessarily did anything wrong.
+
+Maybe the competition has just been very fierce, which it really was in New York. Um and then you can still slot in at a different point of the funnel and uh and prove to us that uh you are a high impact team and you need support. Uh so they went on to the founder house. they applied and we admitted them because we already knew they were a good team. They just weren't quite good enough to win the buildathon.
+
+Um, and in New York, uh, at the founder house specifically, it's just a great opportunity to actually talk to people in person, right? That adds so much more to evaluating a team and getting a good idea of what they're doing uh, versus being in touch online, right? Not saying online is a bad way to do it. I think it's also a good way. But in person you just get a very different uh feeling for uh for for people and that goes both ways right you will also be able to see us in person and also make up your mind is arbitum a place where I feel supported where I want to be and at the same time we get to talk to teams and figure out okay are these teams cracked or are they kind of like not right uh so um yeah they went to the the firehouse they blew us away with what they were doing um and uh this is what openhouse is all about it's meant to surface serious teams give them direct ecosystem access and uh yeah and today uh all of you in the audience right now you can be doing the same thing essentially right this is basically a a free offering that you can take advantage of uh and prove to us that you are u worthy of of being supported and we're happy to do that all right um so that was openhouse let's talk a bit about what comes after openhouse uh right u even though it is quite a big program there are still many different other ways in which the algorithm ecosystem has your back.
+
+Uh one thing are grants. Uh sometimes we give out milestone based support for teams that have a clear onchain impact. Uh if you are deployed on mainet already and you made it that far. Um perhaps you didn't even participate in openhouse, you can still approach us for support if we feel like your onion impact justifies giving out a grant to help you support the next stage of growth. Um, one thing that uh might be particularly relevant for this hackathon is our RV fuel uh program which uh is basically gas sponsorship for early teams that are testing, shipping and onboarding users, right?
+
+So often times we talk to teams that have a great product but sometimes gas fees are still an issue especially for you know products that require many transactions or uh the nature of it is just very fast-paced so you make a lot of transactions right um and it can make still a difference even though gas fees are pretty low it still makes a difference whether they are low or effectively zero right so to help projects like that onboard users we sponsor um gas fees for them um we have an audit program uh which is $10 million that is coming from the Albert DAO uh to basically subsidize smart contract audits. Oftentimes the the last pain point before actually going to a launch is having a smart contract audit of your contracts to ensure that what you have deployed is actually safe and cannot be exploited and we want to alleviate the pain of going through that because audits depending on the auditor can be very expensive. Um there's mentorship. We have uh both the AR foundation ecosystem team as well as the offchain uh uh partnerships team who will literally talk to you through your product and advise you on certain things and uh just have your back in general. So it's it's an amazing resource you can tap into once you have proven to us that you're building something with an impact.
+
+Uh amplification the usual right if you launch something we can feature you ecosystem spotlights. We're going to retweet your stuff. uh social support, partner intros, ecosystem, project intros, etc. Kind of like the the usual that you might be used to. Um integrations, uh etc.
+
+So, no matter at what stage you are, ask us where you are at and we will be able to advise you on what kind of uh support uh best fits your stage and use case. Just dive a bit into uh these things. The outer mentorship program I've mentioned briefly before. It's 8 weeks. It's completely equity free as well.
+
+If you look at uh some competing programs, uh they usually do take some equity. So, this is actually a pretty good offering in my opinion. Uh this mentorship program again offers structured support for early stage teams. Uh you get a dedicated mentor. So, you will have bi-weekly one-on- ones with that mentor and focused feedback across your product, go to market strategies, liquidity, fundraising, the whole package of what you need to prepare for a fund raise.
+
+essentially uh a lot of access and input from ecosystem teams, infra partners, um operators, investors uh and it all culminates in the demo day which I've already mentioned before 100k non-dilutive awards uh for the top three teams and hopefully you'll get some interest from the VCs there to uh be able to fundra uh we ran a first cohort um uh earlier this year. It's almost wrapped up now. We had 900 applicants. Out of those we selected 13 teams across DeFi, infraai, payments and real world assets. Um you might be a bit frightened.
+
+Uh 13 out of 900 is not a huge quota but that's kind of the reality right. Um ultimately it it you know you have to you have to prove that you have an impact that you uh are a team that uh that can deliver, right? Um but all of what we're offering here is designed to help you achieve that. Uh so don't be discouraged uh at all. Um okay let's talk about the audit program.
+
+Briefly mentioned this as well. Uh this budget comes from the the dao. Uh it's for audit ready teams. So it's only really a fit once your code is stable once your product direction is clear and your deployment is auditioning focused. We have trusted auditors like open zeppelin sata never mind siphon trail of bits uh and many others.
+
+Uh and we will match your project with the auditor that has the best fit for you. Um in terms of uh some findings from uh uh previous uh audit program cohorts, we've identified sorry we uh completed 14 audits uh and they identified a bunch of critical and high severity u vulnerabilities and findings. So uh it is proven it's worth it. Um and uh I think it's currently actually closed. Um but we will open the next cohort uh quite soon.
+
+So use this when you need to figure out your security. Um, but it's not a fit for early stage teams. If you're early stage, you want to go through openhouse and really lock in your code before you uh come for an audit. Okay. Abby Fuel uh briefly talked about this as well.
+
+Gas sponsorship um uh it's kept at 10K in credits per seed team. So, it's not infinite of course. Uh but this is plenty to get you started to bootstrap your initial user base, especially if the gas fees are are still a hindrance for you in in this very early stage. who is a fit for this you know all the teams building in the hackathon really uh if you're building simplified UX apps wallets stable coin products uh and payment related applications um sorry about that uh it's uh powered by PIMLo with EC20 pay masters and uh yeah uh it's best for teams where gases onboarding improves activation retention or payment UX which is mostly teams building with so it's a good fit for that. Okay.
+
+Uh, one last point I want to make is about the option DO. Um, because I think most people still think of Dows as like ineffective or not working or chaotic or way too daunting to get into. Um, and I hear you, but I do want to make a point that the option DAO actually is is quite functional. Um, and without the DAO, many of these support programs would not be possible because it is funding a lot of them. So, the DAO has a treasury that it can allocate towards ecosystem growth.
+
+For example, the $10 million in order support comes directly from the option D, right? Uh that's a lot of money. Um other grants and incentives can also support growth, adoption, liquidity. You can even make proposals for uh things like that. Uh or you can vote for them um and get involved.
+
+I know it sounds daunting uh but you don't have to go there and navigate this alone. You can talk to us and we can guide you through the process, right? All it takes is to just send us a message and we are more than happy to to help you uh navigate whatever you need to do and uh it really is u a great tool in your toolbox that I think many people are underestimating. Uh on top of that there are delegates that also provide feedback to you right if you um have something interesting going on uh they can give you feedback right uh they can amplify what you're doing they can help you test they uh can give you support on any proposals you want to bring up so um if you I encourage people to look into it and if you need help uh shoot us a message and we are more than happy to help. Okay.
+
+Um, apply to the founder house in London at July 10th to 12th. And, uh, here's the QR code. Again, feel free to, uh, screenshot. Uh, I'm going to put the link in my Telegram in the chat as well at the end of this presentation. And, uh, that's really it.
+
+Uh, I know we have a 1 hour allocated. This is a short one. I hope it has been a bit of a change of pace. I imagine most workshops have probably been uh, technical in nature. This one was very nontechnical.
+
+Um, but I think it's a great resource to help you navigate the Albertum ecosystem. uh show you all the different ways of support that is available and summarize all that in in one neat uh presentation so you have a better idea of like okay what what is actually happening what is going on what is my path from the very earliest intention to build all the way to eventually fundraising getting an audit getting gas fees sponsored and really uh growing alongside the ecosystem uh in in arbitro uh so thank you so much for listening uh I'm going to stop my screen sharing now and put um my telegram uh and uh all the other things in the chat and then I'm going to take a look at the chat questions as well and see if I can answer any of them. Thanks so much. Thank you so much Swagamus and the arbitrum foundation for that. That was very useful very useful run through on how much support is on offer for founders.
+
+I think for a you know a founder solo founder around the world it sometimes feels so good to know that like there's big foundations companies communities out there uh ready to support you to everyone watching thank you for joining uh us whether you're on the platform portal directly from the incode website or directly on zoom or even if you're watching this back later on the unlisted YouTube recap I think this was a great session today learning lots about openhouse how arbitum supports founders but for For me, I really really also liked the audit support. I think in an era where it's so easy to speed up coding using claude, sometimes slowing down reviewing your code is the best thing to do. Also, if you take your projects out into the big bad world, it will save you a lot of money. So, hopefully some of you are joining uh are in and around London and we might see you at the open house. Two takeaways.
+
+If you're building to last, make sure to again use make use of the opportunity support programs and for the finals time actually seriously consider applying to openhouse. Um applications are still open. It will be the best decision you make in your life. On UXMax, uh keep building towards the mid hackathon checkpoint on the 5th of July and then again final submissions on the 19th of July. And before you go, our next UXAX workshop is this Thursday uh 2nd of July.
+
+So, in two days from now, actually, at 400 p.m. uh BST British Standard Time, and the title is transaction abstraction for better uh DAP UX. If you're thinking about how to make your DAP smoother and more userfriendly, that's the one to catch. Same time, same place. We've got a strong run of sessions coming up after that, too.
+
+So, chain abstraction, embedded wallet, social login UX, all leading to the finale and prize giving uh giving on the 30th of July. So, keep an eye out on the schedule. As always, today's recording and any links will be shared in the usual place. Um, make sure to join our Discord and any further questions, drop them in the Discord. Um, drop them in the Telegram and we'll keep the conversation going there.
+
+Thanks again to Swagimus and to all of you joining. Keep building and see you Thursday. Thank you so much. And uh, today is the last day to apply, so make sure to to do it. My voice is uh, failing me.
+
+It's too hot. Thank you guys.
+
+
+####################################################################################################
+####################################################################################################
+
+
+Meeting Técnico: Launch Event
+Video URL: https://www.youtube.com/watch?v=VjShehmAlH4
+================================================================================
+
+Dude, sorry. It's been an absolute melee of a Zoom outage. We've been struggling so much that I've had to recreate a separate meeting, put it into our platform to try and webinar was completely down. It was so painful. Guys, I'm so sorry for uh to say sorry for the the the delay.
+
+We were trying everything behind the scenes. We were ready to go, and then it all crashed, and God knows we couldn't get in, and somehow we've done it. So, I know that a lot of you are joining directly on uh the link and on platform. Some of you are watching via the stream. Uh so, um those in the room uh can ask questions directly.
+
+Um others uh you'll have to um uh message on the stream, and we will uh highlight your questions. Um so, as I say, uh huge apologies. Slightly outside of our control. Uh but, um we tried to iterate quickly, and it did not end up quick. It ended up incredibly slow.
+
+And uh we've just about got there. So, uh I'm going to take talk you through everything to do with the event, guys, and the Particle Hackathon. Uh we're going to hand over to David Day after that uh to talk to you more specifically about Particle. We've got a packed schedule of workshops and partner engagement uh throughout this program for you. Uh but, I'm going to share my screen.
+
+And let's go. One second. Cool. Uh let me just collect this. So, all of you should have already done this.
+
+If you haven't, uh please do. I'm going to just do it quickly get to the same view that you guys see. Da da da. Uh one second. Here we are.
+
+Hackathon, Particle. Nice. Okay. Let's go through some of the basic details of the event, guys. So, this is a multi-week hackathon that we're taking place on the Encode platform kicking off today.
+
+Formats, as you may know from having participated in codes online hackathons before, is we have about two or three weeks of workshops and about two or three weeks of building. It works out not quite perfectly. We've got a few workshops in week three. Everything takes place on the take place on the Encode platform you're experiencing. And I promise you the well, as long as Zoom isn't the workshops will go far smoother than we have today.
+
+They also all get recorded and go online. I'm assuming we might have some issues today with the change of link, but in most part, they all get uploaded and go online straight after the event for you to digest in your free time. It being a four-week hackathon, there are bounties and there are challenges. The Universal Accounts track, the general track, the Arbitrum track, and the Magic track, and probably a couple more still to come with plenty of generous prizes. In general, of course, this is a UX maxing hackathon, so we're looking for you to build with universal accounts, focus on better UX.
+
+Amidst any different vertical you like, payment agents, trading, DeFi, gaming, the important thing is that you're focusing on the UX side of things using EIP-7702 to build your projects. I'm hoping that you all looked at the partner challenges and started engaging in the technologies they have as in preparation. If you haven't, please look at the websites, but we have not only at Particle, we have the 7702 Collective, Arbitrum, Magic, Openfort, and Zerodev partners we've worked with before at Encode too. On the Arbitrum side in particular, we have we are hosting their founder house in a few weeks time. So, if you're participating in this hackathon thinking about doing the Arbitrum track, you can meet us in person and co-work with us uh for that weekend.
+
+As mentioned, it should run smoothly. Uh we have workshops happening through the coming weeks. Uh the social log login UX one is tomorrow with Magic. We have office hours. We have the Arbitrum workshop uh another particle one on transaction abstraction.
+
+Zero dev open force and then funnels at the end. And now this should all work that I am registered. Very good. So, this is what you will see behind the scenes. So, we have the concept of checkpoints within Encode programs.
+
+Checkpoints uh allow us to monitor your progress and hold you to account. Uh the first checkpoint is this weekend, which means you just need to create your project and add your teammates. Uh the second one is a midpoint checkpoint to see how your project's going and give us an idea of where we can best provide support before final submissions. This second one also allows us you to see what the final end submission form is going to look like to make it a bit easier so you don't you're rushing at the end. As I say, I want you to create a project here.
+
+You'll always be able to view the workshops and things here and checkpoint information will pop up here for you to do whatever you need. You'll note we need to create a project first here. If I just go through the motions, I could Arsenal FC. I can create project and then I have a code that I can use to invite um you to do so. So, midpoint checkpoint doesn't open to the end of the week and then continues uh up to the fifth.
+
+Um other than that, everything is contained within this page here including the bounty information. What's not contained here is Discord. Uh Discord um uh uh it connected directly here and then has all the different channels that you will need to participate in the program and ask any questions that you may have. Workshops going as lectures as well for you to look at in your own time and some quizzes attached to keep you engaged. So that's my role and I should mention I'm Anthony and I'm the CEO of Encode.
+
+I've done many many many many many of our hackathons. Charles from my team will also be providing support and we will be helping in the mentoring and the judging process as well. So I will take questions as we go along in the chat. I appreciate actually I have probably got to let more people into the room which I will do so. Yes, lots of you.
+
+Um, information there but I'll go and take questions in chat. But David I, I'm going to introduce you. Do you want to say a few words to the group? Sure, thank you. Thank you.
+
+My name is David. I do developer relations at Particle. So today I'm going to run through the workshop or we're going to basically it's going to be fairly simple and quick. I just want to kind of give an idea of how universal accounts and our main product work so you guys can get started into looking to it and understand how it works. And overall I'm going to be available through the whole time the whole period in the hackathon on Discord or whatever channel you might need some support.
+
+We'll go over documentation and platform and all of that. Pretty excited to get this started off. It's going to be good. Nice. Cool.
+
+Is there anything else David I you want to add at this stage or flag or do you want to leave it to the workshop? No, we can go through the whole thing in the workshop. Okay, very good. So, to remind people about the workshop, let's get my dates up. Is it the workshop today or is that for workshop?
+
+I'm now confused myself. It should be today, you know. Yeah, the day of the sorry, the way you say it I thought it was a different day. And okay, so what what are you ready? Feel free to go through the workshop content.
+
+We're ready to rumble. All right, then if you're ready to go, we go. Let's go. Then I'm just going to share my screen. Of course, nothing is set up.
+
+Okay. Oh, great. Um It looks like I have to quit and reopen my browser to Okay, we're good. We'll wait. get the permission going, so Don't worry.
+
+Give us a sec. Are we allowed to um submit existing work on existing projects or does it have to be a fresh idea? Existing is fine. So long as you're making contributions during the event, existing is fine. Brilliant.
+
+Thank you. Is it mandatory we're in a team or solo? Nope, you can participate as solos. Nice. Any other questions, guys?
+
+You can drop in chat as we wait for a download to rejoin. There he goes. Got him in. All right, I'm back. Um We're good.
+
+Whenever you're ready, sir. Let me just set up the the tablet I had open again. And then we should be able to go. My name is Dwight Schrute. People are asking, "That's not That's Anthony Bowmont." See you having code.
+
+In general, guys, we prefer you to use Discord for questions. You're more than welcome to ask in this forum as they come up. We like Discord just cuz it's allows us to amalgamate questions and share them with a to a broader audience than just this workshop. All right, I think I got everything ready now. All right, let me see.
+
+All right, I'll just share the whole thing. Okay. All right, can you see my screen slides? Yes. Sweet.
+
+So All right. So, let's talk about universal accounts and EAP 7702. So, for a little bit of context, uh Article will always basically focus mostly on user experience. Uh one of the first products we launched a few years ago now was social logins, you know, embedded wallets with social logins. We still run these products even though universal accounts became our main focus.
+
+Um so we started with social logins and account abstraction and then we kind of slowly morphed into the next version of improved user experience, which is chain abstraction. Um the first stage was let's facilitate users to get into wallets and access applications, and that's what we did first with the social logins. People were able to log in with their usual Google account or any other social platform, email, phone number. Um and that was already a pretty big improvement, but then we realized that the one of the very main issues uh at least in our opinion was the difficulty and the friction of uh users to get into the application, right? So now you have a better way to log in into the application.
+
+You you log in and everything, but then you still don't have a good way to interact with it. Uh maybe the application runs on a specific chain and you don't have funds on those in the specific chain. So now you have to find a way to uh get these funds there somehow and there's a whole hurdle of bridges and move funds here and there and everything. Uh so we started pushing very heavily on the chain abstraction um concept, which in our opinion is essentially you have funds somewhere and you can use them anywhere at once without having to uh care for each uh different balance, where the chain is, what kind of token or asset is. You can just use it.
+
+Uh and that's how we came up with universal accounts. So, where is it? Why is it not moving? Okay. So, here here's the issue that we're trying to solve, right?
+
+You're a user, you might have some funds on different chains. Uh, let's say you have some ETH on Arbitrum, you have some USDC on Base, and you have some SOL on Solana. Let's say that you want to use all of those at once. You are trying to purchase a single NFT that is worth uh, $80, right? On another chain, maybe on Ethereum or a BNB chain.
+
+So, now you have to find a way to basically swap all of these assets and then bridge them to the destination chain and then get into the application and then make your purchase. Uh, so between fees and time, it's going to cost you what, a half an hour, an hour? Uh, maybe some bridges uh, also have limitations. They only uh, credit the funds after like 20 minutes or something like that. Uh, so we felt that this was very much a big point of friction.
+
+And then that's how we designed the universal accounts. Basically, a universal account allows you to pull all your funds in one place, um, and use them as uh, one. Basically, as one, in one location, independently of whether the funds are on the same chain or different kind of assets. So, how it's has been working so far is a universal account uh, are basically a smart account. It's ERC-3 ERC-4337 based.
+
+There is a version of the account deployed on each of the chains that we support. But then, you as the final user or uh, uh, I guess as the developer, you can show these all these accounts as one unified account. The addresses are going to stay the same all the time. And the funds are always going to be the same, independently of what the funds are. So, with a universal account, those three different kind of funds and different values, I'm going to read it only as one value of $8.
+
+Um actually, this is 100. Sorry. Did the wrong math. I will I will see that I have 100 available, right? Um now, the initial version of universal account still had some kind of friction because it is a new smart account.
+
+This is a smart account. It allows you to introduce all these chain abstraction features. But, the one big limitation is that it is a smart account. So, it means that it needs to be funded somehow. Let's say that you log in into a platform that uses universal accounts.
+
+Well, your new universal account is going to be empty. You still need to have a way to find it. So, we mitigate this big issue and this big point of frictions after the user already is acquainted with a universal account itself. But, the step in between still was an issue. And this is how we started leveraging EIP-7702.
+
+Because it is a smart account, the new 7702 standard essentially allows you to delegate your externally owned account to the smart account code. So, to make it simple, essentially, your EOA becomes a universal account in this case. That means that all the funds that you have on it and everything that you have on it reflects on the universal account and you can use it as a universal account. And this is the point of this hackathon, really. Is to bring this feature forward and see what you guys build with it, right?
+
+Um so, here I already explained this, I guess. Um but, those are the two methods that you can use a universal account in smart account mode and 7702 mode, uh where your EOA becomes a universal account. Now, in this hackathon, we want to focus on 7702. So, we will only evaluate uh apps and products that use 7702 mode. Um overall, it is very simple to use.
+
+The This is something that we actually work a lot on is the developer experience as well as a user experience, of course. We are in in a little bit of a unique situation because our product, our final user is going to be the user, right? So, we need to create good user experience uh for the user. But then is the developer that needs to use it and integrate it and make it work. So, we're trying to create a good experience for both uh situations.
+
+Um so, the universal account SDK is very straightforward to use. You initialize a universal account once, and then it's just a few lines of code to basically retrieve addresses that you might need, uh retrieve funds and uh balances that you might need, and to send transactions. So, 7702 requires an an authorization because you are basically allowing your EOA uh to run code. Um so, you basically have two ways to to do this. Um one way is the server-side way, which is what we're going to see uh on the code side of this workshop, where um basically the authentication or the authorization comes in line with uh the transaction.
+
+So, it basically comes automatically because we're using a private key directly, uh and you don't really need to do anything besides adding the little code snippet that it shows, "Okay, here is taking the authentication or the authorization," and then adding it to the transaction to the message. And that's it. Um overall uh it's very straightforward as you can see uh it kind of works like an intent. Uh in this case we're using in this example here we use the convert transaction method. This is one of the methods for sending transaction that the SDK has.
+
+Um conversion in this case means I take some asset that I already have and I turn it into another asset. In this case uh we are going to turn some asset that we already have. We don't even It doesn't matter which asset we have or where, but we're going to turn it into one USDC on Arbitrum essentially. And this is actually how the real code looks like. This is this three lines of code is how you create the whole transaction and then you simply sign it uh with a wallet that you have and send it.
+
+That's it. Uh in between these there's going to be a little loop uh that goes through the 7712 authentication, but it's pretty straightforward. So now this is how it works server side. Server side simply means you control the private keys generally and there are a bunch of apps that do this uh rather than uh using a third party to control the wallets. Uh so you can do this if you can implement it into your app.
+
+Uh it makes things uh simple I would say. Uh basically you control the private keys of uh each account and you can run this very simple um system to use 7702. You can also use embedded wallet. Uh the caveat here is that the embedded wallet that you use needs to have a way to sign the authorization. For example, uh Particle has wallets.
+
+We have Particle Auth and Particle Connect, uh but you cannot really use those because we don't have a method to sign the 77 7702 authorization yet. We'll add it eventually, but right now we don't have it. So, usually if you use an better wallet, we recommend using either Magic, Dynamic, or Privy, one of that includes those methods. And it's actually pretty straightforward. We have a bunch of demos on those.
+
+I'll link them in the Discord and wherever we have the resources, so you guys can take a look and you can use it as a starting point even if you want to. Um you essentially run the same kind of the same concept that you have here, but before sending the transaction, you will need to sign the authorization for delegating the UOA into universal account. And uh it works a little bit different on each of these better wallets, but the general gist is that you pull the the address that you're get delegating to, so which is just basically the source of this smart account, and then you give it the you sign the authentication or the authorization, and that's it. The main caveat there is that this first authentication require gas on that specific chain, and it's going to have to be on each chain. So, let's say that my app wants to work on both BNB chain and Arbitrum, well, the first interaction is going to have is going to be this authorization.
+
+And then after that, it's not required anymore. Uh so, you have these two options, server-side, you kind of manage your own keys, and better wallet, it's has the whole infrastructure, but you have to manage this 7702 authorization. And that's it. So, the the very much the idea is try to build something that uh improves the user experience and basically the idea the idea in my head is the user doesn't even see that there is a chain or doesn't have to care there is a chain, right? Um in this specific slideshows I just talked about the convert transaction um but with the SDK you can do anything.
+
+You can make transfers. Uh you can make a buy and sell. So for example, you could build a full you know, trading platform with like 10 lines of code and let's say 20. Uh because we integrate methods to buy and sell directly. Uh we aggregate um Uh we aggregate aggregate DeFi platforms in the back end so you can essentially buy and sell any token uh that exist in all those chains that we support.
+
+Um We can also enter you can also interact directly with smart contracts with the universal transaction. So you can actually call uh you know, send code data directly and interact. Um this is a powerful feature because it means that you can interact with any smart contract from any chain. Let's say I want to mint an NFT on BNB. I can have the fund I can keep the funds as USDC on Arbitrum for example and I will still be able to mint an NFT on um on BNB chain, right?
+
+So this was kind of the the general um theory. Uh want to go over a couple of things. Um do I do I have time? How long do I take for this? About As long as you need.
+
+No rush. As long as Okay, cool. I wanted to keep it I like to keep it around 30 minutes uh not otherwise it gets too overwhelming but um I want to go couple over a couple of resources that we have and then I'll show the code really quick and then we're done. Um so and then I'll link all these on Discord and everywhere but Um we have a repository of basically of this workshop where you can go over and it's going to explain uh how you set it up and everything. I'll briefly touch on that, but and then it has all the code.
+
+Um, we have essentially three scripts because I want to show a little bit the different things uh that you need to set up the SDK. We can go over in a second when we go when we show the code. Um One thing that I wanted to touch on before moving to the code is this. The um So, we have pretty extensive docs. It explains how anything works and how you can do anything here.
+
+Um, we still have these notices up that says that the SDK is not working, but it is. Uh I'm going to actually fix it after right after this workshop uh because we just released a better version um to the to the V2 account. Uh so, this one doesn't really apply anymore. Um but we'll go over that. So, overall, you have a very basic quick start if you want to get started uh using the SDK.
+
+It's actually something very similar to uh what we're doing in in this workshop. Um and then we have a few how-to guides on uh how you can do different things with the SDK. Uh basically uh you can go over those. Um those don't I would say those are not too applicable in this situation because this doesn't have anything about 7712 specifically. Um and then you have the full SDK reference.
+
+So, it basically explains you how to install it, uh how to use the 7712 mode, how to initialize it, how to pull the addresses, balances, the different kind of transactions that you can send and uh so on and so forth. Um before we move on to the code, I also wanted to mention we do have a full demo repositories on using 777702 mode with embedded wallet. Uh in this case, we have this one here that I'm showing is uh with the magic wallet. Uh you can We also have those with dynamic and privy. And it just This one is just going to guide you through the whole through the whole process, right?
+
+And then one thing that I wanted to mention I know nowadays there is a lot of AI coding. So, we do have an MCP server uh on the docs. There are the instructions here. Uh it's just in the in the landing page under more resources. Um there are the instructions to on how to use it.
+
+It's just an HTTP server. So, you can just um install it or you add it into any of the AI IDEs like uh cursor or Win surf, any of those. And so, your agents will be able to directly communicate with the docs as well. Uh find it pretty useful. And um I guess I'm ready to show the code.
+
+Uh let me see. All right. Can we I don't have a visual on the on the page? Can we still the Can you see the IDE with the uh with the code and everything? can we can.
+
+Cool, cool, cool. All right. So, going over this um the main thing that I wanted to touch here is uh because this is a beta version of the SDK. This one here. If you install it with a regular uh with a regular command, you're going to get a different version.
+
+I'm also going to add a note on the docs about this. But essentially, what you need to do is that you need to install in your install command NPMI particle universal account SDK you need to install the @ beta version. So, this is important because otherwise it's going to give you the production version, which is not working at the moment. Um but this beta version works. And that's it.
+
+I'm going to add a note to that maybe in the docs and on the repository readme. Um The first step here that you need to do is configure the workshop. So, the main thing that you need are going to be a particle project and a private key. Remember, this is just to kind of test how it works. So, make sure that you're careful with these private keys.
+
+This is not a very good very good practice of just using a dirty env with private keys. So, make sure that in case uh you you try this code you use a private key that is not sensitive in the sense if you if you have 10 bucks on it and you lose it, so be it. So, be careful with that. Um For these API keys, you'll go on the um on the dashboard. So, from the docs, you can get to the dashboard.
+
+You create a new project. You can call it call it UX Max. I forgot an X, but um here you'll get your API keys. So, the project ID and the client key are going to be those two here. To get the last one, you'll have to create an app.
+
+In this case, it's going to be a web app. You can call it however you want. It's going to ask you for this domain. This is not really strictly enforced, so you can use any anything that has a looks like a domain. If you want to do example.com, for example, it's going to work.
+
+You create your app, and then you're going to have your app ID right here. You can place them in your.env file. You can place your API your private key, and then you're ready to go. In this workshop demo, we're going to have basically three different um scripts that shows a little bit the steps that you can take. Um so, actually using this SDK is very simple.
+
+This is This is the whole code that you need. It's 40 lines, and it's all formatted properly and nicely, and it has a bunch of logs, so it's even more than what you need. But overall, the gist is you import um the components that you need from the SDK. You initialize a universal account. With uh here is a configuration, and you just initialize it with the universal account.
+
+And then, once you have this, this is basically your universal account instance, and once you have this, you have the full universal account at your hand. Um the configuration here, the main thing that I wanted to touch is make sure that you use the EIP-777 to true, uh because otherwise it's not going to pick up your actual EOA as uh the universal account. And then, for the version, ensure that you use universal account version V2. Uh otherwise, it's also not going to work. Um And then, once you have that, we have various methods.
+
+In this case, the get smart account option, it basically gives you um some information about the universal account. In this case, we pull uh the various addresses. We display three addresses in this case. One is the owner address. One is the EVM universal account, and one is a Solana universal account.
+
+So, we can go over all those. How you initialize the universal account is basically via the address. As you can see in smart account options here in the configuration, we have the owner address, which in this case is just the wallet that we create from the private key address, right? Um so, this is not really what controls your universal account. So, you can even you could have the address written here hardcoded manually, right?
+
+And the only thing that you're going to get from here is uh the derivation of the universal account, and you're going to be able to read the assets that you have on it. You cannot really send transactions only through this, just in case uh you're worried about how you control that. Uh how the transaction is sent, we can see later on. Uh it's just a signature. Um so, here is basically how we get some of the simpler data.
+
+If I run this, um we have methods. Uh I included methods in the in package.json. So, we do npm run address. It's going to run this script here. And all right.
+
+So, we can pull out the data that we get. Um owner address and the uh the EVM universal account addresses are going to be the same because we are using 7702. So, we are upgrading the universal account the EOA to universal account. This uh ending in a C2AE is one of my um dev um EOAs. And it becomes, as you can see here, it becomes my universal account.
+
+This means that anything that I have on this wallet automatically reflects in the universal account. And why do we have a Solana address? This because universal account supports Solana as well. So, they both act as one account. Let's say when I'm going to send this convert transaction in the in the last script, I'm going to basically use any assets that I could possibly have on this independently.
+
+It's just you need the two addresses because since we support Solana assets, let's say you want to deposit Solana assets into your universal account, you're going to have to use this address instead of the EVM one. That's it. Um but let's say that now I send uh some SOL to this address here, it's just going to appear as a unified balance. And for the balance, for example, we can see it in the second script. Once we have the universal account instance, we call the get primary assets method, and that one is going to pull all the assets that we hold on the universal account, which in this case is going to be assets that we have on the UA and assets that we have on the Solana side.
+
+Um and then there is just a little bit of parsing because it's a very long object um that includes all this basically all the assets and on all the supported chains that we have, right? So, if we're on this, do NPM run balance, it's going to pull all the assets that I have on my UA essentially. So, here we can see my unified balance is $33.66, and we can see a breakdown because that's how we parsed it here. So, in this breakdown, we can see how I have about $1.60 worth of Ethereum, and this Ethereum is spread between a base and Arbitrum. Then I have about 30 bucks of USDC spread across four chains.
+
+Spread across base, Arbitrum, Polygon, and uh this is one here is Berachain. Um This is interesting because Polygon and Berachain are not supposed to be supported anymore. Um but this issue is up here somehow. Uh then I have some USDT and some BNB. So now you can use these basically to show these the balance and the breakdown how you want to your user.
+
+Uh you can use just the total and remember that this total is usable. You can just display this. It doesn't really matter where those assets are and on what um which type of asset it is. You have this 33.66 and you can spend the whole thing automatically. Um when you run a transaction, which is going to be the next example, we create the intent.
+
+So in this case we use a convert transaction and what we want to do in this case is we are trying to receive 0.1 USDC on Arbitrum mainnet. And so what happens is now I'm using 0.1. Let's say I do 10. I want to receive 10 USDC on Arbitrum. Now what's going to happen is that uh the back-end is going to identify which are which of those assets are more um effective and more cost-efficient to swap.
+
+So let me see this breakdown. I already have 24 uh USDC on Arbitrum, so this is not a super good example. Uh but let's say that I wanted to receive uh ETH on Arbitrum. And so the amount will to be smaller at 0.00 five or something. Now, this what's going to do is going to take the assets that are most efficient and turn them into it on Arbitrum.
+
+So, in this case, I would expect it's going to take the USDC that we already have on Arbitrum and swap it into Ethereum. Um that is just a detail. Let me save this. Okay. So, this is how you create basically the the convert transaction in this case, kind of an intense, very very basic.
+
+Now, because we're using 7702, we have to delegate the wallet, right? And so, you essentially have to just use this pattern here. Uh this pattern here is basically going going to pull the authorizations from the EOA and is going to add them to these authorizations array. And then, once you have that array, you can send a transaction. As I mentioned earlier, you really only need the EOA address to initialize the universal account.
+
+But that doesn't really let you control the universal account. Let's say you're worried, "Oh, what if someone just takes my address and initializes a universal account with it?" That is okay. They will be able to see what assets you have on it, but they could not send anything without a private key. Uh because to send the actual transaction, you need to sign a message uh for uh the my message coming from the transaction. So, in this case, the send result will um Actually, let me back up a little bit.
+
+Uh this transaction object that we create uh calling one of the transaction method returns a root hash. The root hash is what you sign to send a transaction. In this case, if you also run this, uh, delegation pattern, and you add the authorizations in the transaction object, in the send transaction object, then is actually going to use 7702. So, it's going to use your universal account, or rather your UA as your universal account. And then the send result object is just going to return a bunch of data that we can use.
+
+In this case, I'm using I'm pulling the transaction ID and using it, uh, to basically see the movements in the transaction. Um, one note, we can use Universal X as the explorer. Um, that's probably the best way to do it. Uh, Universal X is, uh, the trading terminal that we run uh, with universal accounts. And we also use it as a block explorer, just FYI.
+
+Now, we can run this transaction live. I'm going to clear the console. This is a real transaction. Um, universal accounts only work on mainnet. Uh, another note that I should probably uh, mention.
+
+Um, I know it's not super common practice, uh, not to have a testnet, uh, but universal accounts can't really run on testnets because the infrastructure is so complex and so dynamic that we cannot it just doesn't work. Uh, so it's only on mainnet. Uh, just FYI. Um, so if I run the convert script, uh, npm run convert, I's simply going to send a transaction, give me the results, and I'll link to the block explorer. So, in this case, uh, we are printing the send result object.
+
+It's going to show a bunch of data. It's going to show the transaction ID. This is basically what you want to use here uh, in the Universal X explorer to see the details. Uh, it's going to show sender and receiver. So, as you can see, sender and receiver right now are the same.
+
+That's because we just made a conversion. We took some assets we already had converted into another asset. And then it gives you a breakdown of a whole bunch of data that you can display. Uh, you can display the fees. Um, deposit and lending tokens are basically the the tokens that you are using as uh, source for the destination.
+
+In this case, uh, we can see that uh, what did we do? Token changes. Um, I'm not printing out all uh, uh, they're all going to be in this object here. I'm not printing out the whole thing uh, here in this console, but now if you extend um, this um, this breakdown here, you will see the decrease and increase tokens. So, you will see which token you sold uh, for which token was deposited.
+
+Uh, that's it. And then we have um, the URL explorer. So, now if I paste that, I um, here probably not going to work. Up. Let me see.
+
+If I open it now, opening the other browser works. So, now you can see basically the full breakdown on Universal X. Uh, the transaction ID, you can see that it was from my wallet to my wallet, so it was a conversion. And we can see all the balance changes. So, in this case, I tried to convert to one USDC.
+
+So, it used some Ethereum that I had on Arbitrum. It used some USDT that I have on Arbitrum. And then it gave me a full USDC on Arbitrum, right? Uh, and then you can see all the movements of all the transactions hashes. So, now this everything happened on Arbitrum because I already had a bunch of um uh you know, a bunch of funds there.
+
+But, let's uh let's make it more interesting. I'll I'll do from Arbitrum to base. All right. So, now this is going to give me one USDC on base. If I run it again, that's it.
+
+Now, let's see what what it used this time. So, this time it used again some ETH and some USDC. So, you could see I had some Ethereum on base, and then it also used some USDC on Arbitrum. And I received one USDC on base. As you can see, we had a transaction coming from Arbitrum to base.
+
+So, now I basically have this one USDC on Arbitrum. Um and all of these came from my initial uh externally owned account. Um and I guess that's it. This was the whole spiel. Uh where is the thing here?
+
+I don't I guess that was the whole spiel. Um Yeah. That was the whole uh workshop basically. Went over uh how to get on the docs, how to initialize, how to run code. And this should be a good enough starting point uh for you to get on.
+
+Uh I'm going to link uh all the uh docs and all the um demos that we have. Uh we have a bunch of demos where as I mentioned with the embedded wallets. So, that one is going to help you uh get started with basically an entire app. And then next week I believe we have another and in there one I can go over moreover how to do things with the embedded wallets and actual front end and stuff. But remember that you can use this is flexible.
+
+You can use this in the back end or with embedded wallet. So it's really up to you. You can create whatever you like. Nice. Brilliant Davide.
+
+I'm conscious guys of time. I'm so sorry again for the zoom issues. But we managed to I don't know how I did something quite clever to deleted our meeting and started again to try and kick it into life. So for questions please guys take to the discord. Just and we'll try and get the recording up.
+
+I'm not sure if it will go through or not. But otherwise we're going to let you go. So there's few questions here. I'm going to ask you to rewrite them in in discord chat. I'll also paste them myself.
+
+Things like the GitHub repos, the funds test nets. Supporting Stellar accounts on dev zero. Definitely wait for the dev zero workshop. And polygon questions and all that jazz. Davide is there anything else before we head off?
+
+No, I don't think so. Yeah, the only thing that I was going to mention is I'm going to link all these resources in the discord about it. Very good. Okay guys, thank you very much. Sorry again.
+
+And see you soon. See you. Bye-bye. See you. Bye-bye.
+
+Bye.
+
+
+####################################################################################################
+####################################################################################################
+
+
+Meeting Técnico: Openfort + x402: Embedded Wallets for Seamless App Payments
+Video URL: https://www.youtube.com/watch?v=0PTAADYXFYA
+================================================================================
+
+Hi, welcome back to the UX Max Hackathon, run with our headline partner Particle Network. It's great to see everyone again. I hope you had fun yesterday. Today's session is Open Fort and X402, embedded wallets for seamless app payments, presented by Joan from Open Fort. Quick summary on Open Fort, it's a wallet infrastructure for developers, embedded wallets, key management, and transaction automation so you can drop into any app without making users wrestle with seed phrases or extensions.
+
+The X402 half is the interesting twist. It revives the HTTP 402 payment required status code as a real payment rail. Uh so, apps and agents can pay per request on chain. Pair that with an embedded wallet and you get payments that feel like normal checkouts, not a crypto economy. This sits dead center of the UX Max theme, user experience, UI, UX.
+
+Best suited to teams who want in-app payments or agent-driven transactions that feel web two smooth. Bit of housekeeping, the session is recorded and goes up on the platform website. Uh you will be able to replay on YouTube as well. Drop questions in the chat as we go and we'll take them at the end. Over to Joan, take it away.
+
+Hey, thanks. Glad. Uh nice nice meeting you all. Um I'm going to quickly share my screen and then we can actually get started. Should be pretty easy.
+
+All right, I hope you guys see the screen. Um so, yeah, hi everyone. I'm Joan, one of the co-founders here at Open Fort. As I was uh correctly saying, we basically focus on building infrastructure around stable coins via wallets. And so, today I'm going to do like a very quick, you know, run on what Open Fort is, uh what are kind of like the products that you can use, and then we'll jump into, you know, some of the things that we'd love you to build and how you can get started.
+
+And so, yeah, uh as a reminder, Open Fort is basically a tool that allows you to create wallets for developer like for developers, users, and as we will see now, agents. So, AI It basically simplifies how you would interact with stablecoins, with internet money, if you want to call it like that, via simple set of APIs. Now, OpenFords, we've been around now for 3 years. We're working with people like Animoca Brands, OKX, and an exchange that exists as well in Asia. And so, roughly, we are doing around like, you know, 5 to 6 million RPC calls a month now.
+
+Um why would you decide to, you know, build with OpenFords on this hackathon? I'll say in mainly these four features, like these four set of, you know, principles. But for you, this is a hackathon. So, what you actually care about is like the aha moment, the wow factor, like how do we get to production ASAP with, you know, our AI agents and with our, you know, cloud code, with our codex, etc. So, I'll say that from the OpenFords side, we are very AI native.
+
+And so, if I go directly to, you know, to the documentation, you can see here just like getting into the OpenFords docs in the building with AI, you can very fast and easily plug these command lines into your cloud code, into your codex, and just like get started with OpenFords. It will redirect you to the dashboard, authenticate, get the API keys automatically, and just start building it. I also recommend adding the OpenFords docs, which is like which are super updated with every with everything that we built. And so, you have the agent skills here, and then you can basically, you know, chat with your agent, say, "Hey, I'm trying to accomplish this. This is the tooling that I want to build with, so help me do that." Right?
+
+So, this would be like the the biggest differentiator there. In terms of products from Openfort, one of the biggest one is the wallet infrastructure, right? So, we go from having embedded wallets via um you know, traditional um onboarding with email, password, other wallets, phone numbers, um Google's, etc. Uh to also being able to create those in the backend for agents and say, "Hey, just create a backend wallet for my agent, give my agent the private key, and let him do his thing and sign transactions, etc." The other thing that we do really well as well within the dashboard and we will take a look later is basically gas sponsorship. So, this basically what it means is that your agent, if you give him like a you know, you give him like a gas sponsorship ID, which is a way to um make transactions without paying with crypto, um you'll basically like the your agent will be sponsoring the transactions directly, and so you don't have to get a faucet or like get real money within the the the agent wallet.
+
+Um and lastly, it's uh the funding feature. Um so, this is usually more um you know, tailored to users, but also like we'd be keen to see agents uh using it uh via the API. It's an easy way for you to basically on-ramp, so to for you to deposit money within the wallet of Openfort coming from any token any chain any token that exists, right? So, you can say, "Hey, you know, Joan, I heard uh that base is really cool, uh but I actually want to build this application in Monad, uh which is another chain and using another different token. This would be the solution for you.
+
+You'll be able to um deposit from base directly with let's say USDC, like a digital dollar to a digital uh you know, sterling or a digital euro. Some of the cool ideas here that I would love, uh, you know, for you guys to take a look. Um, the, like the first one is basically to be able to give your cloud code or like your codex um, an agent with a wallet. And so in your terminal, you basically would have a balance that you can, uh, you know, keep under, like that you can keep track, say like you put it under under the place that you tap and then you have like a certain balance, say like you put $5. And so when the, you know, cloud code or codex have a balance, then you can say, "Hey, go check this set of endpoints uh, from uh, discovery page um, and then go try to do this flow for me." Right?
+
+And because cloud code will have this, uh, agent wallet, he'll be able to go there, like to go, like he'll be able to go into this discovery pages, call the endpoint, pay for how much the endpoint costs, and come back to you with information. The second one, it's basically being able to connect an agent wallet to, you know, frameworks of agents. So you have Hermes, you have open claw. There's couple more extras. So the idea here would be to use these intelligent frameworks to orchestrate uh, actions that you want to do.
+
+And like this orchestration, some of it will use X-Road 2, some of it will use of X-Road 2. Right? So a good example for it would be, um, say I am a sales agent and I want to sell, uh, I want to sell as many, uh, you know, insurance products as possible in the region of, uh, Newcastle. And so you would give this agent with Hermes, um, you know, instructions to, uh, find the phone numbers of people within Newscast, Newcastle and contact these people using XYO 2 services, right? And the Hermes because it's like it has these frameworks like internal tooling, he'll figure out how to do that and that would be like a cool demo to see.
+
+Another example from an agent perspective would be to actually build some sort of trading competition between agents. Um so the idea here would be you have the agent that is able to tap into say tokenized stocks, perpetuals, things like that. And then basically the agent like you know different agents that you can create with different strategies executing those transactions as they see fit. So say, "Hey, I want to build 1-hour trading competition." Um then you give each agent one specific strategy. One could be you know a technical analysis of like moving averages, another one could be some fundamental analysis, another one could be like more macro social sentiment analysis, and so see which one performs the best.
+
+So yeah, that would be like another another example. Um Yeah, another interesting example is agents as a um you know last mile last mile operation. So as of now it's very easy to send you know a payment from UK to say Nigeria, right? But in Nigeria once you have that wallet like with money like a you know a person in Nigeria can't do anything with it cuz they can't pay or like get the cash. Right?
+
+So you can set a sort of agent that uh you know pays someone to get that money from the wallet and exchange it in real life you know into into a remittance remittance office, right? For example. And so what you would actually be be is kind of like paying a freelancer to go and do this for you and then the freelancer can take a cut. Right? Uh I believe that we will see a lot of this sort of uh um actions that agents that AI agents can do online, but uh they lack the physical human component of it.
+
+Uh because it's basically a physical interaction that needs to happen and so they can pay an like a human to do that for themselves. So these are like some of the some of the examples that I was thinking. Now if we go into Okay, Joan, this is great. How can I get started? As I said, the first and foremost is to go to building with AI and plug this um you know, into in into your your tool set, into your cursor, cloud code, etc., etc.
+
+This is like the best way to get started. Then for XRO2 embedded wallets, if you go if you see here on the right side, we have products, we have embedded wallets. This is basically target to end users, like humans, let's say, where you where they need to log in with a you know, an email, they need to have a wallet created in the back. Uh you can create a new bank with it, you can then put an agent for the new bank to say rebalance the portfolio, things like that. Backend wallets are great for agents because you don't need to have like an authentication layer, like a uh Google or signing with Facebook and stuff like that.
+
+You just like create a backend wallet on on server uh and then from there you handle it like the the permission to sign the transactions. And so I would recommend taking a look at the backend wallets. Uh from here you have like the getting started, you have um explanation on like how to create different backend wallets in different chains as well. Um how to send gasless transactions from those backend wallets itself. So everything is kind of like outlined here.
+
+And if you are looking for um you know, more real code, more implement like real implementation. We have a section here called recipes. So if you go into recipes, we have different recipes based on kind of like what you're trying to do like yield, trading on hyperliquid, swaps, payments, gentle payments, etc. For this example on a gentle payments for instance, we have one based on XRO-2. So this works with base as a network.
+
+And basically you can like it works the example the code. It has both examples with embedded wallets. And having and has examples with back-end wallets, right? So you can play with both. Like as I said, one would be more user facing, the other one is more like AI agents and automated services that you want to do.
+
+And then you also can play around with like the gas sponsorship that I was mentioning. So you can create a policy and say like, "Hey, I want to sponsor this, that, etc." The other example that I have is on MPP. MPP stands for machine payment protocol. It's basically a layer of abstraction on top of XRO-2. That in theory adds like new payment methods beyond just paying with crypto or beyond just paying with the X like the the XRO-2 one.
+
+Right? So with this one for example, you would be able to say make a subscription. XRO-2 for instance right now you only pay once every time that you actually want to pay something you need to make a call. With MPP, you could set up as well a stream of payments, right? Say, "Hey, I want to pay you like every 10 seconds, right?" Or say you want to set up as well alternative payment methods like credit cards and XRO-2 in parallel, right?
+
+So humans can pay it but also agents. You can do you can use the MPP to orchestrate this. All right? And so we also like built an example for this. It mainly uses the XRO-2 as like the end method but basically sets the let sets like the boiler plate like the framework for you to to start interacting with this, right?
+
+And so all these examples, you will see they have view sample code, and so if you simple simply click here, you are redirected to the recipe hub, and then you have like the the examples here, right? So if I go to the root folder, you will see all the examples here. Uh, so yeah, this you can also like give to your cloud agents and yeah, let it play around, like see what you're trying to do, etc. Uh, but yeah, again, I recommend plugging the MCB that we have, the docs, and then just go through, you know, spend couple of hours on iterating. Uh, just don't tell him like buy, like build this, but just think through like what are you trying to accomplish.
+
+Uh, think through, you know, the aha moment, the use case that you're trying to do, what's like the happy path for you, ask him if you're missing something, ask him kind of like what are the edge cases, um, that would be like the best way, you know, for you to have like a successful hackathon and like a successful interaction with with Open Fort as well. Um, and yeah, with this, I'm not forgetting anything else. So if you have any questions, guys, let me know. I guess we'll have like a Discord channel there, um, and you'll be able to interact with it directly. Um, but yeah, this is as much as I wanted to show you.
+
+Obviously, um, from a, you know, from an interaction standpoint, just go to Open Fort, uh, open fort.io, and then we have dashboard section, and just like sign in here, and then whenever you're signing, you'll see all like this beautiful dashboard. Um, and if you sign via CLI, this will be done automatically, and you just have to prove it, and everything will be created. But if you sign manually with the email and stuff, you can just go here and get like your project keys and like your back end keys and all that type of stuff. Um, yeah, that's about it. Uh, hope you guys enjoy.
+
+If you have any questions, just just let me know. Well, thank you so much. Big thank you to Joan and the Open 14 for that walk-through. I'm recognizing a lot of familiar names. So, I'm going to bore you again with the deadlines and the stuff that we have coming up.
+
+So, but today was about embedded wallets plus X for or two payments. Very neat. As I said before, the recording lands on the platform and the YouTube channel if you want to rewind and watch again. Where we are, you should already have your product created and your team added. That's the first milestone and be through the mid-hackathon checkpoint.
+
+A key date to remember, do not forget this. Final submissions are due at midnight, Sunday 19th of July. That is the hard deadline. Get it in early. Don't fight the clock.
+
+Finale and prize-giving, Thursday 30th of July. Top top teams will be pitching live to the judging panel. I think I'll be there before Particle Network announces the winners. And there's one more workshop to come. That will be on the 22nd of July.
+
+And that's to do with social logins with magic. So, embedded wallets that feel web two. Office hours office hours and the team are on Discord if you're stuck. Keep building. Ship something that feels good to use.
+
+And that's the whole point of UX max. See you next session. Thank you, Joan.
+
+
+####################################################################################################
+####################################################################################################
+
+
+Meeting Técnico: Transaction Abstraction for Better dApp UX
+Video URL: https://www.youtube.com/watch?v=UAdWc3WIl3g
+================================================================================
+
+Welcome everyone, and thanks for joining us for another session of the UX Max Hackathon, where the whole mission is pushing crypto towards its potential by fixing the thing that holds it back the most, user experience. A quick recap of where we are. We've had our launch event, office hours, and a session with Arbitrum on supporting founders on Tuesday. And today, we get into the first of our hands-on technical UX workshops. This session is transaction abstraction for better dapp UX.
+
+The core idea? A huge amount of friction comes from transactions, you know, confusing signing, gas, clunky flows. Transaction abstraction is how you make your app flow simple and intuitive. We'll cover sponsored transactions, smoother signing flows, and better execution patterns that strip friction away from the user journey. This is bang on for the Hackathon.
+
+If you're building something that people will actually use, this is the stuff that separates a demo from a real product. I'm really pleased to introduce our guest, Davide Zambiasi, head of DevRel at Particle Network. He works on exactly this problem day in, day out. So, you're So, you're in expert hands. Quick bit of housekeeping.
+
+You can drop your question in the chat as we go, and we'll take them at the end. And keep this session in mind for your builds. It's directly relevant to what the judges want to see. With that, Davide, straight over to you. All right, let's go.
+
+Let's go. Uh thank you very much for the introduction, very very deep. Thank you. Um so, welcome back. Uh this is the second workshop that I'm doing.
+
+Uh we did another one a little bit simpler on the first day, on launch. Um so, just wanted to give a brief recap of uh kind of what we went through the first time. Um the first workshop was hands-on, and uh work worked, and it was useful, but it was a very brief demo, and it wasn't as um as uh as deep for the user experience improvements that we are looking for in the hackathon. Uh it was more server-side. It was a very a brief script just kind of showing how the universal accounts and the SDK work.
+
+Um so that that was a good starting point, but today I wanted to go a little bit deeper. And so what we're going to do in this workshop, I'll show a demo that I put together that is also obviously available to you. Um I'll do just like the last time, I'll link everything at the end in the Discord channel. Uh in this case we have a real front end. Um obviously this is not a particularly um let's say complex and a successful to be app.
+
+It is a very basic demo where we are logging in with email. In this case I'm using the Magic Wallet. So we'll have an embedded wallet, so we don't have a seed phrase or anything like that. And we are going to demonstrate how to use the sign 7702 authorization from the Magic Wallet to upgrade that UI into a universal account. So in this essentially this allows you to upgrade your existing users into a universal account.
+
+And that means that you can use their current UI as a universal account. And that means that you can you can use all the features that chain abstraction offers. That essentially means you have a user that has a master around chains. And you can use those assets across chains without having to swap, without having to bridge, or anything like that. This was somewhat of a big limitation before we introduced the 7702 feature because the universal account is still is a smart account.
+
+That means that if you have a new user then you need to have the user migrate assets somehow before you can access the chain abstraction features. This eliminates that. The main caveat really is that um this 7702 model only works either server side where you control the private key or with embedded wallets. Not really with RPC browser wallets like MetaMask or OKX, anything like this. This is not a limitation on our side.
+
+This is because the browser wallets do not allow the methods to sign the 7702 authorization just for security purposes. Um so compared to the previous workshop that we did and basically how the universal account work there is really only a small change. The main change is that now we initialize the universal account from the wallet that comes from magic and not from the private key. And we initialize it in 7702 mode. And this is one of the only thing that you really need.
+
+This is going to be the first step. And then the second step is going to be the delegation. So how's going to work? You log in with magic, you have your authentication. Then you delegate.
+
+So to send the delegation, the the delegation is a type four transaction. So you need gas for this. How this demo is going to work is I put it up on base. So essentially we make the delegation on base from the EOA. So my EOA, my magic EOA on base becomes a universal account.
+
+Right? And that means that now all the assets that I have on base are available on all the other chains directly without having to migrate, without having to do anything. So I'm going to need some amount of ETH on base to be able to send this delegation. But then after that, I can use any assets that I have there to make transactions. In this case, the transaction example is going to be a conversion, and we're going to convert some of the USDC on base that I have in that account into SOL on Solana.
+
+Uh one of the benefits of universal accounts is that it also unlocks Solana for your app. So, let's say that your app mostly works um on EVM uh and you implement universal accounts, there one account is also going to support Solana. So, out of the box, you unlock Solana as well. Um so, as I mentioned, this uh signature cannot be made by MetaMask or browser wallets, um but it can be made most of the embedded wallets support it. And so, how it works uh with Magic is that uh we basically select uh the Magic embedded wallet to be on base, in this case chain 8453, and then we call a method from the universal account SDK.
+
+Uh the method is get EIP-7702 off on base. This is basically just um a very basic method that returns the the authorizations that we're going to have to sign through. Um in this case, this is essentially returning the smart contract address that we have deployed on base that is going to um be delegation the delegation, right? So, this whole code that we see here in the screen, um we get the EIP-7702 off, then we sign the authorization, as you can see with the contract address, chain ID, and the nonce. So, here essentially we say upgrade my EOA to this contract address.
+
+And this contract address is just an instance of the universal account address. And then after that we can send a transaction. And that's it. It's upgraded. Uh once you have this transaction sent through, your universal account is available right there but directly.
+
+Um one note that I I don't think I have in the presentation. I do not. Uh but it is in the demo and the code. You can remove this delegation very easily. So, right now you see we authorize our um magic wallet to become a universal account on base because we signed the authorization to the contract address.
+
+Uh essentially if you do the same but you use the zero address instead of the contract address uh or instead of the uh universal account address that returns from our SDK, then in that case you're going to remove the delegation. It is in the code. I I can show it in the demo as well. Um after this you have a universal account and you can use the SDK just as normal. So, in this demo we are essentially create uh a convert transaction where we take some uh tokens that we have in our account on base and we convert it to Solana.
+
+And and the rest everything works uh the exact same. So, uh this is essentially what you do compared to uh the previous workshop. You add an actual embedded wallet. And uh that's it. We you add the wallet and then uh we create uh the transfer transaction.
+
+Uh so sorry. Here, I'm I'm reading the the wrong part. Then we create a convert transaction. That's it. Um I'll show the code briefly.
+
+Actually, let me show the demo first. Um really I'll I'll I'll link the repository because it's easier, but everything in this demo that is relative to the universal account and the 7702 part uh is in this uh file in two source hooks uh universal account provider. Here I basically is where everything happens. So, I'm just going to run the demo. And I think you're not going to see here because I have All right.
+
+So, we got the demo right here running. Uh it's a very basic UI, but uh it works. So, I'll I wanted to demonstrate the whole process, so uh let me just t- Let me just remember which account I used for this. Let me see. Let me try this one here.
+
+So, I'm just going to log in. In this case, I added only uh like a OTP a one-time password password. Email login to Magic. Magic also supports uh also the social logins directly like Google uh and all those. Let me see.
+
+Paste the code. See if that one is the right one. And this is not the right one because I don't have any funds in it. I think it was this other one. I have a wallet with already some funds in it otherwise it doesn't work.
+
+Uh one thing that I wanted to mention is in those demo Amazon workshops that I run, uh it it doesn't make as much sense probably uh as at first it is because I still have to show that I have to fund the wallet. And this is because this is simply a a new magic uh project. So, all the wallets here are basically going to be empty. So, um this is kind of kind of the downside of these kind of demos. If you have an app that is already running with this kind of infrastructure, then uh you can just make the upgrade and it makes sense right out of the box.
+
+So, now uh here's how the demo looks like and this is basically the app that you're going to be able to run uh once uh I give the repository to you. Uh it's very basically just shows some information. Then we have a card to uh send a delegation transaction and upgrade the UI to universal uh the universal account and then uh send a conversion. One thing that I appreciate of uh the magic wallet, that's why I uh I pick it for these kind of demos and uh um workshops is because it defaults to blind signatures. And this is a very big uh UX improvement.
+
+A blind signature is essentially uh a signature that goes on behind the scenes without any pop-up coming up for the users, nothing to sign. Uh so everything is manual in this specific demo, but you can essentially automate everything uh depending on on your work or your flow of your uh how your app works. Because as long as I have some ETH on base, I can easily automate this delegation and even the the the transaction because the signature goes on automatically, right? Um so this address that ends in 24 alpha 53, those this one here, this is my magic EOA. And in this case is also my universal account.
+
+They become the same address, right? Uh as I mentioned, we also include Solana. Uh this is the Solana address linked to my universal account. So how the Solana side works is that because we do support Solana and their assets, so when you have to interact with Solana, we you're going to use this address. Let's say that you want uh to support Solana in your app, even though your app maybe works mostly on some other EVM chain, you can enable a list of deposit through Solana because as as long as I send SOL USDC to this address, they are going to reflect it in my universal balance.
+
+So my universal balance right now is $2.77. And here's my breakdown. I have about 30 cents in ETH on base. I have some USDC on base and I have 0.2 uh USDC on Solana. So these all these assets are different assets and they are even across multiple chains, but I only see this one number.
+
+And this is the number that is important, right? You can show this to your users. Doesn't matter where the assets are where the assets are, where they come from. Uh you can use this across all the chains. For example, this case, uh, I want to run the delegation on base.
+
+So, because I do have some assets on base, I have those 2.42 cents on base. This means that once I delegate it, now I can use those assets from base on any chain. And that's how we're going to convert them to SOL. Um, so this uh, delegate on base is essentially going to trigger uh, this Where is it? This type 4 transaction here.
+
+Submit 7702 delegation. Uh, there is a whole bunch of uh, TypeScript infrastructure and supporting code in here. Uh, so it seems relatively complex, but it really is once we sign and submit that once we call submit 7702 delegation, we fetch uh, the 7702 authorization for base from the universal account SDK. Then we sign the authorization specifically with the sign EIP 7702 off method from uh, the magic wallet. And then we send it simply uh, once we send it, it has a whole bunch of stuff in here, but um, once we send it, this is actually the the part that is a little bit more the does the the heavy lifting.
+
+Once we send it, then it's going to be included uh, basically when we send the transaction from the universal account. This one here. And this is what allows us to upgrade the UI. So, let's try to run it. In this case, I have some ETH on base.
+
+So, this one should run smoothly unless there is some other error that uh, doesn't that I didn't consider. Okay, so we have delegation successful. Um I didn't really build anything to refresh automatically here. So, if I refresh the page, it should show up as delegated now. Yep.
+
+Now, my uh EOA on Magic is delegated on Base. This means that my EOA now is a universal account. And as you could see, I clicked the button, but I didn't have to sign anything because of the blind signatures that are offered by Magic. Uh this is a very big uh UX uh point here. Because you could automate all of that.
+
+And now, this is the main uh really the main um the main part of the show, I would say. We are going to convert some of these USDC that I have on Base on some of USDC on Solana. So, let's do 0.3. I do the signature. I send it up.
+
+And then we can use the Universal X Explorer as usual for uh to see the movements. And as you can see, I sent uh some USDC on Solana 0. I'm sorry. I sent some 0.3 USDC on Base from Base to Solana. And I sent it from my EOA A53 to basically my universal account on Solana.
+
+If you do this on an EVM chain, then those two are going to match, right? Because you're going to just transfer in between your your account. This is a conversion, so this is how we sourced uh USDC on Solana from the account, my already the account that I already had on Base. And and that's it. This is the whole thing.
+
+As you can see, I I do a lot of explanations. I try to go through a lot of explanations here, but it the concept is very simple. Uh I even talked too much, probably over explaining this. The concept is so simple. You have an UI.
+
+You upgrade it to a universal account, and then you use it across the chain that you want. Now, this is specifically on base. So, that means that let's say I have other assets, let's say I have some USDC on Arbitrum. Then, this movement wouldn't work. You will need to also run the delegation on Arbitrum.
+
+Um And I guess there are ways, uh if you want to try to sponsor the gas, maybe uh directly from uh using some other kind of infrastructure. Uh with Magic, you probably can. Uh there will be an extra point, I guess, on uh on user experience. Um and then, the main point of the workshop and the main the main title and description was um kind of how to abstract the transaction. In this case, it was nothing wasn't really abstracted because I clicked every single one, and it shows steps.
+
+Uh but with these kind of blind signatures, uh with these embedded wallets, you could abstract the whole thing, right? This is really what I what I wanted to talk about mostly. Um so, we have the full repository for this demo. And uh it has a very deep and detailed readme. Uh so, you can you can even just take this demo and use it as a starting point for your project if you want to.
+
+Uh it's pretty much already working uh that way. Uh I'm going to link the repository uh in the Discord once we're done. And that's about it, I would say. Is the device still around? Sorry, my laptop my my laptop quickly died.
+
+I just had to boot it back up. Ah, perfect. Yeah, it always happens. I I wanted to ask you a question. Um, like does this deal with like or would that ever what like common security headaches um do you do you look at when it comes to like these these sort of transactions?
+
+Because I think that's another thing. I mean that's probably one of the biggest reasons that like um UX and UI is like I don't want to say awful but quite confusing um for for for crypto sort of projects because you you do have I mean look at the numbers on the screen right now. Um, you know, these are important numbers. So how how how do you go about um minimizing these? Uh, I guess it depends the kind of infrastructure you use.
+
+Um, for example, those numbers I have on the screens are not really sensitive at all. Those are just my accounts. Um, one of the benefits of using these embedded wallets is that they run the security. Uh, so for example, when I log in with my email Magic takes that email and they run their own infrastructure in their back end. Uh, where it takes that email, it generates a private key, and then it handles that private key in their secure uh, environment.
+
+Uh, so the user really never touches the private key. And also a possible a possible hacker, let's say, or attacker uh could not really easily access the private key. Um universal account themselves are smart accounts, so they don't have a private key. Um And if you really want you could build a you could very easily build an app that doesn't show any blockchain related information at all uh because everything can be automated uh behind the scenes. Um overall, the fact the security factor is generally more um related to when you use regular RPC wallets because then the user manages the private key and those can be exposed.
+
+Or if your application uses some kind of uh smart contract vaults or other infrastructure in in the wrong back end because then those can be affected um But generally the the embedded wallets have very uh very high security uh because they do not expose private keys. Hm. Which the private key is really the only thing that is they should worry about, really. Um so as long as that one is not exposed, uh and that's for example why um the particle wallets, for example, particle embedded wallets, we can't really use them right now for this um this kind of process because we do not support the method to sign the 7702 um authorization. But for example, there is absolutely no way with with our embedded wallet to export the private key.
+
+The the private key is is never uh built in one location. Uh so it's virtually unhackable. Now, if you lose access to your email or someone else gets access to your email, well, then then they can access your wallet. But that Yeah. that level of security now is with the user, really.
+
+Yeah. Yeah. Um there's a question from the chat. Uh are you able to read the chat? Yes.
+
+Uh yes. Or the question going to the Q&amp;A section, there's a question from Yeah, yeah, I see the question. Um That is an interesting question. Yes. Uh universal account infrastructure is only on mainnet.
+
+I I know that is annoying. Um especially when you're trying to develop stuff uh for hackathons. Uh this is because you need to use real funds. Uh the issue there is that it's very complex infrastructure, so it just does not work on testnet. It Testnets don't have the the right pieces to make it work.
+
+Now your question says what if you use some virtual net that forks the mainnet? Um I mean, if you can make it work, then I can try. Yeah, I don't see any issue with that. Um Ooh. Our SDK doesn't have any anything built-in for this uh kind of operation, but um but I think I did something similar before.
+
+Uh just kind of forking a mainnet without real and uh the run stuff. So yeah, I think it If you can make it work, yeah, I don't have a problem with that. Nice. Nice. Well, well, that was uh compared to the last workshop at least, this was much more intense, but at the same time I think technically very important as well.
+
+Um I want to say big thanks to Davide for taking us through transaction abstractions. Um really appreciate your, you know, you sharing your time and expertise with our cohort from all around the world. Quick recap, we saw how sponsored transactions, cleaner signing flows, and smarter execution patterns can remove friction and make it that feel genuinely easy to use. Um, I think for you guys doing the hackathon and building your own projects, uh, look at where transaction friction lives in your own project and think about how, uh, abstraction could smooth it out. That's exactly, um, the kind of UX, um, that the judges are looking for.
+
+Looking ahead, this was the first of several UX focused sessions. We've got ZeroDev on chain abstraction on the 7th of July, Open and X 4 2 on the 8th of July, and Magic on social login on the 22nd before the finale and prize giving on the 30th of July. Any follow-up questions, bring them to the Discord. The team and our partners, uh, are there to help. Big thanks again to Davi- Davide and Particle Network.
+
+Thanks to all of you and very happy building. Yep. Thank you. Thank you. Thank you, guys.
+
+See you. Bye-bye. Thank you. Bye.

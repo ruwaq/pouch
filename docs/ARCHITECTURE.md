@@ -23,10 +23,15 @@
           │                      │                      │
 ┌─────────▼──────────┐ ┌────────▼─────────┐ ┌──────────▼──────────┐
 │ infra-offramp      │ │ infra-web3       │ │ infra-db            │
-│ (Bitrefill,        │ │ (Particle, Magic,│ │ (Drizzle, Postgres) │
-│  Reloadly, ...)    │ │  Openfort, ZD)   │ │                     │
-│ adapters           │ │ adapters         │ │ repositories        │
-└────────────────────┘ └──────────────────┘ └─────────────────────┘
+│ (Bitrefill)        │ │ (Particle, Magic,│ │ (Drizzle, Postgres) │
+│  adapters          │ │  Openfort, ZD)   │ │ repositories        │
+└────────────────────┘ │ adapters         │ └─────────────────────┘
+                       └──────────────────┘
+┌──────────────────────────────────────────┐
+│ infra-ai (LLM adapters: Gemini)          │
+│ Implements IntentParserStrategy from     │
+│ domain. Regex fallback always available. │
+└──────────────────────────────────────────┘
 ```
 
 The domain defines **interfaces** (ports). The infra packages implement those interfaces (adapters). The apps wire everything together via dependency injection.
@@ -261,6 +266,42 @@ class CashOutExecutor {
 ---
 
 ## Infra layer: adapter contracts
+
+### LLM adapter (agent intelligence)
+
+The domain defines `IntentParserStrategy`. The `infra-ai` package implements it with Gemini.
+
+```typescript
+// packages/infra-ai/src/llm-provider.ts (interface)
+interface LLMProvider {
+  parseIntent(message: string): Promise<Result<CashOutIntent | { action: 'off_topic' }, DomainError>>;
+  buildResponse(executionResult: CashOutResult): Promise<string>;
+}
+
+// packages/infra-ai/src/gemini-provider.ts (implementation)
+class GeminiProvider implements LLMProvider {
+  // Uses @google/genai with function calling:
+  // - declares cash_out, check_balance, search_products functions
+  // - Gemini decides which to call based on user message
+  // - returns structured intent OR off_topic
+}
+```
+
+**Fallback chain:** `LLM_PROVIDER` configured → Gemini → (on API failure) → Regex IntentParser → (always works). The demo never breaks because of the LLM.
+
+**Configuration:** Admin supplies their own API key + model via env (`LLM_PROVIDER`, `GEMINI_API_KEY`, `LLM_MODEL`). Free tier: `gemini-2.0-flash` = 1,500 req/day.
+
+### Auth flow (Magic DID → JWT)
+
+```
+1. Frontend: Magic login → DID token
+2. POST /auth/callback { didToken }
+3. API: magic.token.validate(didToken) → extract wallet address + email
+4. API: upsert user in DB (users: magic_public_key, evm_address, email)
+5. API: issue JWT (jose, signed with JWT_SECRET) → httpOnly cookie
+6. Subsequent: auth middleware reads cookie → ctx.userId
+7. /orders/:id filters by userId (ownership check)
+```
 
 ### Off-ramp adapter (example: Bitrefill)
 

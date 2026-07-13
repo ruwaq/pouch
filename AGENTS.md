@@ -32,9 +32,13 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 | 2 | Arbitrum bounty | $2k | Settlement chain = Arbitrum One (config via env) |
 | 3 | Magic Labs bonus | $500 | Embedded wallet + blind signatures (zero popups) |
 | 4 | ZeroDev SRA subtrack | $500 | `createSmartRoutingAddress()` for cross-chain deposits |
-| 5 | Openfort subtrack | $100 | Agent backend wallet + gas sponsorship |
+| 5 | Openfort subtrack | $100 | Agent backend wallet + gas sponsorship (policy, NOT x402) |
 
-**Key insight:** Bounties are judged INDEPENDENTLY (not against the main track pool). We can win several simultaneously. The 3 "almost guaranteed" ones (ZeroDev SRA, Openfort, Magic) have near-zero competition based on GitHub research.
+**Key insight:** Bounties are judged INDEPENDENTLY. Research (2026-07-13) confirmed 23 active projects; **0 competitors** in the off-ramp niche. ZeroDev SRA and Openfort subtracks have only 1 competitor each.
+
+**⚠️ ZeroDev pricing risk:** No documented free tier (~$500/mo). Need hackathon credits from their Discord, or pivot SRA feature to Particle deposit address. Openfort free tier (2,000 ops/mes) is safe.
+
+**Cut from scope (2026-07-13):** Reloadly 2nd provider (not a bounty), x402/EIP-3009 (confirmed bug in UA 7702), ZeroDev session keys (blind signatures cover the narrative).
 
 ### Judging criteria we optimize for
 - **UX excellence (40% UA Track / 30% Arbitrum):** Chat interface + blind signatures + invisible routing
@@ -56,18 +60,21 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 | Validation | Zod | Shared schemas frontend/backend |
 | Logging | Pino | Structured logging |
 | Testing | Vitest | Monorepo-friendly |
-| Web3 | viem + provider SDKs via adapters | Never call SDKs from domain layer |
+| Web3 | provider SDKs via adapters | Never call SDKs from domain layer |
+| AI / LLM | Gemini (`@google/genai`) | Function calling + structured output; admin supplies own API key |
 
 ### SDK dependencies (verified versions)
 - `magic-sdk` + `@magic-ext/evm` — embedded wallet, blind signatures, EIP-7702 sign
-- `@particle-network/universal-account-sdk@beta` — Universal Account, EIP-7702 (`useEIP7702:true`, `V2`)
-- `@openfort/openfort-node@0.10.8` — agent wallet + gas sponsorship + Calibur
-- `@zerodev/smart-routing-address@0.2.5` — Smart Routing Address (SRA)
-- `@zerodev/permissions@5.6.3` — session keys (Kernel v3)
+- `@particle-network/universal-account-sdk@^2.0.0-beta.3` — Universal Account, EIP-7702 (DevRel-confirmed version)
+- `ethers@^6.16.0` — **v6 mandatory** (v5 lacks `authorizeSync` / `hashAuthorization` for 7702)
+- `@openfort/openfort-node@^0.10.8` — agent wallet + gas sponsorship (policy)
+- `@zerodev/smart-routing-address@^0.2.5` — Smart Routing Address (SRA) ⚠️ no free tier
+- `jose` — JWT verification (Magic DID → our JWT)
+- `@google/genai` — Gemini SDK for LLM intent parsing + conversational responses
 
 ### External APIs
 - **Bitrefill** (`api.bitrefill.com/v2`): Bearer token, self-service, test products available, USDC Arbitrum/Base native
-- **Reloadly** (`docs.reloadly.com`): OAuth client_credentials, sandbox self-service, mobile top-up + eSIM + gift cards
+- **Gemini** (`generativelanguage.googleapis.com`): 1,500 req/day free tier (`gemini-2.0-flash`), admin's own API key
 
 ---
 
@@ -77,8 +84,9 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 pouch/
 ├── packages/
 │   ├── domain/          # Pure business logic (NO SDKs, NO React, NO fetch)
-│   ├── infra-offramp/   # Off-ramp provider adapters (Bitrefill, Reloadly, ...)
+│   ├── infra-offramp/   # Off-ramp provider adapters (Bitrefill)
 │   ├── infra-web3/      # Blockchain adapters (Particle, Magic, Openfort, ZeroDev)
+│   ├── infra-ai/        # LLM adapters (Gemini) — agent intelligence layer
 │   ├── infra-db/        # Persistence (Drizzle ORM + Postgres)
 │   └── shared/          # Cross-cutting (config, logger, http, result types)
 ├── apps/
@@ -188,7 +196,7 @@ pnpm build                  # Build all packages
 
 ## Current phase & status
 
-**Phase 3 backend + infra foundation (in progress)**
+**Design spec approved. Implementation plan pending.**
 - [x] Git repo initialized
 - [x] Documentation created (AGENTS.md, ARCHITECTURE.md, HACKATHON_INTEL.md, PROVIDERS.md)
 - [x] Turborepo monorepo + 7 packages scaffolded
@@ -198,12 +206,15 @@ pnpm build                  # Build all packages
 - [x] Bitrefill adapter implemented with quote/package/webhook hardening
 - [x] Drizzle repositories implemented for orders + webhook events
 - [x] Runtime bootstrap supports configured mode and safe demo fallback
-- [ ] Real Particle/Magic auth and chain abstraction
+- [x] **Design spec** — [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md`](./docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md)
+- [x] **Competitive research** — 23 projects analyzed, off-ramp = 0 competitors (blue ocean)
+- [ ] Real Particle/Magic auth and chain abstraction (Phase 1: web3 spike)
+- [ ] LLM layer (Gemini + regex fallback)
 - [ ] Frontend chat/balance/order UI
 - [ ] CI lint step
 
-See [`docs/DEVELOPMENT_PLAN.md`](./docs/DEVELOPMENT_PLAN.md) for the full 10-day plan.
-See [`docs/HANDOFF.md`](./docs/HANDOFF.md) for the next recommended continuation point.
+See [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md`](./docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md) for the full design.
+See [`docs/HANDOFF.md`](./docs/HANDOFF.md) for the current snapshot and next steps.
 
 ---
 

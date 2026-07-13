@@ -53,44 +53,58 @@
 
 ## Competitive landscape (from GitHub + Discord research)
 
-### Tier A — Strong competitors (beware)
+> Updated 2026-07-13 with deep research: **23 active projects** identified across
+> GitHub repos created Jun-Jul 2026, Twitter demos, and Discord showcases.
 
-| Project | Category | What they do | Threat level |
-|---------|----------|-------------|-------------|
-| **OneLink Pay** | Payments + AI/x402 | Spend policy firewall for UA: EIP-12 mandates with caps + merchant + revoke. Cross-chain USDC Base→Arbitrum. ~100 commits, contracts verified on Arbiscan. | 🔴 High |
-| **FirmPay** | Checkout | Quote-locked checkout (price can't move against buyer). Research paper with A/B test N=1500 (+17.7% conversion). | 🔴 High |
-| **Selip** | Gift by link | "Slip someone a gift" — send crypto gift via link. 64 commits, 6 weeks, ZeroDev session keys. | 🟡 Medium |
-| **Beam** (Discord) | Send money by link | MVP complete on mainnet, Google login, Arbitrum settlement. No public repo. | 🟡 Medium |
+### Saturated categories (AVOID — 3+ strong teams)
 
-### Tier B — Medium competitors
+| Category | Teams | Top competitors |
+|----------|-------|-----------------|
+| **P2P / social payments** | 6+ | Beam, Universal Pay, mink, PayGram, SagePay, Dogi |
+| **Merchant checkout** | 5+ | TapPay, Morva, FirmPay, Chainless Checkout, Dogi |
+| **AI payments ("type to pay")** | 4 | Relay, IntentOS, SagePay, Tab |
+| **AI agents (general)** | 5+ | Relay, IntentOS, wisp, OneShot, AVUS, Tab |
 
-| Project | Category | Notes |
-|---------|----------|-------|
-| **Conviction** | Social trading + AI | Chain-abstracted social trading + AI concierge. MCP server. |
-| **Universal Pay** | Payments (Venmo-style) | Pay/split/request + Aave yield. |
-| **Dogi** | Creator payments | Buy-me-a-coffee cross-chain + payment links. |
+### Moderate categories (2-3 teams)
+- Subscriptions / recurring: 2 (Recurra, Settle)
+- Trading / prediction: 1 (OneShot)
+- Gaming: 1 (Enigma of Alchemist)
+- Content / streaming: 1 (Arbor)
 
-### Tier C — Low threat (incomplete)
+### Empty categories (OUR OPPORTUNITY — 0-1 teams)
 
-Tab, AuraPay, CampusPots, Wisp (specs without builds)
+| Category | Teams | Why it's open |
+|----------|-------|---------------|
+| **Off-ramp / cash-out to real value** | **0** | Nobody converts crypto to gift cards/top-ups |
+| **Remittances** | 0 | Nobody framing it as cross-border |
+| **Loyalty / rewards** | 0 | Listed in hackathon brief, nobody building |
+| **Identity / credentials** | 0 | Nothing |
+| **Event ticketing** | 0 | Nothing |
+| **Payroll / streaming salary** | 0 | Nothing |
 
----
+### Bounty-specific competition
 
-## Saturated categories (AVOID direct competition)
+| Bounty | Competitors targeting it | Crowded? |
+|--------|------------------------|----------|
+| UA Track ($1.5-2.5k) | ~15 of 23 | 🔴 VERY |
+| Arbitrum ($2k) | ~12 | 🔴 VERY |
+| Magic Labs ($500) | ~10 | 🔴 Crowded |
+| **ZeroDev SRA ($500)** | **1 (AVUS-RN)** | 🟢 **WIDE OPEN** |
+| **Openfort ($100)** | **1 (Recurra)** | 🟢 **WIDE OPEN** |
 
-1. **Payments / checkout consumer** — 9 of 10 projects. Default mental model.
-2. **Payments by link / gift** — Selip + Dogi + Beam overlap.
-3. **AI agents + x402 with spend caps** — OneLink already nailed it.
-4. **The canonical template pattern** (Email OTP → Magic → 7702 → convert USDC Arbitrum) — everyone repeats it.
+### Notable competitors (from GitHub research)
 
-## Empty categories (OUR OPPORTUNITY)
+| Project | Category | Stack | Polish |
+|---------|----------|-------|--------|
+| **Beam** (pankaj) | P2P payments by link | Magic+UA+Arbitrum | ✅ Polished, mainnet |
+| **Relay** (Chibey-max) | NL payment agent | UA+Arbitrum | ✅ Live, verified contract |
+| **TapPay** (scriptLin) | Merchant tap-to-pay | UA+Magic+Arbitrum | ✅ Working demo |
+| **Morva** (JamesVictor) | Merchant checkout SDK | UA+Arbitrum | ✅ Live demo |
+| **IntentOS** (Mani) | AI intent execution | UA+Arbitrum+Magic+Gemini | ✅ Live demo |
+| **mink** (samuel) | Social payments by handle | UA+Magic+Arbitrum | ✅ Audited contract |
+| **Recurra** (Rcurra) | Subscriptions | UA+Openfort+Arbitrum | ✅ Detailed README |
 
-- **Off-ramp / cash-out** — ZERO projects. The #1 crypto friction, completely unaddressed.
-- **Multi-provider routing** — Nobody aggregates providers (Bitrefill, Reloadly, etc.).
-- **Conversational AI agent for finance** — Conviction does trading; nobody does cash-out.
-- **Cross-chain consolidation for spending** — Nobody combines UA + real-world utility.
-
-**Pouch's wedge:** We're the ONLY project combining AI agent + chain abstraction + multi-provider off-ramp. No direct competitor.
+**Key insight:** None of these do off-ramp/cash-out. Pouch is the only project in its niche.
 
 ---
 
@@ -151,23 +165,34 @@ Tab, AuraPay, CampusPots, Wisp (specs without builds)
 
 ### What makes Pouch win where others don't:
 
-1. **Unique category:** Off-ramp is unaddressed by all 10+ competitors. We're the only "cash out" product.
-2. **Multi-provider = real scalability:** Provider adapter pattern means "today 4, tomorrow 40" — judges love this for adoption potential.
+1. **Unique category:** Off-ramp is unaddressed by all 23 competitors. We're the only "cash out" product.
+2. **Chain abstraction on the INPUT:** Our differentiator vs global incumbents (Bitrefill, Coinbase AgentKit, Cryptorefills x402). Nobody lets you pay with ANY token on ANY chain — they're all single-chain USDC.
 3. **7702 is intrinsic:** Cross-chain consolidation REQUIRES EIP-7702. It's not bolted on; it's fundamental to the flow.
-4. **UX is genuinely invisible:** Blind signatures + chat interface = the user never sees a wallet, gas, chain, or signature popup.
-5. **Real-world utility:** Gift cards, top-ups, eSIM = things non-crypto users understand immediately.
+4. **"Agent scratchpad" transparency:** The inline trace shows the agent's reasoning in real time — the "show your work" pattern. No competitor does this. x402 is invisible; we make the work visible.
+5. **UX is genuinely invisible:** Blind signatures + chat = user never sees wallet, gas, chain, or popup.
+6. **Real-world utility:** Gift cards, top-ups, eSIM = things non-crypto users understand immediately. $1.4T gift card market.
 
 ### Bounty coverage matrix
 
 | Bounty | How we cover it | Competition | Win likelihood |
 |--------|----------------|-------------|----------------|
-| UA Track ($2.5k) | Cross-chain consolidation + chat UX | High (OneLink, FirmPay) | 🟡 Compete for 2nd/3rd |
-| Arbitrum ($2k) | Settlement on Arbitrum + chain abstracted | Medium | 🟡 Medium |
-| Magic ($500) | Blind signatures = best onboarding | Low | 🟢 High |
-| ZeroDev SRA ($500) | `createSmartRoutingAddress()` implemented | **ZERO** | 🟢🟢 Very high |
-| Openfort ($100) | Agent wallet + gas sponsorship | **ZERO** | 🟢🟢 Very high |
+| UA Track ($1.5-2.5k) | Cross-chain consolidation + chat UX | High (~15 teams) | 🟡 Compete for 2nd/3rd |
+| Arbitrum ($2k) | Settlement on Arbitrum + chain abstracted | High (~12 teams) | 🟡 Medium |
+| Magic ($500) | Blind signatures = best onboarding | Medium (~10 teams) | 🟢 Good |
+| ZeroDev SRA ($500) | `createSmartRoutingAddress()` deposit page | Very low (1 team) | 🟢🟢 Very high ⚠️ pricing risk |
+| Openfort ($100) | Agent wallet + gas sponsorship (policy) | Very low (1 team) | 🟢🟢 Very high |
 
-**Realistic outcome:** $1,100-$4,600+ depending on how the main track judging goes, plus potential incubation.
+### UX differentiation (research-confirmed white space)
+
+| Capability | Bitrefill | Cryptorefills x402 | Coinbase AgentKit | **Pouch** |
+|---|---|---|---|---|
+| Consumer chat UX | No | No (M2M) | Partial | **Yes** |
+| Gift-card catalog | Yes | Yes | No | **Yes** |
+| Any token / any chain | No | No (USDC/Base) | No | **Yes (UA)** |
+| Shows agent reasoning | No | No (invisible) | Partial | **Yes (scratchpad)** |
+| Zero popup signing | No (handoff) | No | Confirmation step | **Yes (Magic)** |
+
+**Realistic outcome:** $1,100-$5,600+ depending on UA Track placement, plus potential incubation.
 
 ---
 

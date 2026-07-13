@@ -1,0 +1,311 @@
+Title: Chain Abstraction with ZeroDev: Transaction Flows with Less Friction
+URL: https://www.youtube.com/watch?v=pe0pRb7KWcw
+================================================================================
+
+Welcome everyone to the UXMax hackathon run with our headline partner particle network.
+
+Great to see you all here.
+
+Today's session chain abstraction with zero dev transaction flows with less friction presented by the zero dev team.
+
+The whole theme of UXMax is user experience making onchain feel effortless.
+
+This one sits right in the pocket.
+
+ZeroDev's tooling simplifies signing gas and execution so onchain interactions feel lighter and smoother.
+
+It's best suited to teams in the general track who want their DAP to feel less like a wallet obstacle course and more like a normal app.
+
+Bit of housekeeping.
+
+The session is recorded and goes up on the platform afterwards.
+
+You can watch it on YouTube afterwards as well.
+
+Drop questions in the chat as we go and we'll take them at the end.
+
+Over to Canal.
+
+Take it away.
+
+&gt;&gt; Hi.
+
+Uh I'm Kunal uh from the offchain labs/zerdev team.
+
+uh for the next like 30 minutes I will spend like spend some time on like a poll app on this page and uh I'll go through like each pass will sort of delete a layer of friction which is like signing gas execution and then sort of removing the chain itself and it will show the difference every time.
+
+Most of the diffs are actually one line.
+
+So let's go.
+
+Uh I uh so I guess like a lot of like the apps D app devs have known this like this funnel of death where uh you install the extension then you need to back up the seed phrase and then you you have to like buy ENOSX withdraw it to the right chain hopefully pick the right chain switch network a proof pop up there's like seven different steps and if you think like you know there's a 70% retention per step over all these steps you're only left your users are only like 10% of the users are left there right so and when they like bounce they don't like file a bug with the chain itself right they just in uninstall your app so you did all this hard part of you know integrating wallet stacks and stuff And then this whole funnel just ate your whole uh all the users you you just acquired.
+
+So um yeah uh so I want to just go over like a couple of primitives and I think you guys already like know about this already like smart accounts are uh more like a EOS which the validation is like the the hardcoded easy recover uh verified onchain.
+
+So you have something like a validate user op which sort of uh replaces the EOA flow and once that the validation is code you get uh things like the curve check can't express like a pay master covering gas you have like recovery you have like m execution session keys so all of them are already uh covered by like ERC C4337 which has been around for a while.
+
+uh this is besides the protocol but then you also have um so I guess like concretely a user signs like a user uh operation and then uh a bundler picks it up and then calls the handle user op and then the smart contract itself has like a validate user op function where the custom logic lives and then uh then you have the 7702 which just like the old account abstraction UX meant deploying like a whole different like smart contract address and migrating every time.
+
+So it was kind of like dead on arrival for like existing users which also had to migrate.
+
+Um but this is solved in with like 7702 where uh you have the it's it's like a normal EOA address that's been like 7702 delegated to kernel.
+
+So that way there are no more new accounts.
+
+That's that what makes this like shippable to like real users instead of you know like just having another demo.
+
+Um I go okay so the zero dev stack today is four things and each one deletes a layer you're about to like watch fall.
+
+uh the wallet SDK which has like the pass key oppp and uh the gas policies which are like we have like this pay masters which is configured in a dashboard which is not code just a UI and then the kernel which allows batching session keys and intent.
+
+Uh and then the intense one is like chain abstracted balances and which is like in the background there's like a solver filling and executing for you and so these all are like sort of signing gas execution chain all are like four parts of this one cohesive like product uh and then let's go into uh okay so this is the demo itself and so this is a live demo so let's just bear with me here um I guess like as a hacker first you need to like create a project on the zerov dashboard but I'm not going to show that much because it's covered in the docs and stuff but I'll show like the demo so the first step is so this is like a like a regular d app on arbitum uh one And what we do is like the first thing is where you're using a normal like wallet like MetaMask or Ra or whatever and uh you connect it you have like your connected wallet address and then you say oh okay for this app you have to approve or like you have to pay like 0.00001 001 USDC and just to show the flow of the app and I think this is I'll show the app flow the normal flow which you're used to here.
+
+So you're signing your transaction and then you're voting on approval here and let's say you sign it here and boom.
+
+So you have voted for one of them and then uh uh and then let's say you go on bit uh yeah so I guess uh there is so you sort of like hold this shape in your head you have two different calls uh two popups you require gas and every step we basically kill one part of it and uh then you have let's say act one where you have just the signing now instead of using your uh seed phrase or your private key here you sign using I guess this is already logged in but uh if I remove my oops I'll I'll go I'll clear the site data.
+
+So you'll see it sign with face ID.
+
+I have my face ID here in my password manager.
+
+So I save it here.
+
+It saves it and it creates or your address is a smart uh account.
+
+And this is your address.
+
+You can copy it down somewhere.
+
+And then let's say you vote for this and This didn't refund.
+
+I guess this one is not working.
+
+But uh I guess this step was to delete like the signing.
+
+So you use like the web a like pass key.
+
+So the key is generated in the the secure enclave.
+
+Um uh yeah it is it is like generated in the secure enclave.
+
+it like never leaves the device.
+
+So in this case it's like the browser and then 3 seconds like no extension is needed and that sort of drops the first step of the funnel where uh and then um so you have your your this is your 7702 wallet address.
+
+I have to check why does it sign?
+
+Let me see.
+
+I will enable gas policies here.
+
+and maybe wait for a second for it to Okay.
+
+Anyway, um yeah.
+
+So, I guess this is I can move on to the next step where you don't need the gas to be.
+
+So, it's like the same wallet address here.
+
+So if you go to RB scan, follow that and then uh let's go back here and let's try the next step and hopefully it works.
+
+Uh this one also doesn't refund.
+
+Um I guess I'll have to just run through the demo itself like had to record it.
+
+But um yeah um so you needed like so just recapping back to like uh the first step you needed like an approve and a vote which is two user ops two confirmations and when uh you're approved but not voted.
+
+Uh so you sort of watch like that account collapse that and you have like one tap.
+
+Let me see the one tap thing.
+
+Okay, I think they all will start failing but uh go back to the presentation here and um and then you have this guess I can like show the code itself.
+
+Um, so you have the the demo wallet here and you see the kernel getting the kernel client.
+
+So this is all coming from the zerov SDK and we're using the zerodev wallet react here and you have the config here where you're building the intent config.
+
+Intent config is the one where just here where you're ending ch.
+
+So you're voting hash saved and now this so this is like I guess I fast forwarded to the next thing and um okay so I'll guess I I'll just go through the slides first.
+
+Um, so I guess like the fix for the user having no gas is sort of sponsoring on a dashboard.
+
+So if you go to the dashboard and you see there's like all these policies for sponsorship in case you know you want to sponsor for a specific wallet address for a specific contract policy.
+
+You can do this using the UI or you can also do it uh programmatically using the SDK.
+
+Um and then you have you can do it for every single chain.
+
+So let's say for the demo itself let's just say sponsor all policies.
+
+Let's see if this worked.
+
+Not sure.
+
+Um but uh so yeah so the fix is like let's say you had this you had this wallet policy where you added like a wallet and you can like sponsor or non-sponsor in case you want to blacklist an address and then whatever like address you have ci like save the policy here.
+
+And so yeah, this way your users don't have to pay for any of the transactions and we your app can sponsor it for you.
+
+And then you have execution And then this is the one where you're instead of sending multiple transactions, you can send it in a single batch.
+
+So you're calling like it's essentially like multi call under the hood.
+
+And um so you have like this get kernel client which pulls the connections client like the kernel client similar to vagme which is straight out of the the zero defev store.
+
+So there's not like any additional setup and then the send transaction which is what you call can have like an array of calls and that means that that that approve and that vote could have two different calls there and the kernel encodes it as a like a single like execution batch submits the user op and that one bundler has so you have basically one bundler roundtrip one pay master sponsorship and so you have two different like logical actions but one atomic transaction and I didn't need to like hand roll any of the multicols.
+
+Uh so yeah, I think uh I guess s the session keys basically means that you have a key in your cache or something and you you don't even have that pass key popup just it just goes.
+
+So you can sort of scope it for a day.
+
+You could scope it for like a specific token or a specific amount session key.
+
+So that way you are like you you you're not losing out in security there.
+
+And then uh the last step would be the chains where uh you would have like uh this is probably like the biggest step here.
+
+And in the demo, the USDC balance for this account was on base.
+
+And the idea is that um the app is an arbitrum.
+
+So the fix would be to like have a UI which shows bridge, wait for finality, switch accounts, hold gas on both legs and then with end chains your users funds are always going to be on the wrong one.
+
+Right?
+
+So uh we have this under the hood we have this thing called CAB which is chain abstracted balance which summarizes all your USC across base and arbitrum on in one number.
+
+So you see this number chain extracted number is basically just calling this function on multiple chains.
+
+Uh this way your users don't they haven't lost any balance or they forgot about something on a different chain on or let's say a chain they don't use anymore and uh the code we use is like this function called like send user intent and uh you didn't have to like build a user transaction I guess send user content you would have this uh this function which is and then you can like encode the calls.
+
+Now you have both these accounts and these functions and the only thing you have both the functions here and this way you can like you have this USC USDC on base and then you go back.
+
+Uh so what happens like under the hood is like I guess like in the SDK itself if you the you didn't had to build the bridge transaction yourselves you just signed like one intent which is calls is approve plus vote which is like plus bridging and then the output tokens is 0.001 001 USDC which is what you required and so this way you just have the desired end state which is what you wanted and the destination and not how to route it under the hood.
+
+What we do is this is uh your uh there's like a network of solvers which compete to fulfill it and then one fronts you the balance on uh USDC on arbitum and then executes your calls and then uh your side never had that balance on arbitum.
+
+it went straight into the vote call.
+
+Uh, and then like behind the scenes and the successor settlement reclaims base to repay the solver.
+
+And this is all like this would be all familiar to you if you're like familiar with like this intentbased bridges like across or relay.
+
+But it's just like it happens now without you even touching any of the specific bridges which might not connect to a chain your users are already on.
+
+And this I guess um what next would be yeah so this is like I guess this demo didn't really work but like the idea is you start with metam mask popups need then you can have add like seed phrases instead of seat phrases you add like you have like the pass keys or the Google log in which is similar to the pass key or like you could do the magic link thing and once instead of getting the gas token you could like sponsor users on your behalf so the project pays and then your users have a more seamless experience and then you have instead of having those end popups you can like sort of batch calls make them into sessions and and then instead of your users worrying about the uh the chain you have intents where you can like vote for or like execute any action from any chain you want.
+
+And so you have like that that example of having that USDC live wherever it is, but then you can sort of move it around without the users knowing them.
+
+Um, so yeah, you have all the primitives here.
+
+Um, I guess I can like post this link in the channel or something so so that people can try it out once I fix it.
+
+But I think that's it.
+
+I think this is just u the recap.
+
+You have this.
+
+Oh, I guess this is like the you have the filler and the whole flow and then the settlement happens and then yeah, these are some examples of what things you can build.
+
+You can have like a checkout which is chain agnostic or like a face ID on boarding flow or like some kind of automations especially with like vaults or any like defy stuff.
+
+Yeah, I think these are like some links.
+
+Uh I'll also link the hackathon repo which uh I'll post in the chat and then yeah any questions?
+
+I I think I think there was a question from our discord which we copied and pasted.
+
+Um it it said what's what's the best way to sponsor gas and know I think what they're trying to refer to is um the the 0.001 USDC thing.
+
+I know it's a very small amount but you know what's stopping or how does zero zero dev control the number of accounts being generated by a single user?
+
+um how do you stop you know your I guess generosity from being abused?
+
+&gt;&gt; Yeah.
+
+So um you can like there's a lot of like uh domain and IP and like those kind of blocking you can do.
+
+So that is your your be like first line of defense.
+
+Um but then uh in your app itself you could like or you could have like some kind of rate limits on like the amount per hour or like so that you know uh there's no like denial of service attack that way.
+
+Uh those are some of the ways if you have like there's other some like custom filters too which you can add.
+
+Uh &gt;&gt; wow.
+
+Okay.
+
+So if you see like these there's like in the dashboard you this is like the most the easiest one to break which is like you sponsor all transactions you have like chain policies you have which exact contract you're sponsoring so they can't just misuse for their own contract interactions.
+
+Um you have the wallet policy and then the wallet each policy you can have like this much gap spend or this much uh you can have like how many requests they are sending and these are all like some policies and then you have like uh you have this access control which you can have on origin or IP or anything they can use or they also they're logging into your app using an email right So &gt;&gt; yeah, &gt;&gt; another another &gt;&gt; way you can like stop them.
+
+So &gt;&gt; yeah.
+
+&gt;&gt; Yeah.
+
+Wow.
+
+I mean that's that that defense is pretty in depth.
+
+Thank you so much.
+
+Also I just wanted to say thank you so much to the uh attendees.
+
+We have so many people joining today from all around the world.
+
+Makes me really happy seeing the seeing the uh attendance take a go up into the triple digits.
+
+So I want to say a big thank you to the audience.
+
+Big thank you to Canal and the Zero ZeroDev team for that walkthrough.
+
+I know the demo didn't work, but what that means is that it is a good demo because easy demos wouldn't break.
+
+Um the recording lands on the platform shortly if you want to rewind.
+
+Um and you said that you would put the link um in the in the chat or in the Discord, send it to us.
+
+&gt;&gt; Yeah, I'll put it in the discord like the link of the app so that people can use it.
+
+&gt;&gt; Okay.
+
+Yeah.
+
+Thank you so much everyone.
+
+You know, check it out.
+
+where we are.
+
+You should already have your project created and team added and be uh past the first milestone.
+
+So, the mid hackathon checkpoint.
+
+Quick key date uh to remember.
+
+Final submissions are due at uh midnight on the 19th of July, Sunday.
+
+That's the hard deadline.
+
+Get it in early.
+
+Don't fight the clock at 11:59.
+
+The finale and prize giving Thursday 30th of July.
+
+Top teams pitched live to the judging panel before Particle Network announces the winners.
+
+There are still more workshops to come.
+
+Tomorrow we have another one with open for um embedded wallets for seamless app payments.
+
+Um 22nd of July we have social login uh UX with magic uh wallets that feel web 2.
+
+Um and office hours and the team are in Discord if you're stuck.
+
+Keep building.
+
+Ship something that feels good to use.
+
+And that's the whole point of UX Max.

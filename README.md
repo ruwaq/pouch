@@ -13,26 +13,27 @@ Built for the **UXmaxx Hackathon** (Encode Club × Particle Network).
 ```
 User:  "Cash out $50 to Amazon"
 
-🤖 Pouch:
-  You have $12 ETH on Base + $25 USDC on Arbitrum + $18 SOL.
-  Consolidating via Universal Account...
-  Comparing providers: Bitrefill $50.00, Reloadly $50.50
-  → Best option: Bitrefill
-  Purchasing...
+🤖 Pouch (agent trace visible inline):
+  ● Parsed intent     0.2s ✓  [cash_out, giftcard, Amazon, $50]
+  ● Found balances    0.1s ✓  [$12 ETH Base + $25 USDC Arb + $18 SOL]
+  ● Consolidated      2.3s ✓  [UA 7702 cross-chain]
+  ● Routed            0.4s ✓  [Bitrefill cheapest]
+  ● Signed (7702)     1.1s ✓  [NO POPUP — blind signature]
+  ● Delivered         0.3s ✓
   ✅ Amazon gift card: [AMZN-XXXX-XXXX]
 ```
 
-**Zero popups. Zero gas visible. Zero "which chain?".** The user just talks.
+**Zero popups. Zero gas visible. Zero "which chain?".** The user just talks. The agent does the rest — and shows its work.
 
 ---
 
 ## ✨ Features
 
-- **Conversational interface** — natural language → crypto cash-out
-- **Cross-chain consolidation** — funds across Arbitrum, Base, Polygon, Solana unified into one balance via Particle Universal Accounts (EIP-7702)
-- **Multi-provider smart routing** — compares Bitrefill, Reloadly (and extensible to MoonPay, Lithic, etc.) to find the best rate
-- **Invisible UX** — Magic embedded wallet with blind signatures; user never signs a transaction
-- **Real off-ramp** — actual gift cards, mobile top-ups, eSIM delivered to the user
+- **Conversational interface** — natural language → crypto cash-out. Powered by Gemini LLM with regex fallback (always works, with or without API key).
+- **Cross-chain consolidation** — funds across Arbitrum, Base, Polygon, Solana unified into one balance via Particle Universal Accounts (EIP-7702). Pay with ANY token on ANY chain.
+- **Agent trace transparency** — every step visible inline (parse → route → consolidate → sign → deliver). The "show your work" pattern applied to money.
+- **Invisible UX** — Magic embedded wallet with blind signatures; user never sees a wallet, gas, chain, or signing popup. Counter shows "popups avoided: 0".
+- **Real off-ramp** — actual gift cards, mobile top-ups, eSIM delivered via Bitrefill (8,000+ brands).
 
 ---
 
@@ -134,7 +135,8 @@ pnpm build        # build all packages
 | Validation | Zod |
 | Logging | Pino |
 | Testing | Vitest |
-| Web3 | viem + Particle UA + Magic + ZeroDev + Openfort |
+| Web3 | Particle UA + Magic + ZeroDev SRA + Openfort (via adapters) |
+| AI / LLM | Gemini (`@google/genai`) — function calling, structured output |
 
 ---
 

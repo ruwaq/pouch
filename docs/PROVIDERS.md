@@ -130,7 +130,7 @@ Headers: `X-RateLimit-Remaining`, `X-RateLimit-Reset`. Cache products for 15-30 
 
 ## 2. Reloadly (off-ramp: top-ups, eSIM, gift cards)
 
-**Status:** ✅ Verified. Second provider for smart routing demo.
+**Status:** ⏸️ CUT from hackathon scope (2026-07-13). Not a direct bounty; smart routing demonstrated within Bitrefill product comparison. Adapter code remains for future use.
 **Base URL:** `https://topups.reloadly.com` (top-ups), `https://giftcards.reloadly.com` (gift cards), `https://esims.reloadly.com` (eSIM)
 **Auth:** OAuth 2.0 client_credentials. POST to `https://auth.reloadly.com/oauth/token`.
 **Setup time:** ~30 minutes.
@@ -273,7 +273,7 @@ const removeAuth = { ...auth, contractAddress: '0x000000000000000000000000000000
 
 ## 5. ZeroDev — Smart Routing Address (SRA)
 
-**Status:** ✅ Verified. Bounty: ZeroDev subtrack 2 ($500).
+**Status:** ⚠️ Verified API, but **no documented free tier** (~$500/mo production). Need hackathon credits from ZeroDev Discord, or pivot SRA feature to Particle deposit address. Bounty: ZeroDev subtrack 2 ($500). Only 1 known competitor (AVUS-RN).
 **Docs:** https://docs.zerodev.app/onramp/smart-routing-address/quickstart
 **SDK:** `@zerodev/smart-routing-address@0.2.5`
 **Setup time:** ~1 day.
@@ -324,7 +324,7 @@ Ethereum, Optimism, Arbitrum, Base, BSC, Polygon, HyperEVM, World Chain, Unichai
 
 ## 6. ZeroDev — Session Keys (permissions)
 
-**Status:** ✅ Verified.
+**Status:** ⏸️ CUT from hackathon scope (2026-07-13). Complexity vs limited time. The "zero popup" narrative is covered by Magic blind signatures.
 **Docs:** https://docs.zerodev.app/smart-accounts/permissions/intro
 **SDK:** `@zerodev/permissions@5.6.3` (Kernel v3 — do NOT use old `@zerodev/session-key`)
 
@@ -401,8 +401,8 @@ const sponsorship = await openfort.feeSponsorship.create({
 // sponsorship.id = 'pol_...' → use as FEE_SPONSORSHIP_ID
 ```
 
-### x402 payments
-Recipe: `openfort-xyz/recipes-hub/x402/`. Client signs EIP-3009 TransferWithAuthorization off-chain (no gas), server verifies + settles.
+### x402 payments — ⚠️ DO NOT USE (confirmed bug)
+A hackathon participant (Da Bright Shado) confirmed x402/EIP-3009 **reverts in UA 7702 mode**: the UA account has code (7702), so USDC's EIP-3009 `isValidSignature` check fails ("FiatTokenV2: invalid signature"). Particle DevRel was unsure if it works. **We use gas sponsorship policy only, NOT x402.**
 
 ### Important
 - **Calibur EIP-7702 ≠ Particle EIP-7702.** Different implementations, NOT compatible on same wallet.
@@ -416,12 +416,51 @@ Recipe: `openfort-xyz/recipes-hub/x402/`. Client signs EIP-3009 TransferWithAuth
 | Provider | Category | Crypto-native? | Test mode | Setup | Chains |
 |----------|----------|---------------|-----------|-------|--------|
 | Bitrefill | Gift cards, top-up, eSIM, bill pay | ✅ USDC Arb/Base | ✅ test products (free) | 5 min | Global |
-| Reloadly | Top-up, eSIM, gift cards | ❌ Fiat (agent swaps) | ✅ sandbox | 30 min | +145 countries |
+| ~~Reloadly~~ | ~~Top-up, eSIM, gift cards~~ | ❌ Fiat | ✅ sandbox | 30 min | +145 countries |
 | Magic | Auth/wallet | ✅ | ✅ pk_test | 1-3h | EVM + Solana |
 | Particle | Chain abstraction | ✅ | ❌ Mainnet only | 1 day | EVM + Solana |
-| ZeroDev SRA | Cross-chain deposits | ✅ | ❌ Mainnet only | 1 day | 17+ EVM chains |
-| ZeroDev Permissions | Session keys | ✅ | ✅ testnet OK | 1.5 days | EVM |
-| Openfort | Agent wallet, gas | ✅ | ✅ sk_test | 0.5 day | EVM + Solana |
+| ZeroDev SRA | Cross-chain deposits | ✅ | ❌ Mainnet only ⚠️ no free tier | 1 day | 17+ EVM chains |
+| ~~ZeroDev Permissions~~ | ~~Session keys~~ | ✅ | ✅ testnet OK | 1.5 days | EVM |
+| Openfort | Agent wallet, gas (policy only) | ✅ | ✅ sk_test, 2k ops/mo free | 0.5 day | EVM + Solana |
+| Gemini | LLM (intent parsing + chat) | N/A | ✅ 1,500 req/day free | 10 min | N/A |
+
+> ~~Strikethrough~~ = cut from hackathon scope. See design spec for rationale.
+
+---
+
+## 8. Gemini (AI / LLM — agent intelligence layer)
+
+**Status:** ✅ Verified. Agent intelligence layer.
+**Docs:** https://ai.google.dev/gemini-api/docs/function-calling
+**SDK:** `@google/genai`
+**Setup time:** ~10 minutes.
+
+### Configuration
+```bash
+# .env — admin supplies their own key
+LLM_PROVIDER=gemini
+GEMINI_API_KEY=AIza...
+LLM_MODEL=gemini-2.0-flash   # 1,500 req/day free
+```
+
+### Free tier limits (2026-07)
+| Model | Free tier | Notes |
+|-------|-----------|-------|
+| `gemini-2.0-flash` | **1,500 req/day, 10 RPM** | ✅ Primary — generous for demos |
+| `gemini-2.5-flash-lite` | 1,000 RPD, 15 RPM | Alternative |
+| `gemini-2.5-flash` | 20 RPD (was 250, cut 92%) | ❌ Unusable |
+| `gemini-2.5-pro` | Free tier removed | ❌ Dead |
+
+⚠️ Google changes limits without warning. Pin the model version. Fallbacks: Groq (Llama 3.3 70B free) → Cloudflare Workers AI (10k Neurons/day).
+
+### Function calling contract
+Gemini decides which action to take via function calling:
+- `cash_out` → returns `CashOutIntent` (domain executor handles)
+- `check_balance` → triggers balance read
+- `search_products` → triggers product search
+- `off_topic` → conversational response, no action
+
+The LLM is a parser + conversational layer. It does NOT execute transactions (domain executor is deterministic). Regex is always the final fallback if the API fails.
 
 ---
 

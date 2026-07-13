@@ -1,0 +1,329 @@
+Title: Openfort + x402: Embedded Wallets for Seamless App Payments
+URL: https://www.youtube.com/watch?v=0PTAADYXFYA
+================================================================================
+
+[snorts] &gt;&gt; Hi, welcome back to the UX Max Hackathon, run with our headline partner Particle Network.
+
+It's great to see everyone again.
+
+I hope you had fun yesterday.
+
+Today's session is Open Fort and X402, embedded wallets for seamless app payments, presented by Joan from Open Fort.
+
+Quick summary on Open Fort, it's a wallet infrastructure for developers, embedded wallets, key management, and transaction automation so you can drop into any app without making users wrestle with seed phrases or extensions.
+
+The X402 half is the interesting twist.
+
+It revives the HTTP 402 payment required status code as a real payment rail.
+
+Uh so, apps and agents can pay per request on chain.
+
+Pair that with an embedded wallet and you get payments that feel like normal checkouts, not a crypto economy.
+
+This sits dead center of the UX Max theme, user experience, UI, UX.
+
+Best suited to teams who want in-app payments or agent-driven transactions that feel web two smooth.
+
+Bit of housekeeping, the session is recorded and goes up on the platform website.
+
+Uh you will be able to replay on YouTube as well.
+
+Drop questions in the chat as we go and we'll take them at the end.
+
+Over to Joan, take it away.
+
+&gt;&gt; Hey, thanks.
+
+Glad.
+
+Uh nice nice meeting you all.
+
+Um I'm going to quickly share my screen and then we can actually get started.
+
+Should be pretty easy.
+
+&gt;&gt; [snorts] &gt;&gt; All right, I hope you guys see the screen.
+
+Um so, yeah, hi everyone.
+
+I'm Joan, one of the co-founders here at Open Fort.
+
+As I was uh correctly saying, we basically focus on building infrastructure around stable coins via wallets.
+
+And so, today I'm going to do like a very quick, you know, run on what Open Fort is, uh what are kind of like the products that you can use, and then we'll jump into, you know, some of the things that we'd love you to build and how you can get started.
+
+And so, yeah, uh as a reminder, Open Fort is basically a tool that allows you to create wallets for developer like for developers, users, and as we will see now, agents.
+
+So, AI It basically simplifies how you would interact with stablecoins, with internet money, if you want to call it like that, via simple set of APIs.
+
+Now, OpenFords, we've been around now for 3 years.
+
+We're working with people like Animoca Brands, OKX, and an exchange that exists as well in Asia.
+
+And so, roughly, we are doing around like, you know, 5 to 6 million RPC calls a month now.
+
+Um why would you decide to, you know, build with OpenFords on this hackathon?
+
+I'll say in mainly these four features, like these four set of, you know, principles.
+
+But for you, this is a hackathon.
+
+So, what you actually care about is like the aha moment, the wow factor, like how do we get to production ASAP with, you know, our AI agents and with our, you know, cloud code, with our codex, etc.
+
+So, I'll say that from the OpenFords side, we are very AI native.
+
+And so, if I go directly to, you know, to the documentation, you can see here just like getting into the OpenFords docs in the building with AI, you can very fast and easily plug these command lines into your cloud code, into your codex, and just like get started with OpenFords.
+
+It will redirect you to the dashboard, authenticate, get the API keys automatically, and just start building it.
+
+I also recommend adding the OpenFords docs, which is like which are super updated with every with everything that we built.
+
+And so, you have the agent skills here, and then you can basically, you know, chat with your agent, say, "Hey, I'm trying to accomplish this.
+
+This is the tooling that I want to build with, so help me do that." Right?
+
+So, this would be like the the biggest differentiator there.
+
+In terms of products from Openfort, one of the biggest one is the wallet infrastructure, right?
+
+So, we go from having embedded wallets via um you know, traditional um onboarding with email, password, other wallets, phone numbers, um Google's, etc.
+
+Uh to also being able to create those in the backend for agents and say, "Hey, just create a backend wallet for my agent, give my agent the private key, and let him do his thing and sign transactions, etc." The other thing that we do really well as well within the dashboard and we will take a look later is basically gas sponsorship.
+
+So, this basically what it means is that your agent, if you give him like a you know, you give him like a gas sponsorship ID, which is a way to um make transactions without paying with crypto, um you'll basically like the your agent will be sponsoring the transactions directly, and so you don't have to get a faucet or like get real money within the the the agent wallet.
+
+Um and lastly, it's uh the funding feature.
+
+Um so, this is usually more um you know, tailored to users, but also like we'd be keen to see agents uh using it uh via the API.
+
+It's an easy way for you to basically on-ramp, so to for you to deposit money within the wallet of Openfort coming from any token any chain any token that exists, right?
+
+So, you can say, "Hey, you know, Joan, I heard uh that base is really cool, uh but I actually want to build this application in Monad, uh which is another chain and using another different token.
+
+This would be the solution for you.
+
+You'll be able to um deposit from base directly with let's say USDC, like a digital dollar to a digital uh you know, sterling or a digital euro.
+
+Some of the cool ideas here that I would love, uh, you know, for you guys to take a look.
+
+Um, the, like the first one is basically to be able to give your cloud code or like your codex um, an agent with a wallet.
+
+And so in your terminal, you basically would have a balance that you can, uh, you know, keep under, like that you can keep track, say like you put it under under the place that you tap and then you have like a certain balance, say like you put $5.
+
+And so when the, you know, cloud code or codex have a balance, then you can say, "Hey, go check this set of endpoints uh, from uh, discovery page um, and then go try to do this flow for me." Right?
+
+And because cloud code will have this, uh, agent wallet, he'll be able to go there, like to go, like he'll be able to go into this discovery pages, call the endpoint, pay for how much the endpoint costs, and come back to you with information.
+
+The second one, it's basically being able to connect an agent wallet to, you know, frameworks of agents.
+
+So you have Hermes, you have open claw.
+
+There's couple more extras.
+
+So the idea here would be to use these intelligent frameworks to orchestrate uh, actions that you want to do.
+
+And like this orchestration, some of it will use X-Road 2, some of it will use of X-Road 2.
+
+Right?
+
+So a good example for it would be, um, say I am a sales agent and I want to sell, uh, I want to sell as many, uh, you know, insurance products as possible in the region of, uh, Newcastle.
+
+And so you would give this agent with Hermes, um, you know, instructions to, uh, find the phone numbers of people within Newscast, Newcastle and contact these people using XYO 2 services, right?
+
+And the Hermes because it's like it has these frameworks like internal tooling, he'll figure out how to do that and that would be like a cool demo to see.
+
+Another example from an agent perspective would be to actually build some sort of trading competition between agents.
+
+Um so the idea here would be you have the agent that is able to tap into say tokenized stocks, perpetuals, things like that.
+
+And then basically the agent like you know different agents that you can create with different strategies executing those transactions as they see fit.
+
+So say, "Hey, I want to build 1-hour trading competition." Um then you give each agent one specific strategy.
+
+One could be you know a technical analysis of like moving averages, another one could be some fundamental analysis, another one could be like more macro social sentiment analysis, and so see which one performs the best.
+
+So yeah, that would be like another another example.
+
+Um Yeah, another interesting example is agents as a um you know last mile last mile operation.
+
+So as of now it's very easy to send you know a payment from UK to say Nigeria, right?
+
+But in Nigeria once you have that wallet like with money like a you know a person in Nigeria can't do anything with it cuz they can't pay or like get the cash.
+
+Right?
+
+So you can set a sort of agent that uh you know pays someone to get that money from the wallet and exchange it in real life you know into into a remittance remittance office, right?
+
+For example.
+
+And so what you would actually be be is kind of like paying a freelancer to go and do this for you and then the freelancer can take a cut.
+
+Right?
+
+Uh I believe that we will see a lot of this sort of uh um actions that agents that AI agents can do online, but uh they lack the physical human component of it.
+
+Uh because it's basically a physical interaction that needs to happen and so they can pay an like a human to do that for themselves.
+
+So these are like some of the some of the examples that I was thinking.
+
+Now if we go into Okay, Joan, this is great.
+
+How can I get started?
+
+As I said, the first and foremost is to go to building with AI and plug this um you know, into in into your your tool set, into your cursor, cloud code, etc., etc.
+
+This is like the best way to get started.
+
+Then for XRO2 embedded wallets, if you go if you see here on the right side, we have products, we have embedded wallets.
+
+This is basically target to end users, like humans, let's say, where you where they need to log in with a you know, an email, they need to have a wallet created in the back.
+
+Uh you can create a new bank with it, you can then put an agent for the new bank to say rebalance the portfolio, things like that.
+
+Backend wallets are great for agents because you don't need to have like an authentication layer, like a uh Google or signing with Facebook and stuff like that.
+
+You just like create a backend wallet on on server uh and then from there you handle it like the the permission to sign the transactions.
+
+And so I would recommend taking a look at the backend wallets.
+
+Uh from here you have like the getting started, you have um explanation on like how to create different backend wallets in different chains as well.
+
+Um how to send gasless transactions from those backend wallets itself.
+
+So everything is kind of like outlined here.
+
+And if you are looking for um you know, more real code, more implement like real implementation.
+
+We have a section here called recipes.
+
+So if you go into recipes, we have different recipes based on kind of like what you're trying to do like yield, trading on hyperliquid, swaps, payments, gentle payments, etc.
+
+For this example on a gentle payments for instance, we have one based on XRO-2.
+
+So this works with base as a network.
+
+And basically you can like it works the example the code.
+
+It has both examples with embedded wallets.
+
+And having and has examples with back-end wallets, right?
+
+So you can play with both.
+
+Like as I said, one would be more user facing, the other one is more like AI agents and automated services that you want to do.
+
+And then you also can play around with like the gas sponsorship that I was mentioning.
+
+So you can create a policy and say like, "Hey, I want to sponsor this, that, etc." The other example that I have is on MPP.
+
+MPP stands for machine payment protocol.
+
+It's basically a layer [clears throat] of abstraction on top of XRO-2.
+
+That in theory adds like new payment methods beyond just paying with crypto or beyond just paying with the X like the the XRO-2 one.
+
+Right?
+
+So with this one for example, you would be able to say make a subscription.
+
+XRO-2 for instance right now you only pay once every time that you actually want to pay something you need to make a call.
+
+With MPP, you could set up as well a stream of payments, right?
+
+Say, "Hey, I want to pay you like every 10 seconds, right?" Or say you want to set up as well alternative payment methods like credit cards and XRO-2 in parallel, right?
+
+So humans can pay it but also agents.
+
+You can do you can use the MPP to orchestrate this.
+
+All right?
+
+And so we also like built an example for this.
+
+It mainly uses the XRO-2 as like the end method but basically sets the let sets like the boiler plate like the framework for you to to start interacting with this, right?
+
+And so all these examples, you will see they have view sample code, and so if you simple simply click here, you are redirected to the recipe hub, and then you have like the the examples here, right?
+
+So if I go to the root folder, you will see all the examples here.
+
+Uh, so yeah, this you can also like give to your cloud agents and yeah, let it play around, like see what you're trying to do, etc.
+
+Uh, but yeah, again, I recommend plugging the MCB that we have, the docs, and then just go through, you know, spend couple of hours on iterating.
+
+Uh, just don't tell him like buy, like build this, but just think through like what are you trying to accomplish.
+
+Uh, think through, you know, the aha moment, the use case that you're trying to do, what's like the happy path for you, ask him if you're missing something, ask him kind of like what are the edge cases, um, that would be like the best way, you know, for you to have like a successful hackathon and like a successful interaction with with Open Fort as well.
+
+Um, and yeah, with this, I'm not forgetting anything else.
+
+So if you have any questions, guys, let me know.
+
+I guess we'll have like a Discord channel there, um, and you'll be able to interact with it directly.
+
+Um, but yeah, this is as much as I wanted to show you.
+
+Obviously, um, from a, you know, from an interaction standpoint, just go to Open Fort, uh, open fort.io, and then we have dashboard section, and just like sign in here, and then whenever you're signing, you'll see all like this beautiful dashboard.
+
+Um, and if you sign via CLI, this will be done automatically, and you just have to prove it, and everything will be created.
+
+But if you sign manually with the email and stuff, you can just go here and get like your project keys and like your back end keys and all that type of stuff.
+
+Um, yeah, that's about it.
+
+Uh, hope you guys enjoy.
+
+If you have any questions, just just let me know.
+
+&gt;&gt; Well, thank you so much.
+
+Big thank you to Joan and the Open 14 for that walk-through.
+
+I'm recognizing a lot of familiar names.
+
+So, I'm going to bore you again with the deadlines and the stuff that we have coming up.
+
+So, but today was about embedded wallets plus X for or two payments.
+
+Very neat.
+
+As I said before, the recording lands on the platform and the YouTube channel if you want to rewind and watch again.
+
+Where we are, you should already have your product created and your team added.
+
+That's the first milestone and be through the mid-hackathon checkpoint.
+
+A key date to remember, do not forget this.
+
+Final submissions are due at midnight, Sunday 19th of July.
+
+That is the hard deadline.
+
+Get it in early.
+
+Don't fight the clock.
+
+Finale and prize-giving, Thursday 30th of July.
+
+Top top teams will be pitching live to the judging panel.
+
+I think I'll be there before Particle Network announces the winners.
+
+And there's one more workshop to come.
+
+That will be on the 22nd of July.
+
+And that's to do with social logins with magic.
+
+So, embedded wallets that feel web two.
+
+Office hours office hours and the team are on Discord if you're stuck.
+
+Keep building.
+
+Ship something that feels good to use.
+
+And that's the whole point of UX max.
+
+See you next session.
+
+Thank you, Joan.
