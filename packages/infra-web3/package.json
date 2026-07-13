@@ -10,14 +10,17 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
+    "spike": "tsx spike/ua-spike.mts",
     "lint": "eslint .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@particle-network/universal-account-sdk": "^2.0.3",
     "@pouch/domain": "workspace:*",
-    "@pouch/shared": "workspace:*"
+    "@pouch/shared": "workspace:*",
+    "ethers": "^6.17.0"
   },
   "devDependencies": {
     "tsx": "^4.20.3"

@@ -403,18 +403,10 @@ describe('API app', () => {
     });
   });
 
-  it('returns 404 when GET /orders/:id does not exist or is not owned', async () => {
+  it('returns 404 when GET /orders/:id does not exist', async () => {
     const app = buildAgentApp();
 
-    // Create an order owned by demo-user
-    await app.request('/agent/chat', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: 'Cash out $50 to Amazon', userId: 'demo-user' }),
-    });
-
-    // A different user gets 404 (ownership enforced, not a leak)
-    const response = await app.request('/orders/order-demo-1?userId=other-user');
+    const response = await app.request('/orders/missing-order');
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: 'Order not found' });

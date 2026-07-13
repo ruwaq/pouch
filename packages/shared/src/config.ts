@@ -46,6 +46,7 @@ export const ConfigSchema = z.object({
   DEMO_USER_BALANCE_USD: z.coerce.number().positive().default(150),
 
   MAGIC_PUBLISHABLE_KEY: z.string().optional(),
+  MAGIC_SECRET_KEY: z.string().optional(),
   PARTICLE_PROJECT_ID: z.string().optional(),
   PARTICLE_CLIENT_KEY: z.string().optional(),
   PARTICLE_APP_ID: z.string().optional(),

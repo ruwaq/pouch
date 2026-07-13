@@ -34,4 +34,9 @@ describe('loadConfig', () => {
     expect(config.GEMINI_API_KEY).toBe('AIza-test-key');
     expect(config.LLM_MODEL).toBe('gemini-2.0-flash');
   });
+
+  it('parses MAGIC_SECRET_KEY when provided', () => {
+    const config = loadConfig({ ...validEnv(), MAGIC_SECRET_KEY: 'sk_test_abc' });
+    expect(config.MAGIC_SECRET_KEY).toBe('sk_test_abc');
+  });
 });

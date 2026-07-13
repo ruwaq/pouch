@@ -71,6 +71,20 @@ pnpm build
 - ✅ `LLM_PROVIDER`/`GEMINI_API_KEY`/`LLM_MODEL` in Zod config
 - ✅ `users` unique partial indexes on `magic_public_key` + `evm_address`
 
+### Phase 1 — Web3 spike + auth (DONE — code complete, 2 manual gates pending)
+- ✅ Raw-key UA spike script (`packages/infra-web3/spike/ua-spike.mts`) — validates Particle UA + 7702 end-to-end
+- ✅ `ParticleAccountProvider` (read-only balance via `getPrimaryAssets`); `factory.ts` particle mode no longer throws
+- ✅ Auth: `MagicAdminLike` → `AuthService` (DID validate → upsert → session JWT via jose)
+- ✅ `createAuthMiddleware` (JWT cookie → ctx.userId/evmAddress; demo fallback for tests/dev)
+- ✅ `/auth/callback` + `/auth/logout` routes
+- ✅ `/balance` + `/orders/:id` read userId/evmAddress from auth context
+- ✅ Transaction-planning endpoints (`POST /transactions/plan/consolidate`, `/plan/payment`) — frontend-driven signing seam
+- ⏭️ **MANUAL GATE 1:** Run the spike (needs ~$1 USDC + Particle creds): `SPIKE_PRIVATE_KEY=0x... pnpm --filter @pouch/infra-web3 spike`
+- ⏭️ **MANUAL GATE 2:** Run DB migration (needs live Postgres): `pnpm db:generate && pnpm db:migrate`
+- ⏭️ Frontend-driven signing (Magic signs rootHash + 7702 auths in browser) — Phase 3
+
+**Architecture decision (research-backed):** Magic signing is browser-only. The server plans UA transactions (`createConvertTransaction`/`createTransferTransaction`) and returns unsigned plans; the browser signs the `rootHash` + 7702 auths via Magic, then `sendTransaction`. See `TransactionPlanner`.
+
 ### Phase 1 — Web3 spike (de-risking, 2 days, real funds $5-10)
 Validate Particle UA + Magic 7702 end-to-end before building on top.
 - Magic login → EOA → EIP-7702 delegation on Base + Arbitrum
@@ -131,8 +145,8 @@ Validate Particle UA + Magic 7702 end-to-end before building on top.
 ```
 Continúa el proyecto Pouch. Lee docs/HANDOFF.md y
 docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md,
-luego escribe el plan detallado de Phase 1 (web3 spike + real Particle UA + auth)
-con writing-plans.
+luego escribe el plan detallado de Phase 2 (LLM layer: infra-ai + Gemini function-calling)
+con writing-plans. Phase 2 can run in parallel with the manual gates of Phase 1.
 ```
 
 ### What's done (don't redo):
