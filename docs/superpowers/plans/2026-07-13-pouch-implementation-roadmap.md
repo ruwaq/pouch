@@ -24,7 +24,7 @@
 | Phase | Name | Status | Plan document | Blocks |
 |-------|------|--------|---------------|--------|
 | **0** | Domain foundation (trace, parser strategy, ownership, bug fixes, config/schema prep) | 🟡 Plan ready | [`2026-07-13-pouch-phase0-domain-foundation.md`](./2026-07-13-pouch-phase0-domain-foundation.md) | Phases 1, 2, 3 |
-| **1** | Web3 spike + real Particle UA provider + auth (DID→JWT) — **real funds $5–10** | ⚪ Stubbed | _(written when Phase 0 done)_ | Phase 3 (needs real balances), bounties |
+| **1** | Web3 spike + real Particle UA provider + auth (DID→JWT) — **real funds $5–10** | 🟢 Code done (2 manual gates pending) | [`2026-07-13-pouch-phase1-web3-spike-and-auth.md`](./2026-07-13-pouch-phase1-web3-spike-and-auth.md) | Phase 3 (needs real balances), bounties |
 | **2** | LLM layer (`infra-ai` + Gemini function-calling, regex fallback) | ⚪ Stubbed | _(written when Phase 0 done; can run parallel to 1)_ | Phase 3 (conversational reply) |
 | **3** | Frontend (chat + inline agent trace + receipt + Magic login) | ⚪ Stubbed | _(written when Phases 1 & 2 done)_ | Demo, bounties |
 | **4** | Bounties polish (ZeroDev SRA deposit page, Openfort gas sponsorship) | ⚪ Stubbed | _(written last)_ | Submission |
@@ -134,6 +134,8 @@
 | ZeroDev pricing risk | Decide at Phase 4 start: credits → SRA, else pivot to Particle deposit address / Openfort-only. |
 | Bitrefill fulfillment | Mock in dev; 1 real ~$1 purchase for final demo only. |
 | Error-path trace surfacing | Success-path trace lands in Phase 0; error-path trace enrichment deferred to Phase 3 (when the frontend makes it visible). |
+| Signing location | **Frontend-driven** (research 2026-07-13: Magic signing is browser-only). Server plans UA txs (`createConvertTransaction`/`createTransferTransaction`) → returns unsigned `rootHash`; browser signs via Magic + `sendTransaction`. Server `AccountProvider.consolidate`/`sendPayment` return typed errors in real mode; demo simulates. |
+| Particle UA testnet | **Unavailable** (program ended Sep 2025; V2 mainnet-only since Jul 2026). Spike uses ~$1 real USDC. Testnet quotes in old docs are stale. |
 
 ---
 
