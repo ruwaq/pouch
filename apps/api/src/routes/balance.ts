@@ -1,13 +1,17 @@
 import { Hono } from 'hono';
 
+import type { AuthEnv } from '../middleware/auth';
 import type { BalanceServiceLike } from '../services/balance-service';
 import { toDomainErrorMessage, toDomainErrorStatus } from './domain-errors';
 
-export function createBalanceRoutes(balanceService: BalanceServiceLike): Hono {
-  const router = new Hono();
+export function createBalanceRoutes(balanceService: BalanceServiceLike): Hono<AuthEnv> {
+  const router = new Hono<AuthEnv>();
 
   router.get('/', async (context) => {
-    const userId = context.req.query('userId')?.trim() || 'demo-user';
+    // Prefer the authenticated EVM address (the real UA owner) from the auth context;
+    // fall back to ?userId= for demo mode / unauthenticated local dev.
+    const evmAddress = context.get('evmAddress');
+    const userId = evmAddress ?? context.req.query('userId')?.trim() ?? 'demo-user';
     const result = await balanceService.getBalance(userId);
 
     if (!result.ok) {
