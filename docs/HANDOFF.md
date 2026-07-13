@@ -63,6 +63,14 @@ pnpm build
 
 ## What needs to be built (next phases)
 
+### Phase 0 — Domain foundation (DONE)
+- ✅ `TraceStep` + `TraceRecorder` in domain; `CashOutExecutor` emits trace; surfaced via `AgentChatResponse.trace`
+- ✅ `IntentParserStrategy` interface (LLM parser injectable in Phase 2)
+- ✅ Gap F fixed: `BitrefillAdapter.verifyWebhook(payload, headers)`
+- ✅ Ownership plumbing: orders carry `userId`; repos + `/orders/:id` filter by it (query param for now; auth middleware in Phase 1)
+- ✅ `LLM_PROVIDER`/`GEMINI_API_KEY`/`LLM_MODEL` in Zod config
+- ✅ `users` unique partial indexes on `magic_public_key` + `evm_address`
+
 ### Phase 1 — Web3 spike (de-risking, 2 days, real funds $5-10)
 Validate Particle UA + Magic 7702 end-to-end before building on top.
 - Magic login → EOA → EIP-7702 delegation on Base + Arbitrum
@@ -122,8 +130,9 @@ Validate Particle UA + Magic 7702 end-to-end before building on top.
 ### First message to send to the agent:
 ```
 Continúa el proyecto Pouch. Lee docs/HANDOFF.md y
-docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md,
-luego crea el plan de implementación con writing-plans.
+docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md,
+luego escribe el plan detallado de Phase 1 (web3 spike + real Particle UA + auth)
+con writing-plans.
 ```
 
 ### What's done (don't redo):
