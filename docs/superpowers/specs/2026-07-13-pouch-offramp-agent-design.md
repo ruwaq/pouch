@@ -84,6 +84,7 @@ No web3 SDK is in any `package.json`. Need to add (pinned versions from Particle
 - `@openfort/openfort-node@^0.10.8` — agent wallet + gas sponsorship (policy)
 - `@zerodev/smart-routing-address@^0.2.5` — Smart Routing Address (SRA)
 - `jose` — JWT verification (Magic DID token → our JWT)
+- `@google/genai` — Gemini SDK for LLM intent parsing + conversational responses (function calling + structured output)
 
 ### Gap B — Particle UA provider is a stub
 
@@ -139,10 +140,10 @@ Next.js 15 + React 19 scaffold exists, but no Tailwind, no client components, no
                          │
 ┌────────────────────────▼────────────────────────────────┐
 │  Infra layer                                            │
-│  infra-web3/        infra-offramp/   infra-db/           │
-│  - particle/UA      - bitrefill       - Drizzle repos    │
-│  - magic/wallet     - (registry)      - schema           │
-│  - openfort/agent                                       │
+│  infra-web3/        infra-offramp/   infra-db/  infra-ai/│
+│  - particle/UA      - bitrefill       - Drizzle  - gemini│
+│  - magic/wallet     - (registry)        repos    - LLM   │
+│  - openfort/agent                     - schema  parser  │
 │  - zerodev/sra                                          │
 └─────────────────────────────────────────────────────────┘
 ```
@@ -244,7 +245,100 @@ Today `userId` comes from body/query (defaults to `'demo-user'`). No session, no
 
 ---
 
-## 7. Frontend design
+## 7. Agent intelligence (LLM layer)
+
+### Why an LLM layer
+
+The current `IntentParser` (`packages/domain/src/intent-parser.ts`) is pure regex/keywords. It understands rigid patterns like *"cash out $50 to Amazon"* but fails on natural language: *"tengo SOL que no uso, conviértelo en algo de Steam"* would fail. For a product pitched as *"Talk to your money"*, a regex-only "agent" is a form with a chat skin — judges will notice.
+
+The LLM layer upgrades Pouch to a **genuine agent**: it understands free-form natural language, decides what action to take (function calling), and responds conversationally.
+
+### Design: LLM with regex fallback (robustness first)
+
+The agent **always works**, with or without an LLM API key configured:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ apps/api/src/services/agent-chat-service.ts              │
+│                                                           │
+│  1. intentParser.parse(message)                          │
+│     ├─ if LLM_PROVIDER configured → LlmIntentParser      │
+│     │   (function calling: LLM returns structured intent  │
+│     │    OR "off_topic" if not cash-out related)          │
+│     └─ else → RegexIntentParser (existing, always works) │
+│                                                           │
+│  2. executor.execute(intent, userId)  ← domain pure      │
+│                                                           │
+│  3. responseBuilder.build(executionResult)                │
+│     ├─ if LLM → conversational reply ("Done! I found..." │
+│     │   "consolidated your funds and grabbed a Steam...") │
+│     └─ else → template reply (existing)                  │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Fallback chain:** if `LLM_PROVIDER` is not set → regex only. If LLM is set but the API call fails/times out → catch → fall back to regex. The demo never breaks because of the LLM.
+
+### Architecture: domain isolation preserved
+
+The domain layer stays pure (no SDKs). The LLM implementation lives in a new `infra-ai` package:
+
+```
+packages/infra-ai/src/
+├── llm-provider.ts        (interface: LLMProvider)
+├── gemini-provider.ts     (implementation: @google/genai + function calling)
+├── llm-intent-parser.ts   (implements IntentParserStrategy from domain,
+│                           delegates to LLMProvider)
+└── index.ts               (factory: createLlmProvider(config))
+```
+
+The domain defines the strategy interface; infra-ai implements it. The `agent-chat-service` (in apps/api) receives the parser via dependency injection — same pattern already used for `AccountProvider` and `OffRampProvider`.
+
+### Function calling contract
+
+Gemini's function calling (confirmed supported via `@google/genai` SDK) lets the LLM decide which action to take. We declare these functions:
+
+| Function | When the LLM calls it | Maps to domain |
+|----------|----------------------|----------------|
+| `cash_out` | User wants to convert crypto to a gift card / top-up / eSIM | `CashOutIntent { action: 'cash_out', category, brand?, amount }` |
+| `check_balance` | User asks "how much do I have?" | Triggers balance read (no executor) |
+| `search_products` | User browses "what can I get for $20?" | Triggers product search, no purchase |
+| `off_topic` | User says "hola" or something unrelated | Agent responds conversationally, no action |
+
+The LLM returns the structured intent. If it returns `cash_out`, the existing `CashOutExecutor` handles it unchanged. The domain executor is LLM-agnostic.
+
+### Provider configuration (user/admin supplies their own key)
+
+```bash
+# .env — admin configures which LLM to use
+LLM_PROVIDER=gemini           # "gemini" | (empty = regex only)
+GEMINI_API_KEY=AIza...        # admin's own API key
+LLM_MODEL=gemini-2.0-flash    # model override (default: gemini-2.0-flash)
+```
+
+**Gemini chosen for development** because of its generous free tier (good for iterative testing without cost). The `LLMProvider` interface is provider-agnostic — adding OpenAI or Anthropic later is one new file, no domain changes.
+
+### System prompt
+
+The LLM receives a system prompt that defines Pouch's role and constraints:
+
+```
+You are Pouch, an AI agent that converts the user's crypto into real-world value
+(gift cards, mobile top-ups, eSIM). You understand the user's intent from natural
+language and call the appropriate function. You never expose wallet addresses,
+chain IDs, gas, or signing details to the user. You are concise and friendly.
+If the user's request is not about cashing out or checking balance, respond
+conversationally and gently steer back to what you can do.
+```
+
+### What the LLM does NOT do
+
+- **It does not execute transactions.** Function calling returns an intent; the domain executor (deterministic, tested) handles the actual flow. The LLM is a parser + conversational layer, not the executor.
+- **It does not see private keys or wallet internals.** It only sees the user's message and returns a structured intent.
+- **It is not required for the demo to work.** Regex fallback guarantees the core flow always functions.
+
+---
+
+## 8. Frontend design
 
 ### Philosophy: demo técnica transparente, not producto comercial
 
@@ -475,7 +569,8 @@ The API response shape (`AgentChatResponse`) is extended to include `trace: Trac
 
 ### Unit tests (Vitest, milliseconds)
 
-- `packages/domain/` — IntentParser, OffRampRouter, CashOutExecutor with mock providers. **Already exists.** Extend with trace-step assertions.
+- `packages/domain/` — IntentParser (regex), OffRampRouter, CashOutExecutor with mock providers. **Already exists.** Extend with trace-step assertions.
+- `packages/infra-ai/` — LLM intent parser with mocked `LLMProvider` (no real API calls in tests). Assert structured intent output + fallback behavior when LLM "fails".
 - `apps/api/src/services/` — service layer with injected in-memory repositories. **Pattern already established** in `app.test.ts`.
 
 ### Integration tests (Vitest, mock external calls)
@@ -526,7 +621,7 @@ The API response shape (`AgentChatResponse`) is extended to include `trace: Trac
 - x402 / EIP-3009 payment protocol (cut — confirmed bug in UA 7702)
 - ZeroDev session keys (cut — complexity, blind signatures cover the narrative)
 - Mobile native app (web-only, per DevRel guidance "prefer something we can run out of the box")
-- AI model beyond keyword/regex intent parser (stretch — current IntentParser is keyword-based; LLM integration is Phase 5 polish if time allows)
+- AI model beyond keyword/regex intent parser (covered — LLM layer with Gemini + regex fallback is now in scope, see section 7)
 - Production deployment hardening (rate limiting, observability beyond basic logging — Phase 5)
 
 ---
