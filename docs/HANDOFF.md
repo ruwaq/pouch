@@ -114,3 +114,38 @@ Validate Particle UA + Magic 7702 end-to-end before building on top.
 - Particle UA is mainnet-only. The spike uses real funds. DemoAccountProvider stays for tests.
 - SDK version (DevRel-confirmed): `@particle-network/universal-account-sdk@^2.0.0-beta.3`
 - ethers v6 mandatory (v5 lacks `authorizeSync` for 7702)
+
+---
+
+## ▶️ How to resume the next session
+
+### First message to send to the agent:
+```
+Continúa el proyecto Pouch. Lee docs/HANDOFF.md y
+docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md,
+luego crea el plan de implementación con writing-plans.
+```
+
+### What's done (don't redo):
+- ✅ Design spec complete and committed (`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md`)
+- ✅ All docs synced with confirmed direction (AGENTS, README, ARCHITECTURE, HACKATHON_INTEL, PROVIDERS, HANDOFF, .env.example)
+- ✅ Backend foundation: domain (router/executor/intent-parser), Bitrefill adapter, Drizzle repos, API routes
+- ✅ Competitive research: 23 projects analyzed, off-ramp = 0 competitors
+
+### What's next (the ONLY thing to do):
+1. **Invoke `writing-plans` skill** to create the day-by-day implementation plan
+2. The plan must sequence: web3 spike (2 days, real funds) → auth → LLM layer → frontend → bounties
+3. Resolve the ZeroDev SRA pricing risk (ask for hackathon credits or pivot to Openfort)
+4. After plan approval, start implementation
+
+### Open decisions for the plan to resolve:
+- ZeroDev SRA: try credits first, fallback to Particle deposit address or Openfort-only
+- Bitrefill: mock fulfillment for dev, 1 real ~$1 purchase for final demo
+- Hosting: Vercel (frontend) + Render/Vercel serverless (backend) + Supabase (DB), all $0
+
+### Verification before starting implementation:
+```bash
+pnpm typecheck   # should pass
+pnpm test        # should pass
+pnpm build       # should pass
+```
