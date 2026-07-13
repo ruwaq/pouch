@@ -1,6 +1,6 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-13
+Last updated: 2026-07-14
 
 ## Strategic direction — CONFIRMED
 
@@ -32,76 +32,77 @@ Full design spec: [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design
 
 The workspace currently passes:
 ```bash
-pnpm typecheck
-pnpm test
-pnpm build
+pnpm typecheck   # 7/7 packages
+pnpm test        # 56 tests passing
+pnpm build       # 7/7 packages
 ```
 
-## Implemented backend surface
+## Implemented API surface
 
-- `POST /agent/chat`
-- `GET /balance`
-- `GET /orders/:id`
-- `POST /webhooks/bitrefill`
+- `POST /agent/chat` — conversational cash-out (returns trace)
+- `GET /balance` — unified balance (auth context or demo fallback)
+- `GET /orders/:id` — order detail (ownership-filtered by userId)
+- `POST /webhooks/bitrefill` — idempotent webhook (Gap F fixed: 2-arg verifyWebhook)
+- `POST /auth/callback` — Magic DID → JWT cookie (Phase 1)
+- `POST /auth/logout` — clear session cookie (Phase 1)
+- `POST /transactions/plan/consolidate` — plan UA consolidation, return unsigned rootHash (Phase 1)
+- `POST /transactions/plan/payment` — plan UA payment, return unsigned rootHash (Phase 1)
 
 ## What is real vs demo
 
 ### Real / production-shaped
 - Monorepo + package boundaries (hexagonal, domain isolation)
-- Domain router / executor / typed errors / intent parser (regex-based)
+- Domain: router / executor (emits trace steps) / typed errors / IntentParser + IntentParserStrategy
 - Bitrefill adapter with quote pricing, canonical package_id, webhook verification, redemption fetch
-- Drizzle-backed repositories (orders + webhook events)
+- Drizzle-backed repositories (orders + webhook events + users)
 - Runtime bootstrap with env-driven provider loading and fail-fast
+- `ParticleAccountProvider` — real read-only balance via UA SDK `getPrimaryAssets()` (Phase 1)
+- Auth: `@magic-sdk/admin` DID verification → `jose` JWT cookie (Phase 1)
+- Transaction planner: `TransactionPlanner` plans UA txs, returns unsigned plans for browser signing (Phase 1)
+- Initial Drizzle migration generated (`packages/infra-db/drizzle/0000_*.sql`)
 
-### Demo / temporary
-- `infra-web3` uses `WEB3_PROVIDER_MODE=demo` (Particle stub throws)
-- No real Particle UA, Magic auth, JWT middleware, or real transfer execution
-- Intent parser is regex-only (LLM layer designed but not implemented)
-- Frontend is a static landing page, not a connected chat UI
+### Demo / temporary (until manual gates run)
+- `infra-web3` defaults to `WEB3_PROVIDER_MODE=demo` — `DemoAccountProvider` simulates balances/payments
+- Auth middleware has `allowDemoFallback: true` in demo mode (no cookie → `demo-user`); production enforces 401
+- Intent parser is regex-only (LLM layer designed but not implemented — Phase 2)
+- Frontend is a static landing page, not a connected chat UI (Phase 3)
+- The spike script (`packages/infra-web3/spike/ua-spike.mts`) is written but NOT yet run against real funds
 
 ---
 
-## What needs to be built (next phases)
+## Phase status
 
 ### Phase 0 — Domain foundation (DONE)
 - ✅ `TraceStep` + `TraceRecorder` in domain; `CashOutExecutor` emits trace; surfaced via `AgentChatResponse.trace`
 - ✅ `IntentParserStrategy` interface (LLM parser injectable in Phase 2)
 - ✅ Gap F fixed: `BitrefillAdapter.verifyWebhook(payload, headers)`
-- ✅ Ownership plumbing: orders carry `userId`; repos + `/orders/:id` filter by it (query param for now; auth middleware in Phase 1)
+- ✅ Ownership plumbing: orders carry `userId`; repos + `/orders/:id` filter by it
 - ✅ `LLM_PROVIDER`/`GEMINI_API_KEY`/`LLM_MODEL` in Zod config
-- ✅ `users` unique partial indexes on `magic_public_key` + `evm_address`
+- ✅ `users` unique indexes on `magic_public_key` + `evm_address`
 
 ### Phase 1 — Web3 spike + auth (DONE — code complete, 2 manual gates pending)
 - ✅ Raw-key UA spike script (`packages/infra-web3/spike/ua-spike.mts`) — validates Particle UA + 7702 end-to-end
 - ✅ `ParticleAccountProvider` (read-only balance via `getPrimaryAssets`); `factory.ts` particle mode no longer throws
 - ✅ Auth: `MagicAdminLike` → `AuthService` (DID validate → upsert → session JWT via jose)
 - ✅ `createAuthMiddleware` (JWT cookie → ctx.userId/evmAddress; demo fallback for tests/dev)
-- ✅ `/auth/callback` + `/auth/logout` routes
-- ✅ `/balance` + `/orders/:id` read userId/evmAddress from auth context
-- ✅ Transaction-planning endpoints (`POST /transactions/plan/consolidate`, `/plan/payment`) — frontend-driven signing seam
+- ✅ `/auth/callback` + `/auth/logout` + `/transactions/plan/*` routes
 - ⏭️ **MANUAL GATE 1:** Run the spike (needs ~$1 USDC + Particle creds): `SPIKE_PRIVATE_KEY=0x... pnpm --filter @pouch/infra-web3 spike`
-- ⏭️ **MANUAL GATE 2:** Run DB migration (needs live Postgres): `pnpm db:generate && pnpm db:migrate`
+- ⏭️ **MANUAL GATE 2:** Apply DB migration (needs live Postgres): `pnpm db:migrate`
 - ⏭️ Frontend-driven signing (Magic signs rootHash + 7702 auths in browser) — Phase 3
 
-**Architecture decision (research-backed):** Magic signing is browser-only. The server plans UA transactions (`createConvertTransaction`/`createTransferTransaction`) and returns unsigned plans; the browser signs the `rootHash` + 7702 auths via Magic, then `sendTransaction`. See `TransactionPlanner`.
+**Architecture decision (research-backed, 2026-07-13):** Magic signing is browser-only. The server plans UA transactions (`createConvertTransaction`/`createTransferTransaction`) and returns unsigned plans; the browser signs the `rootHash` + 7702 auths via Magic, then `sendTransaction`. The server-side `AccountProvider.consolidate`/`sendPayment` return typed errors in real Particle mode (they cannot sign); `DemoAccountProvider` simulates them for tests/dev.
 
-### Phase 1 — Web3 spike (de-risking, 2 days, real funds $5-10)
-Validate Particle UA + Magic 7702 end-to-end before building on top.
-- Magic login → EOA → EIP-7702 delegation on Base + Arbitrum
-- `getPrimaryAssets()` → unified balance
-- `createConvertTransaction()` → cross-chain consolidation
-- Reference: `github.com/Particle-Network/ua-7702-magic-demo`
+**Particle UA testnet:** Unavailable. The incentivized testnet ended Sep 2025; UA V2 (launched Jul 2026) is mainnet-only. The spike uses ~$1 real USDC. SDK version: `@particle-network/universal-account-sdk@^2.0.3` (NOT beta — verified).
 
-### Phase 2 — Auth + Web3 wiring
-- `infra-web3/particle/universal-account.ts` — real AccountProvider
-- `infra-web3/chains.ts` — chain config from env
-- `api/middleware/auth.ts` — Magic DID → JWT (jose) → ctx.userId
-- `api/routes/auth.ts` — login callback, issue JWT cookie
-
-### Phase 3 — LLM layer + frontend
+### Phase 2 — LLM layer (NEXT)
 - `packages/infra-ai/` — LLMProvider interface + Gemini implementation
 - LLM intent parser with regex fallback (demo always works)
-- Frontend: chat + inline agent trace + receipt card + zero-popup counter
+- Can run in parallel with the Phase 1 manual gates — only depends on Phase 0's `IntentParserStrategy`
+
+### Phase 3 — Frontend
+- Magic login + embedded wallet + `sign7702Authorization` (browser signing)
+- Chat + inline agent trace + receipt card + zero-popup counter
+- Uses `/transactions/plan/*` to get unsigned plans, signs via Magic, calls `sendTransaction`
 
 ### Phase 4 — Bounties
 - ZeroDev SRA deposit page (⚠️ check free tier / credits first)
@@ -111,31 +112,42 @@ Validate Particle UA + Magic 7702 end-to-end before building on top.
 
 ## Key files to continue from
 
-### Design spec (read this first)
-- `docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md`
+### Plans & specs (read first)
+- `docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md` — design spec
+- `docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md` — phase index
+- `docs/superpowers/plans/2026-07-13-pouch-phase0-domain-foundation.md` — Phase 0 (done)
+- `docs/superpowers/plans/2026-07-13-pouch-phase1-web3-spike-and-auth.md` — Phase 1 (done)
 
 ### Runtime composition
 - `apps/api/src/bootstrap/create-runtime-app-services.ts`
 - `apps/api/src/app.ts`
 
 ### Domain (pure, tested, DO NOT rebuild)
-- `packages/domain/src/types.ts` — AccountProvider, OffRampProvider interfaces
-- `packages/domain/src/executor.ts` — CashOutExecutor
-- `packages/domain/src/router.ts` — OffRampRouter
-- `packages/domain/src/intent-parser.ts` — regex IntentParser (LLM wraps this)
+- `packages/domain/src/types.ts` — AccountProvider, OffRampProvider, TraceStep, IntentParserStrategy
+- `packages/domain/src/executor.ts` — CashOutExecutor (emits trace)
+- `packages/domain/src/trace.ts` — TraceStep + TraceRecorder
+- `packages/domain/src/intent-parser.ts` — regex IntentParser (implements IntentParserStrategy)
 
-### Infra (partially implemented)
+### Infra (real implementations)
+- `packages/infra-web3/src/particle/universal-account.ts` — ParticleAccountProvider (read-only balance)
+- `packages/infra-web3/src/particle/ua-assets-mapper.ts` — UA → domain Balance mapper
+- `packages/infra-web3/src/factory.ts` — AccountProvider DI (demo + particle modes)
+- `packages/infra-web3/spike/ua-spike.mts` — raw-key spike script (MANUAL GATE: run with funds)
 - `packages/infra-offramp/src/bitrefill/*` — complete adapter
-- `packages/infra-db/src/repositories/*` — Drizzle repos
-- `packages/infra-web3/src/factory.ts` — AccountProvider DI seam (particle case throws)
+- `packages/infra-db/src/repositories/*` — Drizzle repos (orders + webhook events + users)
+
+### API (Hono)
+- `apps/api/src/middleware/auth.ts` — JWT cookie → ctx (demo fallback)
+- `apps/api/src/services/auth-service.ts` — DID → JWT
+- `apps/api/src/services/transaction-planner.ts` — UA tx planning (frontend signing seam)
+- `apps/api/src/routes/` — all route definitions
 
 ## Notes for the next session
-- The design spec is the single source of truth for what to build.
-- If moving from demo to real web3, do it through `createAccountProvider(config)` (the factory).
-- The LLM layer goes in a new `packages/infra-ai/` — domain defines the interface, infra implements.
-- Particle UA is mainnet-only. The spike uses real funds. DemoAccountProvider stays for tests.
-- SDK version (DevRel-confirmed): `@particle-network/universal-account-sdk@^2.0.0-beta.3`
-- ethers v6 mandatory (v5 lacks `authorizeSync` for 7702)
+- The design spec + roadmap are the source of truth for what to build.
+- The LLM layer goes in a new `packages/infra-ai/` — domain defines `IntentParserStrategy`, infra implements it.
+- Particle UA is mainnet-only. The spike uses real funds (~$1). DemoAccountProvider stays for tests.
+- SDK versions (npm-verified 2026-07-13): `@particle-network/universal-account-sdk@^2.0.3`, `ethers@^6.17.0`, `@magic-sdk/admin@^2.8.2`, `jose@^6.2.3`
+- The SDK's `package.json` has a broken `exports` field (no `types` condition). Worked around via `paths` overrides in `infra-web3/tsconfig.json` + `api/tsconfig.json`.
 
 ---
 
@@ -150,25 +162,22 @@ con writing-plans. Phase 2 can run in parallel with the manual gates of Phase 1.
 ```
 
 ### What's done (don't redo):
-- ✅ Design spec complete and committed (`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md`)
-- ✅ All docs synced with confirmed direction (AGENTS, README, ARCHITECTURE, HACKATHON_INTEL, PROVIDERS, HANDOFF, .env.example)
-- ✅ Backend foundation: domain (router/executor/intent-parser), Bitrefill adapter, Drizzle repos, API routes
-- ✅ Competitive research: 23 projects analyzed, off-ramp = 0 competitors
+- ✅ Design spec + competitive research + all docs
+- ✅ Phase 0: domain foundation (trace, parser strategy, ownership, Gap F, config)
+- ✅ Phase 1: web3 spike script + real Particle provider + full auth + transaction planner
+- ✅ Initial Drizzle migration generated
 
-### What's next (the ONLY thing to do):
-1. **Invoke `writing-plans` skill** to create the day-by-day implementation plan
-2. The plan must sequence: web3 spike (2 days, real funds) → auth → LLM layer → frontend → bounties
-3. Resolve the ZeroDev SRA pricing risk (ask for hackathon credits or pivot to Openfort)
-4. After plan approval, start implementation
+### Manual gates still pending (user-run, not agent):
+1. **Spike:** `SPIKE_PRIVATE_KEY=0x... pnpm --filter @pouch/infra-web3 spike` (~$1 USDC, validates UA + 7702)
+2. **DB migration:** `pnpm db:migrate` (needs live Postgres)
 
-### Open decisions for the plan to resolve:
-- ZeroDev SRA: try credits first, fallback to Particle deposit address or Openfort-only
+### Open decisions (resolve when reached):
+- ZeroDev SRA: try credits first, fallback to Particle deposit address or Openfort-only (Phase 4)
 - Bitrefill: mock fulfillment for dev, 1 real ~$1 purchase for final demo
-- Hosting: Vercel (frontend) + Render/Vercel serverless (backend) + Supabase (DB), all $0
 
 ### Verification before starting implementation:
 ```bash
-pnpm typecheck   # should pass
-pnpm test        # should pass
-pnpm build       # should pass
+pnpm typecheck   # should pass (7/7)
+pnpm test        # should pass (56 tests)
+pnpm build       # should pass (7/7)
 ```

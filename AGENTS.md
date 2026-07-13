@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-10. Project status: **Phase 0 — Foundation (in progress)**.
+> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending); Phase 2 — LLM layer (next)**.
 
 ---
 
@@ -65,7 +65,7 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 
 ### SDK dependencies (verified versions)
 - `magic-sdk` + `@magic-ext/evm` — embedded wallet, blind signatures, EIP-7702 sign
-- `@particle-network/universal-account-sdk@^2.0.0-beta.3` — Universal Account, EIP-7702 (DevRel-confirmed version)
+- `@particle-network/universal-account-sdk@^2.0.3` — Universal Account, EIP-7702 (npm-verified stable; NOT beta)
 - `ethers@^6.16.0` — **v6 mandatory** (v5 lacks `authorizeSync` / `hashAuthorization` for 7702)
 - `@openfort/openfort-node@^0.10.8` — agent wallet + gas sponsorship (policy)
 - `@zerodev/smart-routing-address@^0.2.5` — Smart Routing Address (SRA) ⚠️ no free tier
@@ -196,24 +196,27 @@ pnpm build                  # Build all packages
 
 ## Current phase & status
 
-**Design spec approved. Implementation plan pending.**
+**Phase 0 + Phase 1 code complete. Phase 2 (LLM) is next. 2 manual gates pending (user-run).**
 - [x] Git repo initialized
 - [x] Documentation created (AGENTS.md, ARCHITECTURE.md, HACKATHON_INTEL.md, PROVIDERS.md)
 - [x] Turborepo monorepo + 7 packages scaffolded
-- [x] shared/config.ts (Zod validation)
-- [x] Drizzle schema implemented (migration still pending)
-- [x] API routes implemented: `/agent/chat`, `/balance`, `/orders/:id`, `/webhooks/bitrefill`
-- [x] Bitrefill adapter implemented with quote/package/webhook hardening
-- [x] Drizzle repositories implemented for orders + webhook events
-- [x] Runtime bootstrap supports configured mode and safe demo fallback
+- [x] shared/config.ts (Zod validation, incl. LLM_* + MAGIC_SECRET_KEY)
+- [x] Drizzle schema + initial migration generated (`packages/infra-db/drizzle/`)
+- [x] API routes: `/agent/chat`, `/balance`, `/orders/:id`, `/webhooks/bitrefill`, `/auth/*`, `/transactions/plan/*`
+- [x] Bitrefill adapter (quote/package/webhook hardening, Gap F fixed)
+- [x] Drizzle repositories (orders + webhook events + users)
+- [x] Runtime bootstrap (configured mode + demo fallback)
+- [x] **Phase 0** — domain foundation: TraceStep/TraceRecorder, CashOutExecutor emits trace, IntentParserStrategy, ownership plumbing, Gap F fix
+- [x] **Phase 1** — web3: real ParticleAccountProvider (read-only balance), full auth (Magic DID → JWT), transaction planner (frontend-driven signing seam), raw-key spike script
 - [x] **Design spec** — [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md`](./docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md)
 - [x] **Competitive research** — 23 projects analyzed, off-ramp = 0 competitors (blue ocean)
-- [ ] Real Particle/Magic auth and chain abstraction (Phase 1: web3 spike)
-- [ ] LLM layer (Gemini + regex fallback)
-- [ ] Frontend chat/balance/order UI
+- [ ] **MANUAL GATE 1:** Run the UA spike (`pnpm --filter @pouch/infra-web3 spike`, ~$1 real USDC)
+- [ ] **MANUAL GATE 2:** Apply DB migration (`pnpm db:migrate`, needs Postgres)
+- [ ] LLM layer — Phase 2 (next; runs in parallel with manual gates)
+- [ ] Frontend chat/balance/order UI — Phase 3
 - [ ] CI lint step
 
-See [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md`](./docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md) for the full design.
+See [`docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md`](./docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md) for the phase index.
 See [`docs/HANDOFF.md`](./docs/HANDOFF.md) for the current snapshot and next steps.
 
 ---
