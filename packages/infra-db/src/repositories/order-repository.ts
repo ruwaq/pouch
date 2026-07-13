@@ -17,6 +17,7 @@ export function mapOrderToRow(order: Order): OrderInsertRow {
   return {
     id: order.id,
     providerId: order.providerId,
+    ...(order.userId ? { userId: order.userId } : {}),
     ...(order.providerOrderId ? { providerOrderId: order.providerOrderId } : {}),
     category: order.product.category,
     product: order.product,
@@ -78,8 +79,10 @@ export class DrizzleOrderRepository implements OrderRepository {
     await this.db.insert(orders).values(mapOrderToRow(order));
   }
 
-  async findById(id: string): Promise<Order | null> {
-    const [row] = await this.db.select().from(orders).where(eq(orders.id, id)).limit(1);
+  async findById(id: string, userId?: Order['userId']): Promise<Order | null> {
+    const [row] = userId
+      ? await this.db.select().from(orders).where(and(eq(orders.id, id), eq(orders.userId, userId))).limit(1)
+      : await this.db.select().from(orders).where(eq(orders.id, id)).limit(1);
 
     return row ? mapRowToOrder(row) : null;
   }

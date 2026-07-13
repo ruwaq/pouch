@@ -7,8 +7,18 @@ export class MemoryOrderRepository implements OrderRepository {
     this.orders.set(order.id, order);
   }
 
-  async findById(id: string): Promise<Order | null> {
-    return this.orders.get(id) ?? null;
+  async findById(id: string, userId?: string): Promise<Order | null> {
+    const order = this.orders.get(id) ?? null;
+
+    if (!order) {
+      return null;
+    }
+
+    if (userId && order.userId && order.userId !== userId) {
+      return null;
+    }
+
+    return order;
   }
 
   async findByProviderOrderId(providerId: string, providerOrderId: string): Promise<Order | null> {

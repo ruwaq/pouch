@@ -149,7 +149,7 @@ export interface AccountProvider {
 
 export interface OrderRepository {
   save(order: Order): Promise<void>;
-  findById(id: string): Promise<Order | null>;
+  findById(id: string, userId?: UserId): Promise<Order | null>;
   findByProviderOrderId(providerId: string, providerOrderId: string): Promise<Order | null>;
   updateStatus(id: string, status: OrderStatus, updates?: Partial<Order>): Promise<void>;
 }
