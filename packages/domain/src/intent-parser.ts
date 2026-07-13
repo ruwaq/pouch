@@ -54,7 +54,11 @@ function normalizeBrand(rawBrand: string | undefined): string | undefined {
     .toLowerCase() || undefined;
 }
 
-export class IntentParser {
+export interface IntentParserStrategy {
+  parse(message: string): Result<CashOutIntent, DomainError>;
+}
+
+export class IntentParser implements IntentParserStrategy {
   parse(message: string): Result<CashOutIntent, DomainError> {
     if (!SUPPORTED_ACTION_PATTERN.test(message)) {
       return err({

@@ -43,6 +43,7 @@ class DemoProvider implements OffRampProvider {
       id: `demo-order-${request.idempotencyKey}`,
       providerOrderId: `provider-${request.idempotencyKey}`,
       providerId: this.id,
+      ...(request.userId ? { userId: request.userId } : {}),
       product: {
         id: request.productId,
         providerId: this.id,

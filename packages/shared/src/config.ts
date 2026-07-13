@@ -54,6 +54,10 @@ export const ConfigSchema = z.object({
   OPENFORT_FEE_SPONSORSHIP_ID: z.string().optional(),
   ZERODEV_PROJECT_ID: z.string().optional(),
 
+  LLM_PROVIDER: z.enum(['gemini']).optional(),
+  GEMINI_API_KEY: z.string().optional(),
+  LLM_MODEL: z.string().optional(),
+
   DATABASE_URL: z.string().url(),
 
   JWT_SECRET: z.string().min(32),

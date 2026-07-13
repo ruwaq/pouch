@@ -7,7 +7,10 @@ export const users = pgTable('users', {
   email: text('email'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-});
+}, (table) => ({
+  usersMagicPublicKeyIdx: uniqueIndex('users_magic_public_key_idx').on(table.magicPublicKey),
+  usersEvmAddressIdx: uniqueIndex('users_evm_address_idx').on(table.evmAddress),
+}));
 
 export const orders = pgTable('orders', {
   id: uuid('id').defaultRandom().primaryKey(),

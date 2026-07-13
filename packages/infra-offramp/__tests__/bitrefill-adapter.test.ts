@@ -271,12 +271,15 @@ describe('BitrefillAdapter', () => {
       paymentMethod: 'usdc_arbitrum',
     });
 
-    const result = await adapter.verifyWebhook({
-      data: {
-        id: 'invoice-verified',
-        status: 'denied',
+    const result = await adapter.verifyWebhook(
+      {
+        data: {
+          id: 'invoice-verified',
+          status: 'denied',
+        },
       },
-    });
+      { 'x-bitrefill-signature': 'sha256=fake', 'content-type': 'application/json' },
+    );
 
     expect(invoiceLookups).toEqual(['invoice-verified']);
     expect(orderLookups).toEqual(['order-verified']);

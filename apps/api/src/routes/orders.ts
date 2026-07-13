@@ -7,7 +7,9 @@ export function createOrderRoutes(orderService: OrderServiceLike): Hono {
 
   router.get('/:id', async (context) => {
     const orderId = context.req.param('id');
-    const order = await orderService.getOrder(orderId);
+    const userId = context.req.query('userId');
+
+    const order = await orderService.getOrder(orderId, userId);
 
     if (!order) {
       context.status(404);

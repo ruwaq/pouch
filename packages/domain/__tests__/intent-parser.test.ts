@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { IntentParser } from '../src/intent-parser';
+import type { IntentParserStrategy } from '../src/intent-parser';
 
 describe('IntentParser', () => {
   it('parses a gift card cash-out request from natural language', () => {
@@ -57,5 +58,13 @@ describe('IntentParser', () => {
       type: 'UNSUPPORTED_INTENT',
       message: 'Only cash-out purchase requests are supported right now.',
     });
+  });
+});
+
+describe('IntentParserStrategy', () => {
+  it('is implemented by IntentParser so it can be substituted by an LLM parser', () => {
+    const parser: IntentParserStrategy = new IntentParser();
+
+    expect(typeof parser.parse).toBe('function');
   });
 });
