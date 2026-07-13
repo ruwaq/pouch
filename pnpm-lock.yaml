@@ -29,6 +29,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.14.4
         version: 1.19.14(hono@4.12.29)
+      '@magic-sdk/admin':
+        specifier: ^2.8.2
+        version: 2.8.2
       '@pouch/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -47,6 +50,9 @@ importers:
       hono:
         specifier: ^4.9.1
         version: 4.12.29
+      jose:
+        specifier: ^6.2.3
+        version: 6.2.3
     devDependencies:
       tsx:
         specifier: ^4.20.3
@@ -842,6 +848,10 @@ packages:
   '@jridgewell/sourcemap-codec@1.5.5':
     resolution: {integrity: sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og==}
 
+  '@magic-sdk/admin@2.8.2':
+    resolution: {integrity: sha512-7SUkdLJDLprnGfJAu1je6m+VtWe8itptVMdGCd1wMg6mPZEl2h7i0kIznoCzQSQFsPHzsb7D5ldwkTDtZTPd6A==}
+    engines: {node: '>=18.0.0'}
+
   '@next/env@15.5.20':
     resolution: {integrity: sha512-dXh51Wvddf8daEyBXryZZEe1FdVxEWx9lgaTseLZUtC1XP/W8Wri+Z+VPOElHlByk23CyqHdc2oVByX7wsTWsw==}
 
@@ -899,6 +909,10 @@ packages:
 
   '@noble/curves@1.2.0':
     resolution: {integrity: sha512-oYclrNgRaM9SsBUBVbb8M6DTV7ZHRTKugureoYEncY5c65HOmRzvSiTE3y5CYaPYJA/GVkrhXEoF0M3Ya9PMnw==}
+
+  '@noble/curves@1.9.0':
+    resolution: {integrity: sha512-7YDlXiNMdO1YZeH6t/kvopHHbIZzlxrCV9WLqCY6QhcXOoXiNCMDqJIglZ9Yjx5+w7Dz30TITFrlTjnRg7sKEg==}
+    engines: {node: ^14.21.3 || >=16}
 
   '@noble/curves@1.9.1':
     resolution: {integrity: sha512-k11yZxZg+t+gWvBbIswW0yoJlu8cHOC7dhunwOzoWH/mXGBiYyR4YY6hAEK/3EUs4UpB8la1RfdRpeGsFHkWsA==}
@@ -1654,6 +1668,10 @@ packages:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
 
+  ethereum-cryptography@3.2.0:
+    resolution: {integrity: sha512-Urr5YVsalH+Jo0sYkTkv1MyI9bLYZwW8BENZCeE1QYaTHETEYx0Nv/SVsWkSqpYrzweg6d8KMY1wTjH/1m/BIg==}
+    engines: {node: ^14.21.3 || >=16, npm: '>=9'}
+
   ethers@6.17.0:
     resolution: {integrity: sha512-BpyrpIPJ3ydEVow8zGaz1DuPS7YU8DcWxuBnY9a0UA/lvAPwrMr+EPXsfrul628SRaekPNeIM4UFh/91GWZang==}
     engines: {node: '>=14.0.0'}
@@ -1828,6 +1846,9 @@ packages:
     resolution: {integrity: sha512-AauzHcUcqs8OBnCHOkJY280VaTiCm57AbuO7lqzcw7JapGj50BisE3xhksye4zlTSR1+1tAz67wLTl8tEH1obQ==}
     engines: {node: '>=8'}
     hasBin: true
+
+  jose@6.2.3:
+    resolution: {integrity: sha512-YYVDInQKFJfR/xa3ojUTl8c2KoTwiL1R5Wg9YCydwH0x0B9grbzlg5HC7mMjCtUJjbQ/YnGEZIhI5tCgfTb4Hw==}
 
   js-tokens@9.0.1:
     resolution: {integrity: sha512-mxa9E9ITFOt0ban3j6L5MpjwegGz6lBQmM1IJkWeBZGcMxto50+eWdjC/52xDbS2vy0k7vIMK0Fe2wfL9OQSpQ==}
@@ -2867,6 +2888,16 @@ snapshots:
 
   '@jridgewell/sourcemap-codec@1.5.5': {}
 
+  '@magic-sdk/admin@2.8.2':
+    dependencies:
+      ethereum-cryptography: 3.2.0
+      ethers: 6.17.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
+      node-fetch: 2.7.0
+    transitivePeerDependencies:
+      - bufferutil
+      - encoding
+      - utf-8-validate
+
   '@next/env@15.5.20': {}
 
   '@next/swc-darwin-arm64@15.5.20':
@@ -2898,6 +2929,10 @@ snapshots:
   '@noble/curves@1.2.0':
     dependencies:
       '@noble/hashes': 1.3.2
+
+  '@noble/curves@1.9.0':
+    dependencies:
+      '@noble/hashes': 1.8.0
 
   '@noble/curves@1.9.1':
     dependencies:
@@ -3667,6 +3702,14 @@ snapshots:
 
   esutils@2.0.3: {}
 
+  ethereum-cryptography@3.2.0:
+    dependencies:
+      '@noble/ciphers': 1.3.0
+      '@noble/curves': 1.9.0
+      '@noble/hashes': 1.8.0
+      '@scure/bip32': 1.7.0
+      '@scure/bip39': 1.6.0
+
   ethers@6.17.0(bufferutil@4.1.0)(utf-8-validate@6.0.6):
     dependencies:
       '@adraffy/ens-normalize': 1.11.1
@@ -3836,6 +3879,8 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
+
+  jose@6.2.3: {}
 
   js-tokens@9.0.1: {}
 

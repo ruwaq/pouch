@@ -2,12 +2,14 @@ import { jsonb, numeric, pgTable, text, timestamp, uniqueIndex, uuid } from 'dri
 
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
+  issuer: text('issuer'),
   magicPublicKey: text('magic_public_key'),
   evmAddress: text('evm_address'),
   email: text('email'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
+  usersIssuerIdx: uniqueIndex('users_issuer_idx').on(table.issuer),
   usersMagicPublicKeyIdx: uniqueIndex('users_magic_public_key_idx').on(table.magicPublicKey),
   usersEvmAddressIdx: uniqueIndex('users_evm_address_idx').on(table.evmAddress),
 }));
