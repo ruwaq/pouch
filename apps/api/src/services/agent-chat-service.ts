@@ -31,7 +31,7 @@ export class AgentChatService implements AgentChatServiceLike {
   ) {}
 
   async handleMessage(message: string, userId: string): Promise<Result<AgentChatResponse, DomainError>> {
-    const intent = this.parser.parse(message);
+    const intent = await this.parser.parse(message);
 
     if (!isOk(intent)) {
       return intent;
