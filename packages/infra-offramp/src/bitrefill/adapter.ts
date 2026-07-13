@@ -151,7 +151,7 @@ export class BitrefillAdapter implements OffRampProvider {
     }
   }
 
-  async verifyWebhook(payload: unknown): Promise<Result<WebhookEvent, DomainError>> {
+  async verifyWebhook(payload: unknown, _headers: Record<string, string> = {}): Promise<Result<WebhookEvent, DomainError>> {
     if (!payload || typeof payload !== 'object') {
       return err({
         type: 'UNKNOWN',
