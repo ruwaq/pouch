@@ -93,6 +93,19 @@ importers:
         specifier: ^4.20.3
         version: 4.23.0
 
+  packages/infra-ai:
+    dependencies:
+      '@pouch/domain':
+        specifier: workspace:*
+        version: link:../domain
+      '@pouch/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      tsx:
+        specifier: ^4.20.3
+        version: 4.23.0
+
   packages/infra-db:
     dependencies:
       '@pouch/domain':
