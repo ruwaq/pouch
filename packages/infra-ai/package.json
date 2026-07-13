@@ -16,6 +16,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@google/genai": "^1.27.0",
     "@pouch/domain": "workspace:*",
     "@pouch/shared": "workspace:*"
   },
