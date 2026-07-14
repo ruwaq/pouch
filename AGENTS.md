@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending; runtime blocker FIXED); Phase 2 — LLM layer (merged); Phase 3 — Frontend (code complete, E2E verified); Phase 4 — Bounties (next)**.
+> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending; runtime blocker FIXED); Phase 2 — LLM layer (merged); Phase 3 — Frontend (code complete, E2E verified); Phase 4 — Openfort + CI + demo hardening (code complete)**.
 
 ---
 
@@ -214,7 +214,8 @@ pnpm build                  # Build all packages
 - [ ] **MANUAL GATE 2:** Apply DB migration (`pnpm db:migrate`, needs Postgres)
 - [x] **Runtime blocker FIXED (2026-07-14):** `pnpm dev:api` now boots. Real root cause was NOT a missing SDK export — `UNIVERSAL_ACCOUNT_VERSION` *is* exported by `@particle-network/universal-account-sdk@2.0.3`. The issue was deferred ESM module loading under pnpm + tsx: `universal-account.ts` imported the SDK at module top-level and the package barrel re-exported it, so any `import from '@pouch/infra-web3'` linked the Particle SDK at startup and its ESM named-export resolution failed. Fix: SDK import moved inside `ParticleAccountProvider.getInstance()` (now async); demo mode never resolves the SDK. Verified: typecheck/test/build all 8/8. See HANDOFF.md.
 - [x] **Frontend (Phase 3, 2026-07-14):** Next.js 15 App Router chat UI — Tailwind v4 + design tokens, same-origin `/api` proxy, typed API client (`apiGet`/`apiPost` + `ApiError`), Magic client wrapper (lazy singleton, `EVMExtension`), SessionProvider (Magic login → `/auth/callback` → cookie), ChatProvider (`/agent/chat`), Landing + Magic login modal, ChatView (header + BalancePill + zero-popup counter + demo banner), MessageList (user/agent bubbles + auto-scroll + empty-state suggestions), AgentTurn + TraceTimeline (NO POPUP badge emphasis) + ReceiptCard (polls `/orders/:id`), Button/Spinner/ErrorMessage primitives. E2E verified: `POST /api/agent/chat` returns full `AgentChatResponse` (trace with NO POPUP + reply). 104 tests total (+12 web). See `docs/superpowers/plans/2026-07-14-pouch-phase3-frontend.md`.
-- [ ] CI lint step
+- [x] **Phase 4 (2026-07-14):** Openfort gas sponsorship — `AgentWalletPort` (domain) + `OpenfortAgentWallet` (infra-web3, deferred ESM via lazy `clientFactory`) + `NoopAgentWallet` + `createAgentWallet` factory (prod fail-fast, synchronous). `CashOutExecutor` two-step settlement trace (`Funding agent wallet [UA 7702]` → `Paid via Openfort gasless [NO POPUP]`). Runtime wiring (sync, no boot change). CI lint+build step (eslint flat config). Frontend hardening (error bubbles, balance skeleton, mobile responsive). README + SUBMISSION.md. See `docs/superpowers/plans/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md`.
+- [x] CI lint step (`.github/workflows/ci.yml` runs typecheck + lint + test + build; eslint flat config added)
 
 See [`docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md`](./docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md) for the phase index.
 See [`docs/HANDOFF.md`](./docs/HANDOFF.md) for the current snapshot and next steps.

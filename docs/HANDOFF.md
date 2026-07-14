@@ -1,6 +1,6 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-14 (Phase 4 spec written, scope locked)
+Last updated: 2026-07-14 (Phase 4 code complete — Openfort + CI + demo hardening)
 
 ## Strategic direction — CONFIRMED
 
@@ -126,13 +126,14 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 - ⏭️ Real Magic auth needs `NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY` set (demo mode works without it)
 - ⏭️ UA 7702 browser signing (`sign7702Authorization` + `/transactions/plan/*` → `sendTransaction`) — Phase 4, gated on Manual Gate 1 (the UA spike). A `ua-signer.ts` seam is sketched in the plan (Task 14) but not wired.
 
-### Phase 4 — Bounties + polish (SPEC WRITTEN, plan + implementation NEXT)
+### Phase 4 — Bounties + polish (CODE COMPLETE 2026-07-14)
 - ✅ **Spec written (2026-07-14):** [`docs/superpowers/specs/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md`](./superpowers/specs/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md)
 - ❌ **ZeroDev SRA DROPPED (2026-07-14):** Researched pricing — free tier is testnet-only; production $69–500/mo. Particle UA is mainnet-only → ZeroDev testnet cannot route to it. Architecturally broken on a free budget, not just expensive. Bounty ($500) soltado. `/deposit` page dropped with it (it only existed to host SRA). `ZERODEV_PROJECT_ID` stays in config but factory ignores it.
 - ❌ **Bitrefill real purchase DROPPED:** Mock fulfillment for dev AND demo. Zero cost.
-- ⬜ **Openfort gas sponsorship — TO BUILD:** Agent backend wallet (Opción A, confirmed). Openfort creates its OWN EOA + EIP-7702 Calibur delegation; gas-sponsored via policy + feeSponsorship (`pay_for_user`). CANNOT sponsor an external smart account (Particle UA) — confirmed from SDK 0.10.8. So: UA = user's account (consolidation), Openfort wallet = agent's gasless signer (settlement payment to Bitrefill). Two-step trace: `Funding agent wallet [UA 7702]` → `Paid via Openfort gasless [NO POPUP]`.
-- ⬜ **CI lint step** (`.github/workflows/ci.yml`) — pending since Phase 0.
-- ⬜ **Demo hardening** (error/empty/mobile states in frontend) + **submission prep** (README, bounty mapping doc).
+- ✅ **Openfort gas sponsorship — BUILT:** `AgentWalletPort` (domain) + `OpenfortAgentWallet` (infra-web3, deferred ESM via lazy clientFactory) + `NoopAgentWallet` + `createAgentWallet` factory (sync, prod fail-fast). Two-step settlement trace (`Funding agent wallet [UA 7702]` → `Paid via Openfort gasless [NO POPUP]`). Runtime wired (sync, no boot change). ~22 new tests.
+- ✅ **CI lint step** — `.github/workflows/ci.yml` runs typecheck + lint + test + build; eslint flat config (`eslint.config.mjs` + `typescript-eslint@^8`) added.
+- ✅ **Demo hardening** — friendly error bubbles (domain-specific), balance skeleton loading, mobile responsive breakpoints, demo banner clarity.
+- ✅ **Submission prep** — README rewritten (bounties + demo + env checklist), `docs/SUBMISSION.md` bounty mapping.
 
 ---
 
