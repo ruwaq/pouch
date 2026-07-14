@@ -13,11 +13,11 @@ export interface GeminiResponse {
   /** Convenience accessor provided by @google/genai: all function-call parts. */
   functionCalls?: GeminiFunctionCall[];
   /**
-   * Convenience text accessor. NOTE: in the real SDK this is a *getter* that
-   * throws ("Unable to get text...") when the response has no text part
-   * (e.g. function-call-only or safety-blocked responses). The provider wraps
-   * access in try/catch, so a throw is benign (surfaces as a transient error →
-   * regex fallback), but prefer reading `functionCalls` first when both matter.
+   * Convenience text accessor. In the real SDK this is a getter that returns
+   * `undefined` when the response has no text part (e.g. function-call-only or
+   * safety-blocked responses) — it does not throw (verified against
+   * @google/genai@1.52.0). The provider still reads `functionCalls` first when
+   * both matter.
    */
   text?: string;
 }
