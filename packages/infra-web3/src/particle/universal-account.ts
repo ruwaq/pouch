@@ -1,5 +1,5 @@
 import { err, ok } from '@pouch/shared';
-import type { AccountProvider, Balance, DomainError, UserId } from '@pouch/domain';
+import type { AccountProvider, Balance, UserId } from '@pouch/domain';
 
 import type { ParticleProviderConfig } from './types';
 import { mapAssetsResponseToBalance, type UaAssetsResponseLike } from './ua-assets-mapper';

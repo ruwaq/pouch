@@ -1,4 +1,4 @@
-import { CashOutExecutor, IntentParser, OffRampRouter, type AccountProvider, type LoggerPort, type OffRampProvider, type Order, type OrderRepository, type OrderRequest, type OrderStatus, type Product } from '@pouch/domain';
+import { CashOutExecutor, IntentParser, OffRampRouter, type AccountProvider, type LoggerPort, type OffRampProvider, type OrderRequest, type Product } from '@pouch/domain';
 import { ok } from '@pouch/shared';
 
 import { AgentChatService } from '../services/agent-chat-service';

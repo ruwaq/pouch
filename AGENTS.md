@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending; runtime blocker FIXED); Phase 2 — LLM layer (merged); Phase 3 — Frontend (code complete, E2E verified); Phase 4 — Bounties (next)**.
+> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending; runtime blocker FIXED); Phase 2 — LLM layer (merged); Phase 3 — Frontend (code complete, E2E verified); Phase 4 — Openfort + CI + demo hardening (code complete)**.
 
 ---
 
@@ -24,21 +24,20 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 - **Theme:** Chain abstraction / UX that makes crypto feel invisible
 - **Stack requirement:** Particle Universal Accounts (EIP-7702 mode) is mandatory for the UA Track
 
-### Bounties we target (5 sections, ~$5,600 potential)
+### Bounties we target (4 sections, ~$4.1k-$5.1k potential — ZeroDev dropped 2026-07-14)
 
 | # | Bounty | Prize | How Pouch covers it |
 |---|--------|-------|---------------------|
 | 1 | Universal Accounts Track | $1.5k-$2.5k | Cross-chain consolidation via UA + EIP-7702 |
 | 2 | Arbitrum bounty | $2k | Settlement chain = Arbitrum One (config via env) |
 | 3 | Magic Labs bonus | $500 | Embedded wallet + blind signatures (zero popups) |
-| 4 | ZeroDev SRA subtrack | $500 | `createSmartRoutingAddress()` for cross-chain deposits |
-| 5 | Openfort subtrack | $100 | Agent backend wallet + gas sponsorship (policy, NOT x402) |
+| 4 | Openfort subtrack | $100 | Agent backend wallet + gas sponsorship (policy, NOT x402) |
 
-**Key insight:** Bounties are judged INDEPENDENTLY. Research (2026-07-13) confirmed 23 active projects; **0 competitors** in the off-ramp niche. ZeroDev SRA and Openfort subtracks have only 1 competitor each.
+**Key insight:** Bounties are judged INDEPENDENTLY. Research (2026-07-13) confirmed 23 active projects; **0 competitors** in the off-ramp niche. Openfort subtrack has only 1 competitor.
 
-**⚠️ ZeroDev pricing risk:** No documented free tier (~$500/mo). Need hackathon credits from their Discord, or pivot SRA feature to Particle deposit address. Openfort free tier (2,000 ops/mes) is safe.
+**⚠️ ZeroDev SRA — DROPPED (2026-07-14):** Researched pricing: free tier is testnet-only (10K credits/mo); production starts $69/mo (Growth) or ~$500/mo (SRA base). Particle UA is mainnet-only (testnet ended Sep 2025) → ZeroDev testnet **cannot route to** Particle mainnet. Architecturally broken on a free budget. Bounty ($500) soltado. `/deposit` page dropped with it.
 
-**Cut from scope (2026-07-13):** Reloadly 2nd provider (not a bounty), x402/EIP-3009 (confirmed bug in UA 7702), ZeroDev session keys (blind signatures cover the narrative).
+**Cut from scope:** Reloadly 2nd provider (not a bounty), x402/EIP-3009 (confirmed bug in UA 7702), ZeroDev session keys (blind signatures cover the narrative), ZeroDev SRA (pricing + testnet/mainnet incompatibility, 2026-07-14), Bitrefill real purchase (mock fulfillment everywhere).
 
 ### Judging criteria we optimize for
 - **UX excellence (40% UA Track / 30% Arbitrum):** Chat interface + blind signatures + invisible routing
@@ -67,8 +66,8 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 - `magic-sdk` + `@magic-ext/evm` — embedded wallet, blind signatures, EIP-7702 sign
 - `@particle-network/universal-account-sdk@^2.0.3` — Universal Account, EIP-7702 (npm-verified stable; NOT beta)
 - `ethers@^6.16.0` — **v6 mandatory** (v5 lacks `authorizeSync` / `hashAuthorization` for 7702)
-- `@openfort/openfort-node@^0.10.8` — agent wallet + gas sponsorship (policy)
-- `@zerodev/smart-routing-address@^0.2.5` — Smart Routing Address (SRA) ⚠️ no free tier
+- `@openfort/openfort-node@^0.10.8` — agent backend wallet + gas sponsorship (policy + feeSponsorship `pay_for_user`). API is 0.10.x (`accounts.evm.backend.*`), NOT the older `players.*` namespace.
+- ~~`@zerodev/smart-routing-address`~~ — DROPPED 2026-07-14 (free tier testnet-only × Particle mainnet-only = incompatible)
 - `jose` — JWT verification (Magic DID → our JWT)
 - `@google/genai` — Gemini SDK for LLM intent parsing + conversational responses
 
@@ -215,7 +214,8 @@ pnpm build                  # Build all packages
 - [ ] **MANUAL GATE 2:** Apply DB migration (`pnpm db:migrate`, needs Postgres)
 - [x] **Runtime blocker FIXED (2026-07-14):** `pnpm dev:api` now boots. Real root cause was NOT a missing SDK export — `UNIVERSAL_ACCOUNT_VERSION` *is* exported by `@particle-network/universal-account-sdk@2.0.3`. The issue was deferred ESM module loading under pnpm + tsx: `universal-account.ts` imported the SDK at module top-level and the package barrel re-exported it, so any `import from '@pouch/infra-web3'` linked the Particle SDK at startup and its ESM named-export resolution failed. Fix: SDK import moved inside `ParticleAccountProvider.getInstance()` (now async); demo mode never resolves the SDK. Verified: typecheck/test/build all 8/8. See HANDOFF.md.
 - [x] **Frontend (Phase 3, 2026-07-14):** Next.js 15 App Router chat UI — Tailwind v4 + design tokens, same-origin `/api` proxy, typed API client (`apiGet`/`apiPost` + `ApiError`), Magic client wrapper (lazy singleton, `EVMExtension`), SessionProvider (Magic login → `/auth/callback` → cookie), ChatProvider (`/agent/chat`), Landing + Magic login modal, ChatView (header + BalancePill + zero-popup counter + demo banner), MessageList (user/agent bubbles + auto-scroll + empty-state suggestions), AgentTurn + TraceTimeline (NO POPUP badge emphasis) + ReceiptCard (polls `/orders/:id`), Button/Spinner/ErrorMessage primitives. E2E verified: `POST /api/agent/chat` returns full `AgentChatResponse` (trace with NO POPUP + reply). 104 tests total (+12 web). See `docs/superpowers/plans/2026-07-14-pouch-phase3-frontend.md`.
-- [ ] CI lint step
+- [x] **Phase 4 (2026-07-14):** Openfort gas sponsorship — `AgentWalletPort` (domain) + `OpenfortAgentWallet` (infra-web3, deferred ESM via lazy `clientFactory`) + `NoopAgentWallet` + `createAgentWallet` factory (prod fail-fast, synchronous). `CashOutExecutor` two-step settlement trace (`Funding agent wallet [UA 7702]` → `Paid via Openfort gasless [NO POPUP]`). Runtime wiring (sync, no boot change). CI lint+build step (eslint flat config). Frontend hardening (error bubbles, balance skeleton, mobile responsive). README + SUBMISSION.md. See `docs/superpowers/plans/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md`.
+- [x] CI lint step (`.github/workflows/ci.yml` runs typecheck + lint + test + build; eslint flat config added)
 
 See [`docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md`](./docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md) for the phase index.
 See [`docs/HANDOFF.md`](./docs/HANDOFF.md) for the current snapshot and next steps.

@@ -1,4 +1,4 @@
-import { CashOutExecutor, OffRampRouter, type AccountProvider, type LoggerPort, type OrderRepository } from '@pouch/domain';
+import { CashOutExecutor, OffRampRouter, type AccountProvider, type AgentWalletPort, type LoggerPort, type OrderRepository } from '@pouch/domain';
 import { createAgentLlm } from '@pouch/infra-ai';
 import { buildOffRampProviders } from '@pouch/infra-offramp';
 import {
@@ -7,8 +7,8 @@ import {
   DrizzleWebhookEventStore,
   type WebhookEventStore,
 } from '@pouch/infra-db';
-import { createAccountProvider } from '@pouch/infra-web3';
-import { loadConfig, ok, type Config } from '@pouch/shared';
+import { createAccountProvider, createAgentWallet } from '@pouch/infra-web3';
+import { loadConfig, type Config } from '@pouch/shared';
 
 import { BitrefillWebhookService } from '../services/bitrefill-webhook-service';
 import { AgentChatService, type AgentChatServiceLike } from '../services/agent-chat-service';
@@ -30,6 +30,7 @@ interface RuntimeDependencies {
   createWebhookEventStore?: (database: unknown) => WebhookEventStore;
   buildOffRampProviders?: typeof buildOffRampProviders;
   createAccountProvider?: (config: Config) => AccountProvider;
+  createAgentWallet?: (config: Config, logger: LoggerPort) => AgentWalletPort | undefined;
 }
 
 const runtimeLogger: LoggerPort = {
@@ -83,12 +84,17 @@ export function createRuntimeAppServices(options: {
 
     const accountProvider = (dependencies.createAccountProvider ?? createAccountProvider)(config);
 
+    const agentWallet = config.OPENFORT_SECRET_KEY
+      ? (dependencies.createAgentWallet ?? createAgentWallet)(config, runtimeLogger)
+      : undefined;
+
     const executor = new CashOutExecutor(
       new OffRampRouter(providers),
       providers,
       accountProvider,
       orderRepository,
       runtimeLogger,
+      agentWallet,
     );
 
     const { intentParser, replyStrategy } = createAgentLlm(config);

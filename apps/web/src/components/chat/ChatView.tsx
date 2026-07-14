@@ -12,14 +12,14 @@ export function ChatView() {
 
   return (
     <ChatProvider>
-      <main className="mx-auto flex h-dvh max-w-2xl flex-col">
+      <main className="mx-auto flex h-dvh w-full max-w-2xl flex-col px-0 sm:px-4">
         <header className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
             <span className="text-sm font-bold tracking-tight text-[var(--fg)]">Pouch</span>
             <BalancePill />
             <ZeroPopupBadge />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {session?.evmAddress ? (
               <span className="hidden text-xs text-[var(--muted)] sm:inline">
                 {session.evmAddress.slice(0, 6)}…{session.evmAddress.slice(-4)}
@@ -33,7 +33,7 @@ export function ChatView() {
 
         {session?.userId === 'demo-user' || !session ? (
           <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200">
-            Demo mode — balances and orders are simulated. Connect Magic for real wallet auth.
+            Demo mode — balances and payments are simulated. Add a Magic key for real wallet auth.
           </div>
         ) : null}
 
