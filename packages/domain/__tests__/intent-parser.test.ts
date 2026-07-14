@@ -4,10 +4,10 @@ import { IntentParser } from '../src/intent-parser';
 import type { IntentParserStrategy } from '../src/intent-parser';
 
 describe('IntentParser', () => {
-  it('parses a gift card cash-out request from natural language', () => {
+  it('parses a gift card cash-out request from natural language', async () => {
     const parser = new IntentParser();
 
-    const result = parser.parse('Cash out $50 to Amazon');
+    const result = await parser.parse('Cash out $50 to Amazon');
 
     expect(result.ok).toBe(true);
 
@@ -26,10 +26,10 @@ describe('IntentParser', () => {
     });
   });
 
-  it('returns a structured error when the amount is missing', () => {
+  it('returns a structured error when the amount is missing', async () => {
     const parser = new IntentParser();
 
-    const result = parser.parse('Cash out to Amazon');
+    const result = await parser.parse('Cash out to Amazon');
 
     expect(result.ok).toBe(false);
 
@@ -43,10 +43,10 @@ describe('IntentParser', () => {
     });
   });
 
-  it('returns a structured error when the message is not a supported cash-out request', () => {
+  it('returns a structured error when the message is not a supported cash-out request', async () => {
     const parser = new IntentParser();
 
-    const result = parser.parse('What is the weather today?');
+    const result = await parser.parse('What is the weather today?');
 
     expect(result.ok).toBe(false);
 

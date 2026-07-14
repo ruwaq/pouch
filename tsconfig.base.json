@@ -22,7 +22,8 @@
       "@pouch/domain": ["packages/domain/src/index.ts"],
       "@pouch/infra-offramp": ["packages/infra-offramp/src/index.ts"],
       "@pouch/infra-web3": ["packages/infra-web3/src/index.ts"],
-      "@pouch/infra-db": ["packages/infra-db/src/index.ts"]
+      "@pouch/infra-db": ["packages/infra-db/src/index.ts"],
+      "@pouch/infra-ai": ["packages/infra-ai/src/index.ts"]
     }
   }
 }

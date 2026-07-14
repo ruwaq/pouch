@@ -55,11 +55,11 @@ function normalizeBrand(rawBrand: string | undefined): string | undefined {
 }
 
 export interface IntentParserStrategy {
-  parse(message: string): Result<CashOutIntent, DomainError>;
+  parse(message: string): Promise<Result<CashOutIntent, DomainError>>;
 }
 
 export class IntentParser implements IntentParserStrategy {
-  parse(message: string): Result<CashOutIntent, DomainError> {
+  async parse(message: string): Promise<Result<CashOutIntent, DomainError>> {
     if (!SUPPORTED_ACTION_PATTERN.test(message)) {
       return err({
         type: 'UNSUPPORTED_INTENT',

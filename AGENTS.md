@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending); Phase 2 — LLM layer (next)**.
+> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending, 1 runtime blocker); Phase 2 — LLM layer (code complete); Phase 3 — Frontend (next)**.
 
 ---
 
@@ -196,10 +196,10 @@ pnpm build                  # Build all packages
 
 ## Current phase & status
 
-**Phase 0 + Phase 1 code complete. Phase 2 (LLM) is next. 2 manual gates pending (user-run).**
+**Phase 0 + Phase 1 + Phase 2 code complete. Phase 3 (Frontend) is next. 2 manual gates pending (user-run) + 1 Phase 1 runtime blocker.**
 - [x] Git repo initialized
 - [x] Documentation created (AGENTS.md, ARCHITECTURE.md, HACKATHON_INTEL.md, PROVIDERS.md)
-- [x] Turborepo monorepo + 7 packages scaffolded
+- [x] Turborepo monorepo + 8 packages scaffolded (incl. `@pouch/infra-ai`)
 - [x] shared/config.ts (Zod validation, incl. LLM_* + MAGIC_SECRET_KEY)
 - [x] Drizzle schema + initial migration generated (`packages/infra-db/drizzle/`)
 - [x] API routes: `/agent/chat`, `/balance`, `/orders/:id`, `/webhooks/bitrefill`, `/auth/*`, `/transactions/plan/*`
@@ -208,11 +208,12 @@ pnpm build                  # Build all packages
 - [x] Runtime bootstrap (configured mode + demo fallback)
 - [x] **Phase 0** — domain foundation: TraceStep/TraceRecorder, CashOutExecutor emits trace, IntentParserStrategy, ownership plumbing, Gap F fix
 - [x] **Phase 1** — web3: real ParticleAccountProvider (read-only balance), full auth (Magic DID → JWT), transaction planner (frontend-driven signing seam), raw-key spike script
+- [x] **Phase 2** — LLM layer: `@pouch/infra-ai` (provider-agnostic `LLMProvider` + `GeminiProvider` via `@google/genai` function-calling), `LlmIntentParser` (regex fallback on any failure), `ReplyStrategy` port + `LlmReplyStrategy`, factory, wired into runtime; `IntentParserStrategy` made async
 - [x] **Design spec** — [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md`](./docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design.md)
 - [x] **Competitive research** — 23 projects analyzed, off-ramp = 0 competitors (blue ocean)
 - [ ] **MANUAL GATE 1:** Run the UA spike (`pnpm --filter @pouch/infra-web3 spike`, ~$1 real USDC)
 - [ ] **MANUAL GATE 2:** Apply DB migration (`pnpm db:migrate`, needs Postgres)
-- [ ] LLM layer — Phase 2 (next; runs in parallel with manual gates)
+- [ ] **PHASE 1 RUNTIME BLOCKER:** `pnpm dev:api` won't boot — `infra-web3/src/factory.ts` statically imports `ParticleAccountProvider`, whose SDK import (`UNIVERSAL_ACCOUNT_VERSION`) is not exported by the installed `@particle-network/universal-account-sdk`. Phase 2 did not touch infra-web3. Fix: lazy-import the Particle provider inside the `case 'particle'` branch (so demo mode never loads it), or drop the unused `UNIVERSAL_ACCOUNT_VERSION` import. See HANDOFF.md.
 - [ ] Frontend chat/balance/order UI — Phase 3
 - [ ] CI lint step
 
