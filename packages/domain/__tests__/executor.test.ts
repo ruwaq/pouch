@@ -4,6 +4,7 @@ import {
   CashOutExecutor,
   OffRampRouter,
   type AccountProvider,
+  type AgentWalletPort,
   type LoggerPort,
   type OffRampProvider,
   type Order,
@@ -11,7 +12,7 @@ import {
   type OrderRequest,
   type Product,
 } from '@pouch/domain';
-import { ok } from '@pouch/shared';
+import { err, ok } from '@pouch/shared';
 
 class StubProvider implements OffRampProvider {
   readonly id = 'stub-provider';
@@ -165,5 +166,111 @@ describe('CashOutExecutor', () => {
       return;
     }
     expect(result.value.trace.some((step) => /consolidat/i.test(step.label))).toBe(true);
+  });
+
+  it('runs the two-step agent-wallet settlement when an agentWallet is injected', async () => {
+    const providers = [new StubProvider()];
+    const repository = new CapturingRepository();
+    const account: AccountProvider = {
+      async getUnifiedBalance() {
+        return ok({
+          total: 200,
+          assets: [{ chainId: 42161, symbol: 'USDC', amount: 200, usdValue: 200 }],
+          requiresConsolidation: false,
+        });
+      },
+      async consolidate() {
+        return ok({ txHash: '0xconsolidate' });
+      },
+      async sendPayment() {
+        return ok({ txHash: '0xfund-agent' });
+      },
+    };
+
+    const agentWallet: AgentWalletPort = {
+      label: 'Openfort gasless',
+      async getAddress() {
+        return ok({ address: '0xagent-wallet' });
+      },
+      async settlePayment() {
+        return ok({ txHash: '0xgasless-settle' });
+      },
+    };
+
+    const executor = new CashOutExecutor(
+      new OffRampRouter(providers),
+      providers,
+      account,
+      repository,
+      logger,
+      agentWallet,
+    );
+
+    const result = await executor.execute(
+      { action: 'cash_out', category: 'giftcard', brand: 'amazon', amount: { value: 50, currency: 'USD' } },
+      'user-42',
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    const labels = result.value.trace.map((step) => step.label);
+    expect(labels.some((label) => /funding agent wallet/i.test(label))).toBe(true);
+    expect(labels.some((label) => /openfort gasless|paid via/i.test(label))).toBe(true);
+    // The funding step should carry the UA 7702 badge.
+    const fundingStep = result.value.trace.find((step) => /funding agent wallet/i.test(step.label));
+    expect(fundingStep?.badge).toBe('UA 7702');
+    // The settle step should carry the NO POPUP badge.
+    const settleStep = result.value.trace.find((step) => /openfort gasless|paid via/i.test(step.label));
+    expect(settleStep?.badge).toBe('NO POPUP');
+  });
+
+  it('returns AGENT_WALLET_SETTLE_FAILED and marks the order failed when settlePayment errors', async () => {
+    const providers = [new StubProvider()];
+    const repository = new CapturingRepository();
+    const account: AccountProvider = {
+      async getUnifiedBalance() {
+        return ok({
+          total: 200,
+          assets: [{ chainId: 42161, symbol: 'USDC', amount: 200, usdValue: 200 }],
+          requiresConsolidation: false,
+        });
+      },
+      async consolidate() {
+        return ok({ txHash: '0xconsolidate' });
+      },
+      async sendPayment() {
+        return ok({ txHash: '0xfund-agent' });
+      },
+    };
+
+    const agentWallet: AgentWalletPort = {
+      label: 'Openfort gasless',
+      async getAddress() {
+        return ok({ address: '0xagent-wallet' });
+      },
+      async settlePayment() {
+        return err({ type: 'AGENT_WALLET_SETTLE_FAILED', message: 'sponsorship rejected', cause: 'policy mismatch' });
+      },
+    };
+
+    const executor = new CashOutExecutor(
+      new OffRampRouter(providers),
+      providers,
+      account,
+      repository,
+      logger,
+      agentWallet,
+    );
+
+    const result = await executor.execute(
+      { action: 'cash_out', category: 'giftcard', brand: 'amazon', amount: { value: 50, currency: 'USD' } },
+      'user-42',
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.type).toBe('AGENT_WALLET_SETTLE_FAILED');
+    expect(repository.statuses.some((s) => s.status === 'failed')).toBe(true);
   });
 });

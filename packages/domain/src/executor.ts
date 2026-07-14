@@ -5,6 +5,7 @@ import { OffRampRouter } from './router';
 import { TraceRecorder } from './trace';
 import type {
   AccountProvider,
+  AgentWalletPort,
   CashOutIntent,
   CashOutResult,
   LoggerPort,
@@ -21,6 +22,7 @@ export class CashOutExecutor {
     private readonly account: AccountProvider,
     private readonly orders: OrderRepository,
     private readonly logger: LoggerPort,
+    private readonly agentWallet?: AgentWalletPort,
   ) {}
 
   async execute(intent: CashOutIntent, userId: UserId): Promise<Result<CashOutResult, DomainError>> {
@@ -114,6 +116,71 @@ export class CashOutExecutor {
       return err({
         type: 'PAYMENT_ADDRESS_MISSING',
         orderId: order.value.id,
+      });
+    }
+
+    if (this.agentWallet) {
+      const fundingStep = trace.start('Funding agent wallet', { badge: 'UA 7702' });
+
+      const agentAddress = await this.agentWallet.getAddress();
+
+      if (!isOk(agentAddress)) {
+        trace.fail(fundingStep.id, 'Agent wallet unavailable.');
+        await this.orders.updateStatus(order.value.id, 'failed');
+        return agentAddress;
+      }
+
+      const funding = await this.account.sendPayment({
+        from: userId,
+        to: agentAddress.value.address,
+        amount: order.value.payment.amount,
+        chainId: order.value.payment.chainId,
+        token: order.value.payment.token,
+      });
+
+      if (!isOk(funding)) {
+        trace.fail(fundingStep.id, 'Agent wallet funding failed.');
+        await this.orders.updateStatus(order.value.id, 'failed');
+        return funding;
+      }
+
+      trace.complete(fundingStep.id);
+
+      const settleStep = trace.start(`Paid via ${this.agentWallet.label}`, { badge: 'NO POPUP' });
+      const settlement = await this.agentWallet.settlePayment({
+        to: order.value.payment.address,
+        amount: order.value.payment.amount,
+        token: order.value.payment.token,
+        chainId: order.value.payment.chainId,
+      });
+
+      if (!isOk(settlement)) {
+        trace.fail(settleStep.id, 'Gasless settlement failed.');
+        await this.orders.updateStatus(order.value.id, 'failed');
+        return settlement;
+      }
+
+      trace.complete(settleStep.id);
+      await this.orders.updateStatus(
+        order.value.id,
+        'payment_pending',
+        this.withPaymentTxHash(order.value, settlement.value.txHash),
+      );
+
+      this.logger.info(
+        {
+          orderId: order.value.id,
+          providerId: provider.id,
+          txHash: settlement.value.txHash,
+          agentWallet: this.agentWallet.label,
+        },
+        'Cash-out payment submitted via agent wallet.',
+      );
+
+      return ok({
+        orderId: order.value.id,
+        status: 'payment_pending',
+        trace: trace.steps,
       });
     }
 

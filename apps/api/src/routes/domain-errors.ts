@@ -22,6 +22,8 @@ export function toDomainErrorMessage(error: DomainError): string {
     case 'UNSUPPORTED_INTENT':
     case 'INVALID_INTENT_AMOUNT':
     case 'INVALID_PROVIDER_RESPONSE':
+    case 'AGENT_WALLET_NOT_CONFIGURED':
+    case 'AGENT_WALLET_SETTLE_FAILED':
     case 'UNKNOWN':
       return error.message;
     case 'INSUFFICIENT_FUNDS':
