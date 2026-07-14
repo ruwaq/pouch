@@ -12,9 +12,11 @@
   },
   "dependencies": {
     "@magic-ext/evm": "^1.7.0",
+    "@pouch/api": "workspace:*",
     "@pouch/domain": "workspace:*",
     "@pouch/shared": "workspace:*",
     "@tailwindcss/postcss": "^4.3.2",
+    "hono": "^4.12.29",
     "magic-sdk": "^33.9.0",
     "next": "^15.4.6",
     "react": "^19.1.1",

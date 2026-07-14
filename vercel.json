@@ -1,0 +1,17 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "outputDirectory": ".next",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "build": {
+    "env": {
+      "DEMO_MODE": "true",
+      "APP_URL": "https://pouch-orpin.vercel.app",
+      "SETTLEMENT_CHAIN_ID": "42161",
+      "SUPPORTED_CHAINS": "42161,8453",
+      "DATABASE_URL": "postgresql://demo:demo@localhost:5432/demo",
+      "JWT_SECRET": "vercel-demo-jwt-secret-minimum-32-chars!!",
+      "WEBHOOK_SECRET": "vercel-demo-webhook-secret-minimum-32ch!"
+    }
+  }
+}

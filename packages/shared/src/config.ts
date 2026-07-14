@@ -27,6 +27,7 @@ const NumberListSchema = z.string().transform((value, ctx) => {
 
 export const ConfigSchema = z.object({
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
+  DEMO_MODE: z.string().optional(),
   APP_URL: z.string().url(),
 
   SETTLEMENT_CHAIN_ID: z.coerce.number().int().positive(),

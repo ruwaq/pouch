@@ -69,6 +69,9 @@ importers:
       '@magic-ext/evm':
         specifier: ^1.7.0
         version: 1.7.0
+      '@pouch/api':
+        specifier: workspace:*
+        version: link:../api
       '@pouch/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -78,6 +81,9 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.3.2
         version: 4.3.2
+      hono:
+        specifier: ^4.12.29
+        version: 4.12.29
       magic-sdk:
         specifier: ^33.9.0
         version: 33.9.0

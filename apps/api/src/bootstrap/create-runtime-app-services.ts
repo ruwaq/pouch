@@ -39,6 +39,7 @@ const runtimeLogger: LoggerPort = {
 };
 
 function shouldFailFast(env: Record<string, string | undefined>): boolean {
+  if ((env.DEMO_MODE ?? process.env.DEMO_MODE ?? '').trim() === 'true') return false;
   return (env.NODE_ENV ?? process.env.NODE_ENV ?? 'development') === 'production';
 }
 
@@ -48,6 +49,15 @@ export function createRuntimeAppServices(options: {
 } = {}): RuntimeAppServices {
   const env = options.env ?? process.env;
   const dependencies = options.dependencies ?? {};
+
+  // Explicit demo override — skip all real config and use simulated services.
+  const demoFlag = (env.DEMO_MODE ?? process.env.DEMO_MODE ?? '').trim();
+  if (demoFlag === 'true') {
+    return {
+      mode: 'demo',
+      ...createDemoAppServices(),
+    };
+  }
 
   let config: Config;
 
