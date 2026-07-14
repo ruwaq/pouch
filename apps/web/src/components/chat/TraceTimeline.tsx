@@ -19,7 +19,13 @@ export function TraceTimeline({ trace }: { trace: TraceStep[] }) {
           <div className="flex items-center gap-2">
             <span className="text-sm text-[var(--muted-2)]">{step.label}</span>
             {step.badge ? (
-              <span className="rounded-full bg-[var(--accent)]/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+              <span
+                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                  step.badge === 'NO POPUP'
+                    ? 'bg-emerald-400/20 text-emerald-300'
+                    : 'bg-[var(--accent)]/20 text-[var(--muted)]'
+                }`}
+              >
                 {step.badge}
               </span>
             ) : null}

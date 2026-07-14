@@ -8,10 +8,15 @@ export function ReceiptCard({ orderId }: { orderId: string }) {
 
   useEffect(() => {
     let cancelled = false;
+    const terminal = new Set(['delivered', 'failed', 'refunded']);
+    let timer = 0;
     async function load() {
       try {
         const o = await apiGet<Order>(`/orders/${orderId}`);
-        if (!cancelled) setOrder(o);
+        if (cancelled) return;
+        setOrder(o);
+        if (terminal.has(o.status)) return;
+        timer = window.setTimeout(load, 4000);
       } catch {
         // non-fatal — the trace already shows the outcome
       }
@@ -19,6 +24,7 @@ export function ReceiptCard({ orderId }: { orderId: string }) {
     void load();
     return () => {
       cancelled = true;
+      window.clearTimeout(timer);
     };
   }, [orderId]);
 

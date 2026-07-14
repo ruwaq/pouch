@@ -7,7 +7,7 @@ import { Spinner } from '../ui/Spinner';
 import { ErrorMessage } from '../ui/ErrorMessage';
 
 export function MessageList() {
-  const { messages, isSending, error } = useChat();
+  const { messages, isSending, error, sendMessage } = useChat();
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -16,6 +16,7 @@ export function MessageList() {
 
   return (
     <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      {messages.length === 0 && !isSending ? <EmptyState /> : null}
       {messages.map((m) =>
         m.role === 'user' ? (
           <div key={m.id} className="flex justify-end">
@@ -38,6 +39,33 @@ export function MessageList() {
       ) : null}
       {error ? <ErrorMessage>{error}</ErrorMessage> : null}
       <div ref={endRef} />
+    </div>
+  );
+}
+
+const SUGGESTIONS = [
+  'Cash out $25 to Amazon',
+  'How much do I have?',
+  'Cash out $10 to a Visa prepaid card',
+];
+
+function EmptyState() {
+  const { sendMessage, isSending } = useChat();
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+      <p className="text-sm text-[var(--muted)]">Ask Pouch to cash out your crypto.</p>
+      <div className="flex flex-wrap justify-center gap-2">
+        {SUGGESTIONS.map((s) => (
+          <button
+            key={s}
+            disabled={isSending}
+            onClick={() => void sendMessage(s)}
+            className="rounded-full border border-[var(--border)] bg-white/5 px-3 py-1.5 text-xs text-[var(--muted-2)] transition hover:bg-white/10 disabled:opacity-50"
+          >
+            {s}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

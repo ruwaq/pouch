@@ -1,6 +1,6 @@
 'use client';
 
-import { ChatProvider } from '../../context/chat-context';
+import { ChatProvider, useChat } from '../../context/chat-context';
 import { useSession } from '../../context/session-context';
 import { Button } from '../ui/Button';
 import { BalancePill } from './BalancePill';
@@ -17,6 +17,7 @@ export function ChatView() {
           <div className="flex items-center gap-3">
             <span className="text-sm font-bold tracking-tight text-[var(--fg)]">Pouch</span>
             <BalancePill />
+            <ZeroPopupBadge />
           </div>
           <div className="flex items-center gap-3">
             {session?.evmAddress ? (
@@ -30,9 +31,29 @@ export function ChatView() {
           </div>
         </header>
 
+        {session?.userId === 'demo-user' || !session ? (
+          <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200">
+            Demo mode — balances and orders are simulated. Connect Magic for real wallet auth.
+          </div>
+        ) : null}
+
         <MessageList />
         <ChatInput />
       </main>
     </ChatProvider>
+  );
+}
+
+function ZeroPopupBadge() {
+  const { messages } = useChat();
+  const count = messages.reduce(
+    (n, m) => n + (m.response?.trace.filter((s) => s.badge === 'NO POPUP').length ?? 0),
+    0,
+  );
+  if (count === 0) return null;
+  return (
+    <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-300">
+      {count} signature{count === 1 ? '' : 's'} · zero popups
+    </span>
   );
 }
