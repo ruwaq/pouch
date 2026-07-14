@@ -101,11 +101,12 @@ describe('OpenfortAgentWallet', () => {
     expect(result.value.txHash).toBe('0xgasless-tx');
 
     const args = sentArgs as {
-      account: string;
+      account: { id: string };
       chainId: number;
       interactions: Array<{ to: string; data: string }>;
       policy: string;
     };
+    expect(args.account.id).toBe('acc_1');
     expect(args.policy).toBe('fes_test_123');
     expect(args.chainId).toBe(42161);
     expect(args.interactions[0]?.to).toBe('0xaf88d61464a02d2e5e4f92bf5d4c0a6c6c1c0a6c');
@@ -129,9 +130,9 @@ describe('OpenfortAgentWallet', () => {
     const wallet = new OpenfortAgentWallet(factoryFor(client), 'fes_test', noopLogger);
 
     const result = await wallet.settlePayment({
-      to: '0xbitrefill',
+      to: '0x2222222222222222222222222222222222222222',
       amount: { value: 25, currency: 'USD' },
-      token: '0xtoken',
+      token: '0x3333333333333333333333333333333333333333',
       chainId: 42161,
     });
 

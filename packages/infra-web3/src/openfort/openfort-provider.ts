@@ -22,7 +22,7 @@ export interface OpenfortClientLike {
       backend: {
         create(): Promise<{ id: string; address: string }>;
         sendTransaction(args: {
-          account: string;
+          account: { id: string };
           chainId: number;
           interactions: Array<{ to: string; data: string }>;
           policy: string;
@@ -57,7 +57,7 @@ export function createRealOpenfortClientFactory(config: {
 export class OpenfortAgentWallet implements AgentWalletPort {
   readonly label = 'Openfort gasless';
 
-  private cachedAddress: string | null = null;
+  private cachedAccount: { id: string; address: string } | null = null;
   private clientPromise: Promise<OpenfortClientLike> | null = null;
 
   constructor(
@@ -90,8 +90,8 @@ export class OpenfortAgentWallet implements AgentWalletPort {
   }
 
   async getAddress(): Promise<Result<{ address: string }, DomainError>> {
-    if (this.cachedAddress) {
-      return ok({ address: this.cachedAddress });
+    if (this.cachedAccount) {
+      return ok({ address: this.cachedAccount.address });
     }
 
     const clientResult = await this.getClient();
@@ -101,7 +101,7 @@ export class OpenfortAgentWallet implements AgentWalletPort {
 
     try {
       const account = await clientResult.value.accounts.evm.backend.create();
-      this.cachedAddress = account.address;
+      this.cachedAccount = { id: account.id, address: account.address };
       this.logger.info({ accountId: account.id, address: account.address }, 'Openfort agent wallet resolved.');
       return ok({ address: account.address });
     } catch (error) {
@@ -133,7 +133,7 @@ export class OpenfortAgentWallet implements AgentWalletPort {
       const data = erc20Interface.encodeFunctionData('transfer', [params.to, amountWei]);
 
       const result = await clientResult.value.accounts.evm.backend.sendTransaction({
-        account: addressResult.value.address,
+        account: { id: this.cachedAccount!.id },
         chainId: params.chainId,
         interactions: [{ to: params.token, data }],
         policy: this.feeSponsorshipId,
