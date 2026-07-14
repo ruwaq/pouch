@@ -33,10 +33,19 @@ Full design spec: [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design
 The workspace currently passes:
 ```bash
 pnpm dev:api     # ✅ boots: "Pouch API listening on http://localhost:3001" (runtime blocker fixed 2026-07-14)
-pnpm typecheck   # 8/8 packages (added @pouch/infra-ai)
-pnpm test        # 92 tests passing (56 baseline + 36 Phase 2 + web3)
+pnpm dev:web     # ✅ Next.js 15 on :3000, proxies /api/* → :3001 (Phase 3)
+pnpm typecheck   # 8/8 packages
+pnpm test        # 104 tests passing (56 baseline + 36 Phase 2 + 12 web Phase 3)
 pnpm build       # 8/8 packages
 ```
+
+### Phase 3 E2E demo flow — VERIFIED (2026-07-14)
+
+With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
+- `GET /api/health` → `{"ok":true,"service":"api","mode":"demo"}` (via the Next proxy)
+- `GET /api/balance?userId=demo-user` → `{"total":150,"assets":[...]}`
+- `POST /api/agent/chat` `{"message":"Cash out $25 to Amazon"}` → full `AgentChatResponse`: 4-step trace (`Reading balance` → `Finding best provider [cheapest]` → `Creating order` → `Signing payment [NO POPUP]`) + conversational reply + parsed intent.
+- The web app (`localhost:3000`) renders the chat UI in demo mode (no Magic key → ChatView directly); BalancePill shows `$150.00 · 1 asset`; suggestion chips + demo banner present; sending a message renders the user bubble + agent bubble (reply + trace timeline + receipt card).
 
 ## Implemented API surface
 
@@ -66,7 +75,7 @@ pnpm build       # 8/8 packages
 - `infra-web3` defaults to `WEB3_PROVIDER_MODE=demo` — `DemoAccountProvider` simulates balances/payments
 - Auth middleware has `allowDemoFallback: true` in demo mode (no cookie → `demo-user`); production enforces 401
 - Intent parser uses Gemini function-calling (Phase 2) when `LLM_PROVIDER=gemini`+`GEMINI_API_KEY` set, else regex — and falls back to regex on ANY LLM failure (demo never breaks). Reply is conversational (LLM) or template, same fallback rule.
-- Frontend is a static landing page, not a connected chat UI (Phase 3)
+- Frontend (Phase 3): Magic login modal + chat UI + agent trace timeline + receipt card + balance pill + zero-popup counter. Works in demo mode without a Magic key (verified E2E). Real Magic auth + UA 7702 signing = Phase 4 (gated on Manual Gate 1).
 - The spike script (`packages/infra-web3/spike/ua-spike.mts`) is written but NOT yet run against real funds
 
 ---
@@ -108,10 +117,15 @@ pnpm build       # 8/8 packages
 
 > ✅ **Runtime blocker RESOLVED (2026-07-14).** The earlier diagnosis was wrong: the SDK *does* export `UNIVERSAL_ACCOUNT_VERSION` (verified in `.d.ts`, `.cjs`, and `.mjs` of `@particle-network/universal-account-sdk@2.0.3`; `import` works from `packages/infra-web3`). The real root cause was **deferred ESM module loading under pnpm + tsx**: `universal-account.ts` imported the SDK at module top-level, and `packages/infra-web3/src/index.ts` re-exported it via a barrel (`export * from './particle/universal-account'`). So any `import from '@pouch/infra-web3'` in `apps/api` linked the Particle SDK at startup, and its ESM named-export resolution failed in that context — throwing `does not provide an export named 'UNIVERSAL_ACCOUNT_VERSION'` regardless of `WEB3_PROVIDER_MODE`. **Fix:** the SDK import was moved *inside* `ParticleAccountProvider.getInstance()` (now async) and replaced the module-level `UniversalAccount` typing with a local `UniversalAccountLike`. Demo mode never resolves the SDK; particle mode loads it lazily on first use. Verified: `pnpm dev:api` now boots (`Pouch API listening on http://localhost:3001`), `pnpm typecheck`/`test`/`build` all pass 8/8.
 
-### Phase 3 — Frontend
-- Magic login + embedded wallet + `sign7702Authorization` (browser signing)
-- Chat + inline agent trace + receipt card + zero-popup counter
-- Uses `/transactions/plan/*` to get unsigned plans, signs via Magic, calls `sendTransaction`
+### Phase 3 — Frontend (DONE — code complete 2026-07-14, E2E verified in demo mode)
+- ✅ Tailwind v4 + design tokens (globals.css); same-origin `/api` proxy (next.config rewrites)
+- ✅ Typed API client (`apiGet`/`apiPost` + `ApiError`, `credentials: 'include'`)
+- ✅ Magic client wrapper (lazy singleton, `EVMExtension`, blind-signature login)
+- ✅ SessionProvider (Magic → `/auth/callback` → httpOnly cookie; demo fallback when no Magic key)
+- ✅ ChatProvider (`/agent/chat`), Landing + Magic login modal, session-gated page shell
+- ✅ ChatView (header + BalancePill + zero-popup counter + demo banner), MessageList (user/agent bubbles + auto-scroll + empty-state suggestions), ChatInput (Enter to send), AgentTurn + TraceTimeline (NO POPUP emphasis) + ReceiptCard (polls `/orders/:id`)
+- ⏭️ Real Magic auth needs `NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY` set (demo mode works without it)
+- ⏭️ UA 7702 browser signing (`sign7702Authorization` + `/transactions/plan/*` → `sendTransaction`) — Phase 4, gated on Manual Gate 1 (the UA spike). A `ua-signer.ts` seam is sketched in the plan (Task 14) but not wired.
 
 ### Phase 4 — Bounties
 - ZeroDev SRA deposit page (⚠️ check free tier / credits first)

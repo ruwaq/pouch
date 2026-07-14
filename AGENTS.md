@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending; runtime blocker FIXED); Phase 2 — LLM layer (code complete, merged); Phase 3 — Frontend (next)**.
+> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending; runtime blocker FIXED); Phase 2 — LLM layer (merged); Phase 3 — Frontend (code complete, E2E verified); Phase 4 — Bounties (next)**.
 
 ---
 
@@ -196,7 +196,7 @@ pnpm build                  # Build all packages
 
 ## Current phase & status
 
-**Phase 0 + Phase 1 + Phase 2 code complete. Phase 3 (Frontend) is next. 2 manual gates pending (user-run). Runtime blocker FIXED (2026-07-14) — `pnpm dev:api` boots.**
+**Phase 0 + Phase 1 + Phase 2 + Phase 3 (Frontend) code complete. 2 manual gates pending (user-run). Runtime blocker FIXED. E2E demo flow verified against live API.**
 - [x] Git repo initialized
 - [x] Documentation created (AGENTS.md, ARCHITECTURE.md, HACKATHON_INTEL.md, PROVIDERS.md)
 - [x] Turborepo monorepo + 8 packages scaffolded (incl. `@pouch/infra-ai`)
@@ -214,7 +214,7 @@ pnpm build                  # Build all packages
 - [ ] **MANUAL GATE 1:** Run the UA spike (`pnpm --filter @pouch/infra-web3 spike`, ~$1 real USDC)
 - [ ] **MANUAL GATE 2:** Apply DB migration (`pnpm db:migrate`, needs Postgres)
 - [x] **Runtime blocker FIXED (2026-07-14):** `pnpm dev:api` now boots. Real root cause was NOT a missing SDK export — `UNIVERSAL_ACCOUNT_VERSION` *is* exported by `@particle-network/universal-account-sdk@2.0.3`. The issue was deferred ESM module loading under pnpm + tsx: `universal-account.ts` imported the SDK at module top-level and the package barrel re-exported it, so any `import from '@pouch/infra-web3'` linked the Particle SDK at startup and its ESM named-export resolution failed. Fix: SDK import moved inside `ParticleAccountProvider.getInstance()` (now async); demo mode never resolves the SDK. Verified: typecheck/test/build all 8/8. See HANDOFF.md.
-- [ ] Frontend chat/balance/order UI — Phase 3
+- [x] **Frontend (Phase 3, 2026-07-14):** Next.js 15 App Router chat UI — Tailwind v4 + design tokens, same-origin `/api` proxy, typed API client (`apiGet`/`apiPost` + `ApiError`), Magic client wrapper (lazy singleton, `EVMExtension`), SessionProvider (Magic login → `/auth/callback` → cookie), ChatProvider (`/agent/chat`), Landing + Magic login modal, ChatView (header + BalancePill + zero-popup counter + demo banner), MessageList (user/agent bubbles + auto-scroll + empty-state suggestions), AgentTurn + TraceTimeline (NO POPUP badge emphasis) + ReceiptCard (polls `/orders/:id`), Button/Spinner/ErrorMessage primitives. E2E verified: `POST /api/agent/chat` returns full `AgentChatResponse` (trace with NO POPUP + reply). 104 tests total (+12 web). See `docs/superpowers/plans/2026-07-14-pouch-phase3-frontend.md`.
 - [ ] CI lint step
 
 See [`docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md`](./docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md) for the phase index.
