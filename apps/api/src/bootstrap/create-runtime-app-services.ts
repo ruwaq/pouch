@@ -1,4 +1,5 @@
-import { CashOutExecutor, IntentParser, OffRampRouter, type AccountProvider, type LoggerPort, type OrderRepository } from '@pouch/domain';
+import { CashOutExecutor, OffRampRouter, type AccountProvider, type LoggerPort, type OrderRepository } from '@pouch/domain';
+import { createAgentLlm } from '@pouch/infra-ai';
 import { buildOffRampProviders } from '@pouch/infra-offramp';
 import {
   createDatabase,
@@ -90,9 +91,14 @@ export function createRuntimeAppServices(options: {
       runtimeLogger,
     );
 
+    const { intentParser, replyStrategy } = createAgentLlm(config);
+    const agentService = replyStrategy
+      ? new AgentChatService(intentParser, executor, orderRepository, replyStrategy)
+      : new AgentChatService(intentParser, executor, orderRepository);
+
     return {
       mode: 'configured',
-      agentService: new AgentChatService(new IntentParser(), executor, orderRepository),
+      agentService,
       balanceService: new BalanceService(accountProvider),
       orderService: new OrderService(orderRepository),
       ...(bitrefillWebhookService ? { bitrefillWebhookService } : {}),

@@ -35,6 +35,9 @@ importers:
       '@pouch/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@pouch/infra-ai':
+        specifier: workspace:*
+        version: link:../../packages/infra-ai
       '@pouch/infra-db':
         specifier: workspace:*
         version: link:../../packages/infra-db

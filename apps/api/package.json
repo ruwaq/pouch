@@ -15,6 +15,7 @@
     "@hono/node-server": "^1.14.4",
     "@magic-sdk/admin": "^2.8.2",
     "@pouch/domain": "workspace:*",
+    "@pouch/infra-ai": "workspace:*",
     "@pouch/infra-db": "workspace:*",
     "@pouch/infra-offramp": "workspace:*",
     "@pouch/infra-web3": "workspace:*",
