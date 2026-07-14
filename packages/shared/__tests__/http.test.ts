@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { HttpError, requestJson } from '../src/http';
+import { requestJson } from '../src/http';
 
 describe('requestJson', () => {
   afterEach(() => {

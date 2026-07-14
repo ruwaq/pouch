@@ -27,7 +27,6 @@ export function BalancePill() {
 
   useEffect(() => {
     void refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentTurnCount]);
 
   if (!balance) return null;

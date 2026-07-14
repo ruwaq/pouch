@@ -8,7 +8,7 @@ import {
   type WebhookEventStore,
 } from '@pouch/infra-db';
 import { createAccountProvider, createAgentWallet } from '@pouch/infra-web3';
-import { loadConfig, ok, type Config } from '@pouch/shared';
+import { loadConfig, type Config } from '@pouch/shared';
 
 import { BitrefillWebhookService } from '../services/bitrefill-webhook-service';
 import { AgentChatService, type AgentChatServiceLike } from '../services/agent-chat-service';

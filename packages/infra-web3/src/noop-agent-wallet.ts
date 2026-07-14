@@ -1,5 +1,5 @@
-import { err, type Result } from '@pouch/shared';
-import type { AgentWalletPort, DomainError, TxResult } from '@pouch/domain';
+import { err } from '@pouch/shared';
+import type { AgentWalletPort } from '@pouch/domain';
 
 /**
  * A no-op agent wallet that returns AGENT_WALLET_NOT_CONFIGURED on every
@@ -13,16 +13,16 @@ import type { AgentWalletPort, DomainError, TxResult } from '@pouch/domain';
 export class NoopAgentWallet implements AgentWalletPort {
   readonly label = 'No agent wallet';
 
-  async getAddress(): Promise<Result<{ address: string }, DomainError>> {
+  async getAddress() {
     return err({
-      type: 'AGENT_WALLET_NOT_CONFIGURED',
+      type: 'AGENT_WALLET_NOT_CONFIGURED' as const,
       message: 'No agent wallet is configured. Set OPENFORT_SECRET_KEY, OPENFORT_WALLET_SECRET, and OPENFORT_FEE_SPONSORSHIP_ID.',
     });
   }
 
-  async settlePayment(): Promise<Result<TxResult, DomainError>> {
+  async settlePayment() {
     return err({
-      type: 'AGENT_WALLET_NOT_CONFIGURED',
+      type: 'AGENT_WALLET_NOT_CONFIGURED' as const,
       message: 'No agent wallet is configured. Settlement is not available.',
     });
   }

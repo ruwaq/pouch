@@ -13,7 +13,7 @@ vi.mock('../lib/magic-client', () => ({
 }));
 
 import { apiPost } from '../lib/api-client';
-import { loginWithEmail, logout as magicLogout } from '../lib/magic-client';
+import { logout as magicLogout } from '../lib/magic-client';
 import { authenticateWithDid, signOut } from './session-context';
 
 describe('session-context helpers', () => {
