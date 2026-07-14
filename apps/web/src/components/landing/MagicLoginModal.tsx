@@ -9,14 +9,13 @@ import { Spinner } from '../ui/Spinner';
 export function MagicLoginModal({ onClose }: { onClose: () => void }) {
   const { login } = useSession();
   const [email, setEmail] = useState('');
-  const [status, setStatus] = useState<'idle' | 'sending' | 'checking'>('idle');
+  const [status, setStatus] = useState<'idle' | 'checking'>('idle');
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
     setError(null);
-    setStatus('sending');
     try {
       setStatus('checking'); // Magic email link sent — waiting for confirmation
       await login(email.trim());
@@ -58,9 +57,7 @@ export function MagicLoginModal({ onClose }: { onClose: () => void }) {
               <Button type="button" variant="ghost" onClick={onClose}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={status === 'sending'}>
-                {status === 'sending' ? 'Sending…' : 'Send magic link'}
-              </Button>
+              <Button type="submit">Send magic link</Button>
             </div>
           </form>
         )}

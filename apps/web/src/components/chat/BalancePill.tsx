@@ -2,9 +2,15 @@
 
 import { useEffect, useState } from 'react';
 import { apiGet, ApiError } from '../../lib/api-client';
+import { useChat } from '../../context/chat-context';
 import type { BalanceResponse } from '../../lib/types';
 
 export function BalancePill() {
+  const { messages } = useChat();
+  // Count agent turns — a new one means a cash-out just completed and the
+  // server-side balance changed, so we re-fetch. (Mount = initial fetch.)
+  const agentTurnCount = messages.filter((m) => m.role === 'agent').length;
+
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [open, setOpen] = useState(false);
 
@@ -21,7 +27,8 @@ export function BalancePill() {
 
   useEffect(() => {
     void refresh();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentTurnCount]);
 
   if (!balance) return null;
 

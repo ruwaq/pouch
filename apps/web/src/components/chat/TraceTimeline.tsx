@@ -33,7 +33,11 @@ export function TraceTimeline({ trace }: { trace: TraceStep[] }) {
               <span className="text-[10px] text-[var(--muted)]">{step.durationMs}ms</span>
             ) : null}
           </div>
-          {step.detail ? <p className="text-xs text-red-300">{step.detail}</p> : null}
+          {step.detail ? (
+            <p className={`text-xs ${step.status === 'error' ? 'text-red-300' : 'text-[var(--muted)]'}`}>
+              {step.detail}
+            </p>
+          ) : null}
         </li>
       ))}
     </ol>

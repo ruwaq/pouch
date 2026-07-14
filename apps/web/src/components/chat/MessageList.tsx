@@ -7,7 +7,7 @@ import { Spinner } from '../ui/Spinner';
 import { ErrorMessage } from '../ui/ErrorMessage';
 
 export function MessageList() {
-  const { messages, isSending, error, sendMessage } = useChat();
+  const { messages, isSending, error } = useChat();
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
