@@ -164,6 +164,9 @@ importers:
 
   packages/infra-web3:
     dependencies:
+      '@openfort/openfort-node':
+        specifier: ^0.10.8
+        version: 0.10.8(viem@2.55.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))
       '@particle-network/universal-account-sdk':
         specifier: ^2.0.3
         version: 2.0.3(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
@@ -998,6 +1001,35 @@ packages:
     resolution: {integrity: sha512-jCs9ldd7NwzpgXDIf6P3+NrHh9/sD6CQdxHyjQI+h/6rDNo88ypBxxz45UDuZHz9r3tNz7N/VInSVoVdtXEI4A==}
     engines: {node: ^14.21.3 || >=16}
 
+  '@openfort/openfort-node@0.10.8':
+    resolution: {integrity: sha512-/cWf3GhSAb+4lo2Vt6pe7Y5ZuBgqtcapkFmbKJBGG3we8xlAlD/r6Sg5sbocvmLaJjHKgVnnt1D/pJGoPOFSWg==}
+    peerDependencies:
+      '@solana-program/compute-budget': '>=0.7.0'
+      '@solana-program/system': '>=0.7.0'
+      '@solana-program/token': '>=0.7.0'
+      '@solana/kit': '>=6.0.0'
+      '@solana/kora': '>=0.1.0'
+      '@solana/transaction-confirmation': '>=6.0.0'
+      viem: '>=2.0.0'
+    peerDependenciesMeta:
+      '@solana-program/compute-budget':
+        optional: true
+      '@solana-program/system':
+        optional: true
+      '@solana-program/token':
+        optional: true
+      '@solana/kit':
+        optional: true
+      '@solana/kora':
+        optional: true
+      '@solana/transaction-confirmation':
+        optional: true
+      viem:
+        optional: true
+
+  '@openfort/shield-js@0.1.37':
+    resolution: {integrity: sha512-DiSTo0keqbAtkG4vG/07lrRoDjgonDSNmyEHNillByaBoDlna/kDBf5r1FWVYXskwXVUv7UA8YDtk9cgYdATUg==}
+
   '@particle-network/universal-account-sdk@2.0.3':
     resolution: {integrity: sha512-pONc0iTyILzAgmwt68ezmeNBKgvvGIz2qQ8Z4cQFspBswF98qDryj3CpzDQkhPf1A5yugJHd70Rlq871RoJvCA==}
 
@@ -1504,6 +1536,14 @@ packages:
     resolution: {integrity: sha512-kNOjDqAh7px0XWNI+4QbzoiR/nTkHAWNud2uvnJquD1/x5a7EQZMJT0AczqK0Qn67oY/TTQ1LbUKajZpp3I9tQ==}
     engines: {node: '>=8.0.0'}
 
+  axios-retry@4.5.0:
+    resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
+    peerDependencies:
+      axios: 0.x || 1.x
+
+  axios@1.15.0:
+    resolution: {integrity: sha512-wWyJDlAatxk30ZJer+GeCWS209sA42X+N5jU2jy6oHTp7ufw8uzUTVFBX9+wTfAlhiJXGS0Bq7X6efruWjuK9Q==}
+
   axios@1.18.1:
     resolution: {integrity: sha512-3nTvFlvpn9Zu/RkHUqtc7/+al4UpRW5az71ap5zccp6e8RAYEzhMTecX8Dz1wWDYrPpUoB1HAQEGEAEvUr7S9g==}
 
@@ -1512,6 +1552,9 @@ packages:
 
   base-x@3.0.11:
     resolution: {integrity: sha512-xz7wQ8xDhdyP7tQxwdteLYeFfS68tSMNCZ/Y37WJ4bhGfKPpqEIlmIyueQHqOyoPhE6xNUqjzRr8ra0eF9VRvA==}
+
+  base-x@5.0.1:
+    resolution: {integrity: sha512-M7uio8Zt++eg3jPj+rHMfCC+IuygQHHCOU+IYsVtik6FWjuYpVt/+MRKcgsAMHh8mMFAwnB+Bs+mTrFiXjMzKg==}
 
   base64-js@1.5.1:
     resolution: {integrity: sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==}
@@ -1540,6 +1583,9 @@ packages:
 
   bs58@4.0.1:
     resolution: {integrity: sha512-Ok3Wdf5vOIlBrgCvTq96gBkJw+JUEzdBgyaza5HLtPm7yTHkjRy8+JzNyHF7BHa0bNWOQIp3m5YF0nnFcOIKLw==}
+
+  bs58@6.0.0:
+    resolution: {integrity: sha512-PD0wEnEYg6ijszw/u8s+iI3H17cTymlrwkKhDhPZq+Sokl3AU4htyBFTjAeNAlCCmg0f53g6ih3jATyCKftTfw==}
 
   buffer-equal-constant-time@1.0.1:
     resolution: {integrity: sha512-zRpUiDwd/xk6ADqPMATG8vc9VPrkck7T07OIx0gnjmJAnHnTVXNQG3vfvWNuiZIkwu9KrKdA1iJKfsfTVxE6NA==}
@@ -2069,6 +2115,10 @@ packages:
   is-glob@4.0.3:
     resolution: {integrity: sha512-xelSayHH36ZgE7ZWhli7pW34hNbNl8Ojv5KVmkJD4hBdD3th8Tfk9vYasLM+mXWOZhFkgZfxhLSnrwRr4elSSg==}
     engines: {node: '>=0.10.0'}
+
+  is-retry-allowed@2.2.0:
+    resolution: {integrity: sha512-XVm7LOeLpTW4jV19QSH38vkswxoLud8sQ57YwJVTPWdiaI9I8keEhGFpBlslyVsgdQy4Opg8QOLb8YRgsyZiQg==}
+    engines: {node: '>=10'}
 
   isexe@2.0.0:
     resolution: {integrity: sha512-RHxMLp9lnKHGHRng9QFhRCMbYAcVpn69smSGcq3f36xjgVVWThj4qqLbTLlq7Ssj8B+fIQ1EuCEGI2lKsyQeIw==}
@@ -3354,6 +3404,27 @@ snapshots:
 
   '@noble/hashes@1.8.0': {}
 
+  '@openfort/openfort-node@0.10.8(viem@2.55.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76))':
+    dependencies:
+      '@openfort/shield-js': 0.1.37
+      axios: 1.18.1
+      axios-retry: 4.5.0(axios@1.18.1)
+      bs58: 6.0.0
+      jose: 6.2.3
+      zod: 3.25.76
+    optionalDependencies:
+      viem: 2.55.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)
+    transitivePeerDependencies:
+      - debug
+      - supports-color
+
+  '@openfort/shield-js@0.1.37':
+    dependencies:
+      axios: 1.15.0
+      axios-retry: 4.5.0(axios@1.15.0)
+    transitivePeerDependencies:
+      - debug
+
   '@particle-network/universal-account-sdk@2.0.3(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@3.25.76)':
     dependencies:
       '@coral-xyz/anchor': 0.30.1(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)
@@ -3856,6 +3927,24 @@ snapshots:
 
   atomic-sleep@1.0.0: {}
 
+  axios-retry@4.5.0(axios@1.15.0):
+    dependencies:
+      axios: 1.15.0
+      is-retry-allowed: 2.2.0
+
+  axios-retry@4.5.0(axios@1.18.1):
+    dependencies:
+      axios: 1.18.1
+      is-retry-allowed: 2.2.0
+
+  axios@1.15.0:
+    dependencies:
+      follow-redirects: 1.16.0
+      form-data: 4.0.6
+      proxy-from-env: 2.1.0
+    transitivePeerDependencies:
+      - debug
+
   axios@1.18.1:
     dependencies:
       follow-redirects: 1.16.0
@@ -3871,6 +3960,8 @@ snapshots:
   base-x@3.0.11:
     dependencies:
       safe-buffer: 5.2.1
+
+  base-x@5.0.1: {}
 
   base64-js@1.5.1: {}
 
@@ -3902,6 +3993,10 @@ snapshots:
   bs58@4.0.1:
     dependencies:
       base-x: 3.0.11
+
+  bs58@6.0.0:
+    dependencies:
+      base-x: 5.0.1
 
   buffer-equal-constant-time@1.0.1: {}
 
@@ -4417,6 +4512,8 @@ snapshots:
   is-glob@4.0.3:
     dependencies:
       is-extglob: 2.1.1
+
+  is-retry-allowed@2.2.0: {}
 
   isexe@2.0.0: {}
 

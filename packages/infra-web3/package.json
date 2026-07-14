@@ -17,6 +17,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
+    "@openfort/openfort-node": "^0.10.8",
     "@particle-network/universal-account-sdk": "^2.0.3",
     "@pouch/domain": "workspace:*",
     "@pouch/shared": "workspace:*",
