@@ -32,9 +32,9 @@ Full design spec: [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design
 
 The workspace currently passes:
 ```bash
-pnpm typecheck   # 7/7 packages
-pnpm test        # 56 tests passing
-pnpm build       # 7/7 packages
+pnpm typecheck   # 8/8 packages (added @pouch/infra-ai)
+pnpm test        # 90 tests passing (56 baseline + 34 Phase 2)
+pnpm build       # 8/8 packages
 ```
 
 ## Implemented API surface
@@ -64,7 +64,7 @@ pnpm build       # 7/7 packages
 ### Demo / temporary (until manual gates run)
 - `infra-web3` defaults to `WEB3_PROVIDER_MODE=demo` — `DemoAccountProvider` simulates balances/payments
 - Auth middleware has `allowDemoFallback: true` in demo mode (no cookie → `demo-user`); production enforces 401
-- Intent parser is regex-only (LLM layer designed but not implemented — Phase 2)
+- Intent parser uses Gemini function-calling (Phase 2) when `LLM_PROVIDER=gemini`+`GEMINI_API_KEY` set, else regex — and falls back to regex on ANY LLM failure (demo never breaks). Reply is conversational (LLM) or template, same fallback rule.
 - Frontend is a static landing page, not a connected chat UI (Phase 3)
 - The spike script (`packages/infra-web3/spike/ua-spike.mts`) is written but NOT yet run against real funds
 
@@ -94,10 +94,18 @@ pnpm build       # 7/7 packages
 
 **Particle UA testnet:** Unavailable. The incentivized testnet ended Sep 2025; UA V2 (launched Jul 2026) is mainnet-only. The spike uses ~$1 real USDC. SDK version: `@particle-network/universal-account-sdk@^2.0.3` (NOT beta — verified).
 
-### Phase 2 — LLM layer (NEXT)
-- `packages/infra-ai/` — LLMProvider interface + Gemini implementation
-- LLM intent parser with regex fallback (demo always works)
-- Can run in parallel with the Phase 1 manual gates — only depends on Phase 0's `IntentParserStrategy`
+### Phase 2 — LLM layer (DONE — code complete; real API key optional)
+- ✅ `packages/infra-ai/` — provider-agnostic `LLMProvider` port + `GeminiProvider` adapter (`@google/genai` function-calling)
+- ✅ `LlmIntentParser` (implements `IntentParserStrategy`) with regex fallback on ANY failure (provider error / non-cash_out function / plain text / bad args)
+- ✅ `ReplyStrategy` port (domain) + `LlmReplyStrategy` (conversational reply, deterministic template fallback)
+- ✅ Factory (`createLlmProvider` / `createIntentParser` / `createReplyStrategy` / `createAgentLlm`) — SDK imported ONLY in `factory.ts`, gated behind `LLM_PROVIDER`+`GEMINI_API_KEY`
+- ✅ Wired into `createRuntimeAppServices` (LLM when configured, regex + template otherwise); demo path untouched
+- ✅ `IntentParserStrategy.parse` made async (required to host the async LLM call)
+- ✅ `@google/genai@1.52.0` resolved; verified `gemini-2.0-flash` model wiring
+- ⏭️ Admin supplies real `GEMINI_API_KEY` at demo time (regex always works without it — demo never breaks because of the LLM)
+- ⏭️ Verified via unit + integration tests (32 in infra-ai + 2 runtime-wiring in api); **live-server smoke is blocked by a Phase 1 runtime issue** (see ⚠️ below), unrelated to Phase 2
+
+> ⚠️ **Phase 1 runtime blocker (NOT Phase 2):** `packages/infra-web3/src/factory.ts:5` statically imports `ParticleAccountProvider`, whose module imports `UNIVERSAL_ACCOUNT_VERSION` from `@particle-network/universal-account-sdk` — an export the installed SDK version does not provide. This throws at module-load time regardless of `WEB3_PROVIDER_MODE`, so `pnpm dev:api` can't boot. typecheck passes (Phase 1 `paths` override) but runtime ESM resolution fails. **Phase 2 did not touch `infra-web3`** (confirmed: 0 files changed there). Fix options when resuming Phase 1: (a) lazy-import `ParticleAccountProvider` inside the `case 'particle'` branch so demo mode never loads it; (b) drop the unused `UNIVERSAL_ACCOUNT_VERSION` import; (c) pin an SDK version that exports it. The Phase 2 LLM flow itself is verified end-to-end via `app.test.ts` (mocked services, no web3).
 
 ### Phase 3 — Frontend
 - Magic login + embedded wallet + `sign7702Authorization` (browser signing)
