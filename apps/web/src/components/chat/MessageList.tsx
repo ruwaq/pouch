@@ -4,10 +4,10 @@ import { useEffect, useRef } from 'react';
 import { useChat } from '../../context/chat-context';
 import { AgentTurn } from './AgentTurn';
 import { Spinner } from '../ui/Spinner';
-import { ErrorMessage } from '../ui/ErrorMessage';
+import { AgentErrorBubble } from './AgentErrorBubble';
 
 export function MessageList() {
-  const { messages, isSending, error } = useChat();
+  const { messages, isSending, error, errorType } = useChat();
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function MessageList() {
           <Spinner label="Pouch is working…" />
         </div>
       ) : null}
-      {error ? <ErrorMessage>{error}</ErrorMessage> : null}
+      {error ? <AgentErrorBubble message={error} type={errorType} /> : null}
       <div ref={endRef} />
     </div>
   );

@@ -16,6 +16,7 @@ interface ChatContextValue {
   messages: ChatMessage[];
   isSending: boolean;
   error: string | null;
+  errorType: string | null;
   sendMessage: (text: string, userId?: string) => Promise<void>;
   clearError: () => void;
 }
@@ -38,12 +39,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<string | null>(null);
 
   const sendMessage = useCallback(
     async (text: string, userId?: string) => {
       const trimmed = text.trim();
       if (!trimmed || isSending) return;
       setError(null);
+      setErrorType(null);
       setIsSending(true);
       setMessages((prev) => [...prev, { id: newId(), role: 'user', text: trimmed }]);
 
@@ -52,7 +55,9 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         setMessages((prev) => [...prev, { id: newId(), role: 'agent', response }]);
       } catch (e) {
         const message = e instanceof ApiError ? e.message : 'Something went wrong. Try again.';
+        const type = e instanceof ApiError ? (e.type ?? null) : null;
         setError(message);
+        setErrorType(type);
       } finally {
         setIsSending(false);
       }
@@ -60,11 +65,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     [isSending],
   );
 
-  const clearError = useCallback(() => setError(null), []);
+  const clearError = useCallback(() => {
+    setError(null);
+    setErrorType(null);
+  }, []);
 
   const value = useMemo<ChatContextValue>(
-    () => ({ messages, isSending, error, sendMessage, clearError }),
-    [messages, isSending, error, sendMessage, clearError],
+    () => ({ messages, isSending, error, errorType, sendMessage, clearError }),
+    [messages, isSending, error, errorType, sendMessage, clearError],
   );
 
   return <ChatContext.Provider value={value}>{children}</ChatContext.Provider>;
