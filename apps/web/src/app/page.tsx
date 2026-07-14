@@ -7,6 +7,7 @@ import { Spinner } from '../components/ui/Spinner';
 
 export default function Home() {
   const { status } = useSession();
+  const hasMagic = Boolean(process.env.NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY);
 
   if (status === 'loading') {
     return (
@@ -16,7 +17,9 @@ export default function Home() {
     );
   }
 
-  if (status === 'anonymous') {
+  // No Magic key configured → skip the landing/login gate and show the chat
+  // directly against the API's demo mode (balances + orders are simulated).
+  if (status === 'anonymous' && hasMagic) {
     return <Landing />;
   }
 
