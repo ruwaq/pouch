@@ -1,19 +1,27 @@
 import { err, ok } from '@pouch/shared';
 import type { AccountProvider, Balance, DomainError, UserId } from '@pouch/domain';
 
-import { UniversalAccount, UNIVERSAL_ACCOUNT_VERSION } from '@particle-network/universal-account-sdk';
 import type { ParticleProviderConfig } from './types';
 import { mapAssetsResponseToBalance, type UaAssetsResponseLike } from './ua-assets-mapper';
+
+// Minimal structural type for the SDK pieces we use. Keeping the heavy
+// `@particle-network/universal-account-sdk` import out of the module top-level
+// means demo mode (the default in dev) never has to resolve it. Under
+// pnpm + tsx, the SDK's ESM named-export linking is fragile; deferring the
+// import to inside getInstance() isolates that to the particle code path.
+type UniversalAccountLike = {
+  getPrimaryAssets(): Promise<UaAssetsResponseLike>;
+};
 
 // Each user gets their own UniversalAccount (one per Magic EOA address).
 // The provider caches UA instances by ownerAddress.
 export class ParticleAccountProvider implements AccountProvider {
-  private readonly instances = new Map<string, UniversalAccount>();
+  private readonly instances = new Map<string, UniversalAccountLike>();
 
   constructor(private readonly config: ParticleProviderConfig) {}
 
   async getUnifiedBalance(userId: UserId): ReturnType<AccountProvider['getUnifiedBalance']> {
-    const ua = this.getInstance(userId);
+    const ua = await this.getInstance(userId);
 
     try {
       const response = (await ua.getPrimaryAssets()) as unknown as UaAssetsResponseLike;
@@ -44,10 +52,12 @@ export class ParticleAccountProvider implements AccountProvider {
     });
   }
 
-  private getInstance(ownerAddress: string): UniversalAccount {
+  private async getInstance(ownerAddress: string): Promise<UniversalAccountLike> {
     let ua = this.instances.get(ownerAddress);
 
     if (!ua) {
+      // Deferred import: see file header. Only particle mode ever reaches here.
+      const { UniversalAccount, UNIVERSAL_ACCOUNT_VERSION } = await import('@particle-network/universal-account-sdk');
       ua = new UniversalAccount({
         projectId: this.config.projectId,
         projectClientKey: this.config.projectClientKey,

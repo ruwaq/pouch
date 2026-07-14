@@ -32,8 +32,9 @@ Full design spec: [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design
 
 The workspace currently passes:
 ```bash
+pnpm dev:api     # ✅ boots: "Pouch API listening on http://localhost:3001" (runtime blocker fixed 2026-07-14)
 pnpm typecheck   # 8/8 packages (added @pouch/infra-ai)
-pnpm test        # 90 tests passing (56 baseline + 34 Phase 2)
+pnpm test        # 92 tests passing (56 baseline + 36 Phase 2 + web3)
 pnpm build       # 8/8 packages
 ```
 
@@ -105,7 +106,7 @@ pnpm build       # 8/8 packages
 - ⏭️ Admin supplies real `GEMINI_API_KEY` at demo time (regex always works without it — demo never breaks because of the LLM)
 - ⏭️ Verified via unit + integration tests (32 in infra-ai + 2 runtime-wiring in api); **live-server smoke is blocked by a Phase 1 runtime issue** (see ⚠️ below), unrelated to Phase 2
 
-> ⚠️ **Phase 1 runtime blocker (NOT Phase 2):** `packages/infra-web3/src/factory.ts:5` statically imports `ParticleAccountProvider`, whose module imports `UNIVERSAL_ACCOUNT_VERSION` from `@particle-network/universal-account-sdk` — an export the installed SDK version does not provide. This throws at module-load time regardless of `WEB3_PROVIDER_MODE`, so `pnpm dev:api` can't boot. typecheck passes (Phase 1 `paths` override) but runtime ESM resolution fails. **Phase 2 did not touch `infra-web3`** (confirmed: 0 files changed there). Fix options when resuming Phase 1: (a) lazy-import `ParticleAccountProvider` inside the `case 'particle'` branch so demo mode never loads it; (b) drop the unused `UNIVERSAL_ACCOUNT_VERSION` import; (c) pin an SDK version that exports it. The Phase 2 LLM flow itself is verified end-to-end via `app.test.ts` (mocked services, no web3).
+> ✅ **Runtime blocker RESOLVED (2026-07-14).** The earlier diagnosis was wrong: the SDK *does* export `UNIVERSAL_ACCOUNT_VERSION` (verified in `.d.ts`, `.cjs`, and `.mjs` of `@particle-network/universal-account-sdk@2.0.3`; `import` works from `packages/infra-web3`). The real root cause was **deferred ESM module loading under pnpm + tsx**: `universal-account.ts` imported the SDK at module top-level, and `packages/infra-web3/src/index.ts` re-exported it via a barrel (`export * from './particle/universal-account'`). So any `import from '@pouch/infra-web3'` in `apps/api` linked the Particle SDK at startup, and its ESM named-export resolution failed in that context — throwing `does not provide an export named 'UNIVERSAL_ACCOUNT_VERSION'` regardless of `WEB3_PROVIDER_MODE`. **Fix:** the SDK import was moved *inside* `ParticleAccountProvider.getInstance()` (now async) and replaced the module-level `UniversalAccount` typing with a local `UniversalAccountLike`. Demo mode never resolves the SDK; particle mode loads it lazily on first use. Verified: `pnpm dev:api` now boots (`Pouch API listening on http://localhost:3001`), `pnpm typecheck`/`test`/`build` all pass 8/8.
 
 ### Phase 3 — Frontend
 - Magic login + embedded wallet + `sign7702Authorization` (browser signing)

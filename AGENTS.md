@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending, 1 runtime blocker); Phase 2 — LLM layer (code complete); Phase 3 — Frontend (next)**.
+> Last updated: 2026-07-14. Project status: **Phase 1 — Web3 + auth (code done, 2 manual gates pending; runtime blocker FIXED); Phase 2 — LLM layer (code complete, merged); Phase 3 — Frontend (next)**.
 
 ---
 
@@ -196,7 +196,7 @@ pnpm build                  # Build all packages
 
 ## Current phase & status
 
-**Phase 0 + Phase 1 + Phase 2 code complete. Phase 3 (Frontend) is next. 2 manual gates pending (user-run) + 1 Phase 1 runtime blocker.**
+**Phase 0 + Phase 1 + Phase 2 code complete. Phase 3 (Frontend) is next. 2 manual gates pending (user-run). Runtime blocker FIXED (2026-07-14) — `pnpm dev:api` boots.**
 - [x] Git repo initialized
 - [x] Documentation created (AGENTS.md, ARCHITECTURE.md, HACKATHON_INTEL.md, PROVIDERS.md)
 - [x] Turborepo monorepo + 8 packages scaffolded (incl. `@pouch/infra-ai`)
@@ -213,7 +213,7 @@ pnpm build                  # Build all packages
 - [x] **Competitive research** — 23 projects analyzed, off-ramp = 0 competitors (blue ocean)
 - [ ] **MANUAL GATE 1:** Run the UA spike (`pnpm --filter @pouch/infra-web3 spike`, ~$1 real USDC)
 - [ ] **MANUAL GATE 2:** Apply DB migration (`pnpm db:migrate`, needs Postgres)
-- [ ] **PHASE 1 RUNTIME BLOCKER:** `pnpm dev:api` won't boot — `infra-web3/src/factory.ts` statically imports `ParticleAccountProvider`, whose SDK import (`UNIVERSAL_ACCOUNT_VERSION`) is not exported by the installed `@particle-network/universal-account-sdk`. Phase 2 did not touch infra-web3. Fix: lazy-import the Particle provider inside the `case 'particle'` branch (so demo mode never loads it), or drop the unused `UNIVERSAL_ACCOUNT_VERSION` import. See HANDOFF.md.
+- [x] **Runtime blocker FIXED (2026-07-14):** `pnpm dev:api` now boots. Real root cause was NOT a missing SDK export — `UNIVERSAL_ACCOUNT_VERSION` *is* exported by `@particle-network/universal-account-sdk@2.0.3`. The issue was deferred ESM module loading under pnpm + tsx: `universal-account.ts` imported the SDK at module top-level and the package barrel re-exported it, so any `import from '@pouch/infra-web3'` linked the Particle SDK at startup and its ESM named-export resolution failed. Fix: SDK import moved inside `ParticleAccountProvider.getInstance()` (now async); demo mode never resolves the SDK. Verified: typecheck/test/build all 8/8. See HANDOFF.md.
 - [ ] Frontend chat/balance/order UI — Phase 3
 - [ ] CI lint step
 
