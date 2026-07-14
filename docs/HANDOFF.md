@@ -1,6 +1,6 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-14
+Last updated: 2026-07-14 (Phase 4 spec written, scope locked)
 
 ## Strategic direction — CONFIRMED
 
@@ -13,12 +13,11 @@ Full design spec: [`docs/superpowers/specs/2026-07-13-pouch-offramp-agent-design
 - **0 historical hackathon winners** in crypto-to-gift-card or AI-agent-off-ramp
 - **Differentiator vs incumbents:** chain abstraction on the INPUT (Bitrefill/Coinbase/x402 are all single-chain USDC)
 
-### Bounties targeted ($4.6k-$5.6k potential)
+### Bounties targeted ($4.1k-$5.1k potential — ZeroDev dropped 2026-07-14)
 - UA Track ($1.5-2.5k) — cross-chain consolidation via UA 7702
 - Arbitrum ($2k) — settlement chain = Arbitrum One (already wired)
 - Magic Labs ($500) — blind signatures, zero popups
-- ZeroDev SRA ($500) — ⚠️ pricing risk (no free tier, need hackathon credits)
-- Openfort ($100) — gas sponsorship (policy, NOT x402)
+- Openfort ($100) — gas sponsorship via agent backend wallet (Phase 4, spec written)
 
 ### Cut from scope
 - Reloadly (not a bounty, eats 1.5 days)
@@ -127,9 +126,13 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 - ⏭️ Real Magic auth needs `NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY` set (demo mode works without it)
 - ⏭️ UA 7702 browser signing (`sign7702Authorization` + `/transactions/plan/*` → `sendTransaction`) — Phase 4, gated on Manual Gate 1 (the UA spike). A `ua-signer.ts` seam is sketched in the plan (Task 14) but not wired.
 
-### Phase 4 — Bounties
-- ZeroDev SRA deposit page (⚠️ check free tier / credits first)
-- Openfort gas sponsorship (policy, not x402)
+### Phase 4 — Bounties + polish (SPEC WRITTEN, plan + implementation NEXT)
+- ✅ **Spec written (2026-07-14):** [`docs/superpowers/specs/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md`](./superpowers/specs/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md)
+- ❌ **ZeroDev SRA DROPPED (2026-07-14):** Researched pricing — free tier is testnet-only; production $69–500/mo. Particle UA is mainnet-only → ZeroDev testnet cannot route to it. Architecturally broken on a free budget, not just expensive. Bounty ($500) soltado. `/deposit` page dropped with it (it only existed to host SRA). `ZERODEV_PROJECT_ID` stays in config but factory ignores it.
+- ❌ **Bitrefill real purchase DROPPED:** Mock fulfillment for dev AND demo. Zero cost.
+- ⬜ **Openfort gas sponsorship — TO BUILD:** Agent backend wallet (Opción A, confirmed). Openfort creates its OWN EOA + EIP-7702 Calibur delegation; gas-sponsored via policy + feeSponsorship (`pay_for_user`). CANNOT sponsor an external smart account (Particle UA) — confirmed from SDK 0.10.8. So: UA = user's account (consolidation), Openfort wallet = agent's gasless signer (settlement payment to Bitrefill). Two-step trace: `Funding agent wallet [UA 7702]` → `Paid via Openfort gasless [NO POPUP]`.
+- ⬜ **CI lint step** (`.github/workflows/ci.yml`) — pending since Phase 0.
+- ⬜ **Demo hardening** (error/empty/mobile states in frontend) + **submission prep** (README, bounty mapping doc).
 
 ---
 
@@ -179,28 +182,42 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 ### First message to send to the agent:
 ```
 Continúa el proyecto Pouch. Lee docs/HANDOFF.md y
-docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md,
-luego escribe el plan detallado de Phase 2 (LLM layer: infra-ai + Gemini function-calling)
-con writing-plans. Phase 2 can run in parallel with the manual gates of Phase 1.
+docs/superpowers/specs/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md (Phase 4 spec,
+approved 2026-07-14). Luego usa el skill writing-plans para escribir el plan de
+implementación detallado de Phase 4 (Openfort agent wallet + CI lint + demo hardening).
+El scope YA ESTÁ DECIDIDO — no relevar decisiones. Ejecutar directo.
 ```
 
 ### What's done (don't redo):
 - ✅ Design spec + competitive research + all docs
 - ✅ Phase 0: domain foundation (trace, parser strategy, ownership, Gap F, config)
 - ✅ Phase 1: web3 spike script + real Particle provider + full auth + transaction planner
+- ✅ Phase 2: LLM layer (infra-ai + Gemini function-calling + regex fallback)
+- ✅ Phase 3: Frontend (chat UI + agent trace + Magic login + receipt), E2E verified in demo mode
 - ✅ Initial Drizzle migration generated
+- ✅ **Phase 4 spec written** — scope locked, decisions confirmed (see below)
+
+### Phase 4 decisions (LOCKED 2026-07-14 — do not revisit):
+- **Openfort:** BUILD. Agent backend wallet (Opción A). `AgentWalletPort` in domain (optional), `OpenfortAgentWallet` in infra-web3. SDK `@openfort/openfort-node@^0.10.8`, deferred ESM import (same pattern as Particle fix).
+- **ZeroDev SRA:** DROPPED. Free tier testnet-only × Particle mainnet-only = incompatible. No code. `ZERODEV_PROJECT_ID` ignored.
+- **`/deposit` page:** DROPPED (only existed for ZeroDev).
+- **Bitrefill real purchase:** DROPPED. Mock fulfillment everywhere.
+- **CI lint + demo hardening + README:** IN SCOPE.
 
 ### Manual gates still pending (user-run, not agent):
-1. **Spike:** `SPIKE_PRIVATE_KEY=0x... pnpm --filter @pouch/infra-web3 spike` (~$1 USDC, validates UA + 7702)
-2. **DB migration:** `pnpm db:migrate` (needs live Postgres)
+1. **Spike (Phase 1):** `SPIKE_PRIVATE_KEY=0x... pnpm --filter @pouch/infra-web3 spike` (~$1 USDC, validates UA + 7702)
+2. **DB migration (Phase 1):** `pnpm db:migrate` (needs live Postgres)
+3. **Openfort dashboard setup (Phase 4):** Create project → enable backend wallets (get `WALLET_SECRET`) → policy (Base+Arbitrum, `sponsorEvmTransaction`) → feeSponsorship (`pay_for_user`) → 3 IDs in `.env`. Documented step-by-step in the Phase 4 spec §5.
 
-### Open decisions (resolve when reached):
-- ZeroDev SRA: try credits first, fallback to Particle deposit address or Openfort-only (Phase 4)
-- Bitrefill: mock fulfillment for dev, 1 real ~$1 purchase for final demo
+### Bounties targeted after Phase 4 ($4.1k–5.1k):
+- UA Track ($1.5–2.5k) — Phase 1
+- Arbitrum ($2k) — settlement chain config
+- Magic Labs ($500) — Phase 3
+- Openfort ($100) — Phase 4
 
 ### Verification before starting implementation:
 ```bash
-pnpm typecheck   # should pass (7/7)
-pnpm test        # should pass (56 tests)
-pnpm build       # should pass (7/7)
+pnpm typecheck   # should pass (8/8 packages)
+pnpm test        # should pass (104 tests)
+pnpm build       # should pass (8/8 packages)
 ```

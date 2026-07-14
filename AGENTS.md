@@ -24,21 +24,20 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 - **Theme:** Chain abstraction / UX that makes crypto feel invisible
 - **Stack requirement:** Particle Universal Accounts (EIP-7702 mode) is mandatory for the UA Track
 
-### Bounties we target (5 sections, ~$5,600 potential)
+### Bounties we target (4 sections, ~$4.1k-$5.1k potential — ZeroDev dropped 2026-07-14)
 
 | # | Bounty | Prize | How Pouch covers it |
 |---|--------|-------|---------------------|
 | 1 | Universal Accounts Track | $1.5k-$2.5k | Cross-chain consolidation via UA + EIP-7702 |
 | 2 | Arbitrum bounty | $2k | Settlement chain = Arbitrum One (config via env) |
 | 3 | Magic Labs bonus | $500 | Embedded wallet + blind signatures (zero popups) |
-| 4 | ZeroDev SRA subtrack | $500 | `createSmartRoutingAddress()` for cross-chain deposits |
-| 5 | Openfort subtrack | $100 | Agent backend wallet + gas sponsorship (policy, NOT x402) |
+| 4 | Openfort subtrack | $100 | Agent backend wallet + gas sponsorship (policy, NOT x402) |
 
-**Key insight:** Bounties are judged INDEPENDENTLY. Research (2026-07-13) confirmed 23 active projects; **0 competitors** in the off-ramp niche. ZeroDev SRA and Openfort subtracks have only 1 competitor each.
+**Key insight:** Bounties are judged INDEPENDENTLY. Research (2026-07-13) confirmed 23 active projects; **0 competitors** in the off-ramp niche. Openfort subtrack has only 1 competitor.
 
-**⚠️ ZeroDev pricing risk:** No documented free tier (~$500/mo). Need hackathon credits from their Discord, or pivot SRA feature to Particle deposit address. Openfort free tier (2,000 ops/mes) is safe.
+**⚠️ ZeroDev SRA — DROPPED (2026-07-14):** Researched pricing: free tier is testnet-only (10K credits/mo); production starts $69/mo (Growth) or ~$500/mo (SRA base). Particle UA is mainnet-only (testnet ended Sep 2025) → ZeroDev testnet **cannot route to** Particle mainnet. Architecturally broken on a free budget. Bounty ($500) soltado. `/deposit` page dropped with it.
 
-**Cut from scope (2026-07-13):** Reloadly 2nd provider (not a bounty), x402/EIP-3009 (confirmed bug in UA 7702), ZeroDev session keys (blind signatures cover the narrative).
+**Cut from scope:** Reloadly 2nd provider (not a bounty), x402/EIP-3009 (confirmed bug in UA 7702), ZeroDev session keys (blind signatures cover the narrative), ZeroDev SRA (pricing + testnet/mainnet incompatibility, 2026-07-14), Bitrefill real purchase (mock fulfillment everywhere).
 
 ### Judging criteria we optimize for
 - **UX excellence (40% UA Track / 30% Arbitrum):** Chat interface + blind signatures + invisible routing
@@ -67,8 +66,8 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 - `magic-sdk` + `@magic-ext/evm` — embedded wallet, blind signatures, EIP-7702 sign
 - `@particle-network/universal-account-sdk@^2.0.3` — Universal Account, EIP-7702 (npm-verified stable; NOT beta)
 - `ethers@^6.16.0` — **v6 mandatory** (v5 lacks `authorizeSync` / `hashAuthorization` for 7702)
-- `@openfort/openfort-node@^0.10.8` — agent wallet + gas sponsorship (policy)
-- `@zerodev/smart-routing-address@^0.2.5` — Smart Routing Address (SRA) ⚠️ no free tier
+- `@openfort/openfort-node@^0.10.8` — agent backend wallet + gas sponsorship (policy + feeSponsorship `pay_for_user`). API is 0.10.x (`accounts.evm.backend.*`), NOT the older `players.*` namespace.
+- ~~`@zerodev/smart-routing-address`~~ — DROPPED 2026-07-14 (free tier testnet-only × Particle mainnet-only = incompatible)
 - `jose` — JWT verification (Magic DID → our JWT)
 - `@google/genai` — Gemini SDK for LLM intent parsing + conversational responses
 
