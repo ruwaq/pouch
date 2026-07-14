@@ -1,5 +1,14 @@
 # Development Plan — Pouch (10 days)
 
+> **⚠️ HISTORICAL DOCUMENT — This was the original 10-day plan.** The actual implementation used a different phase structure (0-4). For the current status, see [`AGENTS.md`](../AGENTS.md) and [`docs/HANDOFF.md`](./HANDOFF.md). The phases below are kept for reference only.
+>
+> **Actual phases completed:**
+> - Phase 0: Domain foundation (trace, router, executor, intent parser)
+> - Phase 1: Web3 + auth (Particle UA, Magic, transaction planner)
+> - Phase 2: LLM layer (Gemini function-calling + regex fallback)
+> - Phase 3: Frontend (Next.js chat UI, E2E verified in demo mode)
+> - Phase 4: Openfort gas sponsorship + CI lint + demo hardening
+
 > Execution plan. Read AGENTS.md and ARCHITECTURE.md first.
 - **Start:** Jul 11, 2026
 - **Deadline:** Jul 20, 2026, 1:59 PM GMT+2

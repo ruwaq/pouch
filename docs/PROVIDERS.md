@@ -273,7 +273,7 @@ const removeAuth = { ...auth, contractAddress: '0x000000000000000000000000000000
 
 ## 5. ZeroDev — Smart Routing Address (SRA)
 
-**Status:** ⚠️ Verified API, but **no documented free tier** (~$500/mo production). Need hackathon credits from ZeroDev Discord, or pivot SRA feature to Particle deposit address. Bounty: ZeroDev subtrack 2 ($500). Only 1 known competitor (AVUS-RN).
+**Status:** ❌ **DROPPED (2026-07-14).** Free tier is testnet-only; Particle UA is mainnet-only → architecturally incompatible. No code shipped. See AGENTS.md + HANDOFF.md for the decision.
 **Docs:** https://docs.zerodev.app/onramp/smart-routing-address/quickstart
 **SDK:** `@zerodev/smart-routing-address@0.2.5`
 **Setup time:** ~1 day.
@@ -324,7 +324,7 @@ Ethereum, Optimism, Arbitrum, Base, BSC, Polygon, HyperEVM, World Chain, Unichai
 
 ## 6. ZeroDev — Session Keys (permissions)
 
-**Status:** ⏸️ CUT from hackathon scope (2026-07-13). Complexity vs limited time. The "zero popup" narrative is covered by Magic blind signatures.
+**Status:** ❌ **DROPPED.** Blind signatures (Magic) cover the zero-popup narrative. Session keys add complexity without bounty value. See AGENTS.md.
 **Docs:** https://docs.zerodev.app/smart-accounts/permissions/intro
 **SDK:** `@zerodev/permissions@5.6.3` (Kernel v3 — do NOT use old `@zerodev/session-key`)
 
@@ -358,56 +358,53 @@ Package: `@zerodev/waas` (v0.2.2). Hooks: `useCreateSession`, `useSendTransactio
 
 ---
 
-## 7. Openfort (agent wallet + gas sponsorship)
+## 7. Openfort — Agent Backend Wallet + Gas Sponsorship
 
-**Status:** ✅ Verified. Bounty: Openfort subtrack 1 ($100).
-**Docs:** https://docs.openfort.xyz (limited — also see GitHub `openfort-xyz/recipes-hub`)
-**SDK:** `@openfort/openfort-node@0.10.8`
-**Setup time:** ~0.5 day.
+**Status:** ✅ **BUILT (Phase 4, 2026-07-14).** Agent backend wallet with EIP-7702 delegation + gas sponsorship via policy + feeSponsorship (`pay_for_user`). $100 bounty.
+**Docs:** https://www.openfort.io/blog/how-to-build-an-agent-wallet
+**SDK:** `@openfort/openfort-node@^0.10.8`
 
-### Create backend wallet (for agent)
+### Integration model
+- Particle UA = the **user's** account (cross-chain consolidation, bounty #1)
+- Openfort wallet = the **agent's** gasless signer (settlement payment to Bitrefill, bounty #4)
+- Openfort CANNOT sponsor gas for Particle's UA (its paymaster only evaluates its own accounts). So the agent wallet is a separate signer.
+- Two-step settlement trace: `Funding agent wallet [UA 7702]` → `Paid via Openfort gasless [NO POPUP]`
+
+### API used (SDK 0.10.8)
 ```typescript
 import Openfort from '@openfort/openfort-node';
-const openfort = new Openfort('sk_test_...',', { walletSecret: process.env.OPENFORT_WALLET_SECRET });
 
-const account = await openfort.accounts.evm.backend.create();
+const client = new Openfort(secretKey, { walletSecret });
+
+// Create/get the agent's backend wallet (idempotent per wallet)
+const account = await client.accounts.evm.backend.create();
 // → { id: 'acc_...', address: '0x...' }
-```
 
-### Upgrade to Calibur (for gas sponsorship)
-Backend wallets must be upgraded to "Delegated Account" (Calibur EIP-7702) per chain to use gas sponsorship.
-```typescript
-await openfort.accounts.evm.update(account.id, { implementationType: 'Calibur' });
-```
-
-### Gas sponsorship policy
-```typescript
-// 1. Create policy with criteria
-const policy = await openfort.policies.create({
-  scope: 'project',
-  rules: [{
-    action: 'accept',
-    operation: 'sponsorEvmTransaction',
-    criteria: [{ type: 'evmNetwork', operator: 'in', chainIds: [84532] }],
-  }],
+// Gasless ERC-20 transfer
+const result = await client.accounts.evm.backend.sendTransaction({
+  account: { id: account.id },
+  chainId: 42161, // Arbitrum
+  interactions: [{ to: tokenAddress, data: transferCalldata }],
+  policy: feeSponsorshipId, // 'fes_...' linked to a policy
 });
-
-// 2. Create sponsorship linked to policy
-const sponsorship = await openfort.feeSponsorship.create({
-  name: 'Gas Sponsorship',
-  strategy: { sponsorSchema: 'pay_for_user' },
-  policyId: policy.id,
-});
-// sponsorship.id = 'pol_...' → use as FEE_SPONSORSHIP_ID
+// → { response: { transactionHash: '0x...' } }
 ```
 
-### x402 payments — ⚠️ DO NOT USE (confirmed bug)
-A hackathon participant (Da Bright Shado) confirmed x402/EIP-3009 **reverts in UA 7702 mode**: the UA account has code (7702), so USDC's EIP-3009 `isValidSignature` check fails ("FiatTokenV2: invalid signature"). Particle DevRel was unsure if it works. **We use gas sponsorship policy only, NOT x402.**
+### Gas sponsorship setup (two linked objects)
+1. **Policy** — criteria rules (chains: Base 8453 + Arbitrum 42161, `sponsorEvmTransaction`)
+2. **feeSponsorship** — strategy `pay_for_user`, linked to the policy via `policyId`
+3. Reference the `feeSponsorship.id` (`fes_...`) from env
 
-### Important
-- **Calibur EIP-7702 ≠ Particle EIP-7702.** Different implementations, NOT compatible on same wallet.
-- **Architecture:** User = Particle UA (Magic sign). Agent = Openfort backend wallet (Calibur). They communicate via on-chain USDC transfers, not API.
-- Test keys (`sk_test_`) and live keys (`sk_live_`) are isolated universes.
+### Deferred import
+The SDK is imported lazily inside `createRealOpenfortClientFactory()` (same pattern as the Particle fix). Demo mode never constructs the wallet. See `packages/infra-web3/src/openfort/openfort-provider.ts`.
+
+### Config
+```bash
+OPENFORT_SECRET_KEY=sk_test_...      # Dashboard → API Keys
+OPENFORT_WALLET_SECRET=ws_test_...   # Dashboard → Backend Wallets
+OPENFORT_FEE_SPONSORSHIP_ID=fes_...  # Dashboard → Fee Sponsorships
+```
+In production, if SECRET_KEY is set but WALLET_SECRET or FEE_SPONSORSHIP_ID is missing → boot fails (fail-fast). In dev, falls back to demo mode (agent wallet undefined → direct UA payment).
 
 ---
 

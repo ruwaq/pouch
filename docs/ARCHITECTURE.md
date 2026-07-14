@@ -369,6 +369,15 @@ class ParticleAccountProvider implements AccountProvider {
 }
 ```
 
+### Agent wallet (Phase 4 — Openfort)
+
+When Openfort is configured (`OPENFORT_*` env vars set), the settlement leg of `CashOutExecutor` splits into two steps instead of one:
+
+1. **Funding agent wallet** — the user's UA sends funds to the agent wallet's address (trace badge: `UA 7702`)
+2. **Gasless settlement** — the Openfort agent wallet pays the provider gasless via policy + feeSponsorship (trace badge: `NO POPUP`)
+
+When Openfort is NOT configured (demo mode), the single-step direct payment path is used unchanged. The `AgentWalletPort` interface (in `domain/src/types.ts`) is pure — no SDK. The `OpenfortAgentWallet` implementation (in `infra-web3/src/openfort/`) defers the SDK import to first use, exactly like `ParticleAccountProvider`.
+
 ---
 
 ## Data flow: complete cash-out
