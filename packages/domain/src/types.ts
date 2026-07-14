@@ -147,6 +147,23 @@ export interface AccountProvider {
   sendPayment(params: SendPaymentParams): Promise<Result<TxResult, DomainError>>;
 }
 
+/** A gasless signer the agent uses to settle an order payment server-side. */
+export interface AgentWalletPort {
+  /** The agent wallet's address (where UA funds are sent before settlement). */
+  getAddress(): Promise<Result<{ address: string }, DomainError>>;
+
+  /** Send an ERC-20 `amount` of `token` to `to` on `chainId`, gas-sponsored. */
+  settlePayment(params: {
+    to: string;
+    amount: Amount;
+    token: string;
+    chainId: number;
+  }): Promise<Result<TxResult, DomainError>>;
+
+  /** Human label for the trace badge, e.g. "Openfort gasless". */
+  readonly label: string;
+}
+
 export interface OrderRepository {
   save(order: Order): Promise<void>;
   findById(id: string, userId?: UserId): Promise<Order | null>;
