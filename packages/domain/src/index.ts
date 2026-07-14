@@ -5,4 +5,3 @@ export * from './reply';
 export * from './router';
 export * from './trace';
 export * from './types';
-export * from './agent-wallet';

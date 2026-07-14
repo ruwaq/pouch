@@ -273,4 +273,53 @@ describe('CashOutExecutor', () => {
     expect(result.error.type).toBe('AGENT_WALLET_SETTLE_FAILED');
     expect(repository.statuses.some((s) => s.status === 'failed')).toBe(true);
   });
+
+  it('returns the error and marks the order failed when getAddress fails', async () => {
+    const providers = [new StubProvider()];
+    const repository = new CapturingRepository();
+    const account: AccountProvider = {
+      async getUnifiedBalance() {
+        return ok({
+          total: 200,
+          assets: [{ chainId: 42161, symbol: 'USDC', amount: 200, usdValue: 200 }],
+          requiresConsolidation: false,
+        });
+      },
+      async consolidate() {
+        return ok({ txHash: '0xconsolidate' });
+      },
+      async sendPayment() {
+        return ok({ txHash: '0xfund-agent' });
+      },
+    };
+
+    const agentWallet: AgentWalletPort = {
+      label: 'Openfort gasless',
+      async getAddress() {
+        return err({ type: 'AGENT_WALLET_NOT_CONFIGURED', message: 'not configured' });
+      },
+      async settlePayment() {
+        return ok({ txHash: '0xgasless' });
+      },
+    };
+
+    const executor = new CashOutExecutor(
+      new OffRampRouter(providers),
+      providers,
+      account,
+      repository,
+      logger,
+      agentWallet,
+    );
+
+    const result = await executor.execute(
+      { action: 'cash_out', category: 'giftcard', brand: 'amazon', amount: { value: 50, currency: 'USD' } },
+      'user-42',
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.type).toBe('AGENT_WALLET_NOT_CONFIGURED');
+    expect(repository.statuses.some((s) => s.status === 'failed')).toBe(true);
+  });
 });
