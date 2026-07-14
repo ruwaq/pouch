@@ -13,8 +13,10 @@ export function BalancePill() {
 
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
   const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function refresh() {
+    setLoading(true);
     try {
       setBalance(await apiGet<BalanceResponse>('/balance'));
     } catch (e) {
@@ -22,12 +24,20 @@ export function BalancePill() {
       if (!(e instanceof ApiError && e.status === 401)) {
         setBalance(null);
       }
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     void refresh();
   }, [agentTurnCount]);
+
+  if (loading && !balance) {
+    return (
+      <span className="h-6 w-24 animate-pulse rounded-full bg-white/5" aria-label="Loading balance" />
+    );
+  }
 
   if (!balance) return null;
 
