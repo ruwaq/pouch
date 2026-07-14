@@ -13,9 +13,11 @@
   "dependencies": {
     "@pouch/domain": "workspace:*",
     "@pouch/shared": "workspace:*",
+    "@tailwindcss/postcss": "^4.3.2",
     "next": "^15.4.6",
     "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+    "react-dom": "^19.1.1",
+    "tailwindcss": "^4.3.2"
   },
   "devDependencies": {
     "@types/react": "^19.1.8",
