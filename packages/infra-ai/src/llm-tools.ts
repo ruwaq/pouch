@@ -68,7 +68,7 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: 'cash_out',
     description:
-      "Convert the user's crypto into a gift card, mobile top-up, or eSIM. Call this whenever the user wants to cash out.",
+      "Convert the user's crypto into a gift card, mobile top-up, or eSIM. Call this whenever the user wants to cash out, buy, or purchase — in English or Spanish (cambiar, comprar, cash out, enviar, recargar, etc.).",
     parameters: {
       type: T.OBJECT,
       properties: {
@@ -78,7 +78,7 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
         },
         brand: {
           type: T.STRING,
-          description: 'Target brand in lowercase, e.g. "amazon", "steam", "t-mobile".',
+          description: 'Target brand in lowercase, e.g. "amazon", "steam", "t-mobile", "uber".',
         },
         amount: {
           type: T.NUMBER,
@@ -90,13 +90,13 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   },
   {
     name: 'check_balance',
-    description: 'The user is asking how much crypto/value they hold. Call this for balance questions.',
+    description: 'The user is asking how much crypto/value they hold — in English or Spanish (saldo, balance, cuánto tengo, revisar billetera, ver fondos, etc.). Call this for balance questions.',
     parameters: { type: T.OBJECT, properties: {} },
   },
   {
     name: 'search_products',
     description:
-      'The user wants to browse what they can get for an amount, without purchasing yet.',
+      'The user wants to browse what they can get for an amount, without purchasing yet — in English or Spanish (qué puedo comprar, mostrar productos, catálogo, etc.).',
     parameters: {
       type: T.OBJECT,
       properties: {
@@ -107,7 +107,7 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: 'off_topic',
     description:
-      'The user message is a greeting or not related to cashing out. Call this to reply conversationally.',
+      'The user message is a greeting or not related to cashing out — in English or Spanish (hola, buenos días, gracias, qué puedes hacer, etc.). Call this to reply conversationally.',
     parameters: { type: T.OBJECT, properties: {} },
   },
 ];

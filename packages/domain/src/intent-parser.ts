@@ -5,17 +5,17 @@ import type { CashOutIntent, OffRampCategory } from './types';
 
 // ── Pattern definitions ────────────────────────────────────────────────
 
-/** Greetings, help, casual chat — maps to off_topic. */
-const OFF_TOPIC_PATTERN = /\b(hola|hi|hello|hey|heya?|yo|sup|what'?s\s+up|good\s+(morning|afternoon|evening)|howdy|bonjour|ciao|help|what\s+(can|do)\s+you\s+do|how\s+does\s+this\s+work|commands|thanks|thank\s+you|gracias|merci)\b/i;
+/** Greetings, help, casual chat — maps to off_topic. Bilingual (EN + ES). */
+const OFF_TOPIC_PATTERN = /\b(hola|hi|hello|hey|heya?|yo|sup|what'?s\s+up|good\s+(morning|afternoon|evening)|howdy|bonjour|ciao|help|what\s+(can|do)\s+you\s+do|how\s+does\s+this\s+work|commands|thanks|thank\s+you|gracias|merci|buenos?\s*(d[ií]as|tardes|noches)|qu[eé]\s+tal|qu[eé]\s+puedes?\s+hacer|ayuda|comandos|qu[eé]\s+es\s+esto|c[uó]mo\s+funciona)\b/i;
 
-/** Balance-related queries — maps to check_balance. */
-const BALANCE_PATTERN = /\b((?:show|check|my|what'?s\s+my)?\s*balance|how\s+much\s+(?:do\s+i\s+have|money|usd|usdc|crypto)|what\s+do\s+i\s+have)\b/i;
+/** Balance-related queries — maps to check_balance. Bilingual (EN + ES). */
+const BALANCE_PATTERN = /\b((?:show|check|my|what'?s\s+my)?\s*balance|how\s+much\s+(?:do\s+i\s+have|money|usd|usdc|crypto)|what\s+do\s+i\s+have|(?:revis|ver|mira|checa|chequea|mu[eé]strame|cu[aá]nto\s+(?:tengo|hay)|mi\s+)?\s*(?:saldo|billeter|billetera|cartera|balance|fondos|cuenta|wallet|dinero|plata)|cu[aá]nto\s+(?:tengo|hay|dinero|plata))\b/i;
 
-/** Product search / catalog — maps to search_products. */
-const SEARCH_PATTERN = /\b(search|what\s+(?:gift\s*)?cards?|what\s+can\s+(?:i|you)\s+buy|what\s+do\s+you\s+have|show\s+products?|list|catalog|available)\b/i;
+/** Product search / catalog — maps to search_products. Bilingual (EN + ES). */
+const SEARCH_PATTERN = /\b(search|what\s+(?:gift\s*)?cards?|what\s+can\s+(?:i|you)\s+buy|what\s+do\s+you\s+have|show\s+products?|list|catalog|available|qu[eé]\s+(?:puedo|puedes)\s+comprar|qu[eé]\s+(?:tienes?|hay)|mu[eé]strame|productos|cat[aá]logo|disponible|buscar)\b/i;
 
-/** Cash-out actions — buy, purchase, cash out, top up. */
-const SUPPORTED_ACTION_PATTERN = /\b(cash\s*out|cashout|buy|purchase|top\s*up|topup|refill)\b/i;
+/** Cash-out actions — buy, purchase, cash out, top up. Bilingual (EN + ES). */
+const SUPPORTED_ACTION_PATTERN = /\b(cash\s*out|cashout|buy|purchase|top\s*up|topup|refill|comprar|cambiar|env[ií]ar|recargar|recarga|pagar|retirar|sacar|gastar)\b/i;
 
 const DOLLAR_AMOUNT_PATTERN = /\$(\d+(?:\.\d{1,2})?)/i;
 const USD_AMOUNT_PATTERN = /(\d+(?:\.\d{1,2})?)\s*(?:usd|dollars?)\b/i;
