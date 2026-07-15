@@ -1,6 +1,6 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-15 (DEPLOYED to Vercel + Gemini AI live)
+Last updated: 2026-07-15 (Discord research + strategy confirmed + Arbitrum alert)
 
 ## Strategic direction — CONFIRMED
 
@@ -164,6 +164,13 @@ pnpm build       # 8/8 packages
 pnpm dev         # API (:3001) + Web (:3000)
 ```
 
+### Discord intel (2026-07-15)
+- **Particle UA:** Mainnet-only (confirmado 3x por DevRel). No hay workaround.
+- **Arbitrum:** Issues activos (Jul 14-15). "System maintenance" → usar Base como fallback.
+- **Competencia:** 0 proyectos de off-ramp. Pouch = blue ocean.
+- **ZeroDev SRA:** También mainnet-only (confirmado por kunal). Drop validado.
+- **Todos los equipos:** Misma situación. Nadie tiene testnet. La recomendación oficial es mainnet con pequeños montos.
+
 ---
 
 ## Key files to continue from
@@ -200,8 +207,11 @@ pnpm dev         # API (:3001) + Web (:3000)
 
 ## Notes for the next session
 - **La demo está LIVE en https://pouch-orpin.vercel.app** — modo demo con Gemini AI conversacional.
+- **Estrategia confirmada (2026-07-15):** Mainnet con ~$5 USDC. Particle UA NO tiene testnet (confirmado por DevRel en Discord 3 veces). Todos los equipos están en la misma situación.
+- **⚠️ Arbitrum tiene issues (Jul 14-15):** "System maintenance" reportado por múltiples equipos. Si persiste, cambiar settlement a Base (`SETTLEMENT_CHAIN_ID=8453`). El código ya lo soporta.
+- **Competencia:** Pouch es el ÚNICO proyecto de off-ramp (crypto → gift cards). 0 competidores directos en el hackathon.
 - **Arquitectura de deploy:** la API Hono está montada como Route Handler de Next.js (`apps/web/src/app/api/[...path]/route.ts`), no como servidor separado. Un solo deploy en Vercel.
-- **DEMO_MODE=true** es la variable crítica. Sin ella, Vercel (NODE_ENV=production) crashea porque loadConfig requiere DATABASE_URL, JWT_SECRET, etc.
+- **DEMO_MODE=true** es la variable crítica. Sin ella, Vercel (NODE_ENV=production) crashea porque loadConfig requiere DATABASE_URL, JWT_SECRET, etc. Para producción real: quitar DEMO_MODE y setear todas las credenciales.
 - **Gemini funciona en demo mode:** `createDemoAppServices()` usa `createAgentLlm()` con env vars directos. Si GEMINI_API_KEY no está, usa regex fallback.
 - **Vercel project:** `pouch` en el team `alpakas-projects` (cuenta `pepepop2000@gmail.com`). El git author debe ser `pepepop2000@gmail.com` para deployar (Hobby plan bloquea otros autores).
 - **GitHub repo:** `ruwaq/pouch` — código completo menos `ci.yml` (scope del token). Para añadir CI: crear PAT con scope `workflow` o subir el archivo desde la UI.
@@ -216,8 +226,32 @@ pnpm dev         # API (:3001) + Web (:3000)
 ### First message to send to the agent:
 ```
 Continúa el proyecto Pouch. Lee docs/HANDOFF.md para el estado actual.
+
 El proyecto está DEPLOYADO en Vercel (https://pouch-orpin.vercel.app) con
-modo demo + Gemini AI. Lee HANDOFF.md y dime qué falta para el hackathon.
+modo demo + Gemini AI. Estrategia confirmada: mainnet con ~$5 USDC
+(Particle UA no tiene testnet — confirmado por DevRel en Discord).
+
+Prioridad #1: migrar a producción real (quitar DEMO_MODE, setear keys).
+Prioridad #2: pulir demo seed multi-chain + video.
+Deadline: Jul 20, 2026.
+```
+
+### Credenciales necesarias (tener a mano antes de empezar):
+
+| Servicio | Variables | Dónde conseguir |
+|----------|-----------|-----------------|
+| **Particle** | `PARTICLE_PROJECT_ID`, `PARTICLE_CLIENT_KEY`, `PARTICLE_APP_ID` | dashboard.particle.network |
+| **Magic** | `MAGIC_SECRET_KEY`, `NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY` | magic.link → Dashboard |
+| **Openfort** | `OPENFORT_SECRET_KEY`, `OPENFORT_WALLET_SECRET`, `OPENFORT_POLICY_ID` | openfort.io → Dashboard |
+| **Bitrefill** | `BITREFILL_API_KEY`, `BITREFILL_API_SECRET` | bitrefill.com → Developers |
+| **Supabase** | `DATABASE_URL` | supabase.com → Project settings |
+| **Gemini** | `GEMINI_API_KEY` (ya está en Vercel) | aistudio.google.com |
+
+### Si Arbitrum sigue con problemas:
+```bash
+# Cambiar settlement a Base:
+SETTLEMENT_CHAIN_ID=8453
+SUPPORTED_CHAINS=8453,42161
 ```
 
 ### What's done (don't redo):
@@ -231,13 +265,84 @@ modo demo + Gemini AI. Lee HANDOFF.md y dime qué falta para el hackathon.
 - ✅ **Phase 5: Deploy a Vercel** — Hono API como Route Handler, DEMO_MODE, Gemini LIVE
 - ✅ **Demo pública funcionando:** https://pouch-orpin.vercel.app
 
-### What's left (opcional, para mejorar la demo):
-- ⬜ **Subir CI workflow a GitHub** — crear PAT con scope `workflow` o subir `.github/workflows/ci.yml` desde la UI
-- ⬜ **Conectar GitHub repo a Vercel** — para auto-deploy en cada push (requiere misma cuenta o integración)
-- ⬜ **Transacciones reales (opcional):** setear Magic + Particle + Openfort keys en Vercel para balances/pagos reales
-- ⬜ **DB real (opcional):** setear Supabase DATABASE_URL + correr migración para persistencia real
-- ⬜ **Video/gif de la demo** para el submission
-- ⬜ **Pulir el seed de la demo** — quizás balances más variados (multi-chain) para mostrar mejor el cross-chain
+---
+
+## Discord research (2026-07-15) — Testnet SITREP
+
+Se revisaron los canales `#❓technical-questions` y `#💬general` del Discord de UXmaxx. Esto es lo que todos los equipos están enfrentando:
+
+### Particle UA es MAINNET-ONLY — confirmado por DevRel
+
+El DevRel de Particle (Soos3D) lo dijo explícitamente 3 veces en el canal:
+
+> **Jun 26:** *"Universal Accounts are only on mainnet. The architecture is complex and require many moving parts so testnets are not doable unfortunately."*
+
+> **Jul 7:** *"Mainnet only."*
+
+> **Jul 10:** *"Correct, the UA infra is only on mainnet. Unfortunately is not possible to run on testnet, too many variables and missing services."*
+
+**Cero ambigüedad.** No hay testnet, no habrá testnet, y todos los equipos están en la misma situación.
+
+### Todos los equipos preguntan lo mismo — NADIE tiene solución
+
+| Equipo | Pregunta | Fecha |
+|--------|----------|-------|
+| Mogate.io | *"seems there's no UA for testnet yet?"* | Jun 26 |
+| Rohith | *"Does UA with EIP-7702 support only mainnet?"* | Jun 26 |
+| Horizon | *"Is UA 7702 supported on any testnet?"* | Jul 3 |
+| dhruv | *"Particle rejects testnet chains... are we supposed to build directly for mainnet?"* | Jul 10 |
+| AJ | *"The SDK supports only mainnet, should we demo in mainnet?"* | Jul 12 |
+| Naman | *"Can we demo in preview mode instead of real chain?"* | Jul 13 |
+
+La respuesta SIEMPRE es: **mainnet con pequeños montos (~$1-5).**
+
+### ⚠️ Arbitrum tiene problemas (Jul 14-15, 2026)
+
+> **Chris Gold (ayer):** *"System maintenance, please use SEND/TRANSFER/SELL feature to transfer your assets immediately"* en Arbitrum mainnet.
+
+> **Soos3D (ayer):** *"Yes, I believe we have some issue on Arbitrum at the moment. We are working on it."*
+
+**Estrategia:** Si Arbitrum sigue con problemas, cambiar settlement a **Base (8453)** — ya está en `SUPPORTED_CHAINS` y el código lo soporta sin cambios.
+
+### Competencia directa
+
+| Proyecto | Qué hace | Compite con Pouch? |
+|----------|----------|---------------------|
+| **Beam** (pankaj) | Send-money-by-link, settle en Arbitrum | ❌ Es send, no cash-out |
+| **Enigma of Alchemist** (Ash) | Web3 3D game | ❌ Gaming |
+| **Otros** | DeFi, payments, social | ❌ Nadie en off-ramp |
+
+**Pouch sigue siendo el ÚNICO proyecto de off-ramp (crypto → gift cards/top-ups).** Blue ocean confirmado.
+
+### ZeroDev SRA también es mainnet-only
+
+> **kunal (ZeroDev, Jul 6):** *"We do support testnets for sponsorship but not SRA."*
+
+Esto confirma que el drop de ZeroDev fue correcto — incluso si no hubiera sido por pricing, SRA no funciona en testnet.
+
+### Estrategia confirmada
+
+| Decisión | Razón |
+|----------|-------|
+| **Mainnet con ~$5 USDC** | Única opción viable. Recomendada por Particle. Todos los equipos hacen lo mismo. |
+| **Settlement chain: Base (8453) como fallback** | Arbitrum tiene issues ahora mismo. Cambiar `SETTLEMENT_CHAIN_ID` si es necesario. |
+| **Demo mode para desarrollo, real para la demo final** | Ya tenemos ambos. El switch es solo cambiar env vars. |
+| **No perder tiempo buscando testnet** | No existe. Punto. |
+
+---
+
+### What's left (priorizado para el hackathon — deadline Jul 20)
+
+| # | Tarea | Prioridad | Estado |
+|---|-------|-----------|--------|
+| 1 | **Migrar a producción real** — setear Particle + Magic + Openfort + Bitrefill keys en Vercel. Quitar `DEMO_MODE`. | 🔴 Crítica | ⬜ Pendiente |
+| 2 | **Pulir demo seed multi-chain** — balances en Base + Arbitrum para mostrar cross-chain consolidation | 🟡 Alta | ⬜ Pendiente |
+| 3 | **Video/gif de la demo** para el submission | 🟡 Alta | ⬜ Pendiente |
+| 4 | **DB real** — setear Supabase DATABASE_URL + correr migración para persistencia | 🟢 Media | ⬜ Pendiente |
+| 5 | **Subir CI workflow a GitHub** — crear PAT con scope `workflow` o subir desde la UI | 🟢 Media | ⬜ Pendiente |
+| 6 | **Conectar GitHub a Vercel** — auto-deploy en cada push | 🟢 Baja | ⬜ Pendiente |
+
+**Nota:** Si Arbitrum sigue con problemas, cambiar `SETTLEMENT_CHAIN_ID=8453` (Base) y `SUPPORTED_CHAINS=8453,42161`. El código ya lo soporta.
 
 ### Phase 4 decisions (LOCKED 2026-07-14 — do not revisit):
 - **Openfort:** BUILD. Agent backend wallet (Opción A). `AgentWalletPort` in domain (optional), `OpenfortAgentWallet` in infra-web3. SDK `@openfort/openfort-node@^0.10.8`, deferred ESM import (same pattern as Particle fix).
