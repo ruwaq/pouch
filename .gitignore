@@ -61,3 +61,4 @@ seed.txt
 *.vtt
 .zcode/
 .vercel/
+.github/workflows/ci.yml
