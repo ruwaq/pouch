@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-15. Project status: **Phase 0-6 complete (136 tests). Conversational agent with Gemini 3.5 Flash + multi-turn confirmation + Try Demo. Deployed on Vercel. Dual-hackathon: UXmaxx (Encode Club) + OKX AI Genesis (A2A track). GitHub: https://github.com/ruwaq/pouch**.
+> Last updated: 2026-07-15. Project status: **Phase 0-6 complete (136 tests). Conversational agent with Gemini 3.5 Flash + multi-turn confirmation + Try Demo. Deployed on Vercel. Dual-hackathon: UXmaxx (Encode Club) + OKX AI Genesis (A2A track). Resilience: Gemini → regex fallback + template replies. GitHub: https://github.com/ruwaq/pouch**.
 
 ---
 
@@ -73,7 +73,7 @@ This project is being built for the **UXmaxx Hackathon** (Encode Club + Particle
 
 ### External APIs
 - **Bitrefill** (`api.bitrefill.com/v2`): Bearer token, self-service, test products available, USDC Arbitrum/Base native
-- **Gemini** (`generativelanguage.googleapis.com`): 1,500 req/day free tier (`gemini-2.0-flash`), admin's own API key
+- **Gemini** (`generativelanguage.googleapis.com`): 1,500 req/day free tier (`gemini-3.5-flash` — only model that works on this key; 2.0 and 2.5 return 404/429), admin's own API key
 
 ---
 

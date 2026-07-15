@@ -283,10 +283,13 @@ SUPPORTED_CHAINS=8453,42161
 - ✅ **Estado de conversación** — intent pendiente guardado en `Map<userId, PendingCashOut>`. Confirmaciones: `yes`, `ok`, `do it`, `confirm`, `sí`, `si`. Cancelaciones: `no`, `cancel`, `never mind`.
 - ✅ **Hybrid services** — demo-user usa memoria + simulación; real users usan DB + Particle UA + Openfort
 - ✅ **Try Demo button** — landing page con botón "Try Demo" que hace login sin email vía `/auth/demo`
-- ✅ **127 tests** (33 infra-ai, 31 api, 23 infra-web3, 13 domain, 12 web, 9 infra-offramp, 4 shared, 2 infra-db)
+- ✅ **136 tests** (33 infra-ai, 31 api, 23 infra-web3, 22 domain, 12 web, 9 infra-offramp, 4 shared, 2 infra-db)
 
 ### Gemini 3.5 Flash key (AI Studio)
 - **API Key:** (redacted — stored in `.env`, not committed)
+- **⚠️  Only gemini-3.5-flash works.** gemini-2.0-flash → 404, gemini-2.5-* → 404. Model fallback array is empty in code.
+- **Free tier:** 1,500 req/day. When rate-limited, replies fall back to bilingual templates (regex + templateReply).
+- **Resilience:** Retry on 429/503 with exponential backoff (200ms, 400ms, 800ms). After 2 retries, falls back to templates.
 - **Modelo:** `gemini-3.5-flash` (stable, Jul 2026)
 
 ---
