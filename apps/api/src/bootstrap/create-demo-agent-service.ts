@@ -1,4 +1,5 @@
 import { CashOutExecutor, IntentParser, OffRampRouter, type AccountProvider, type LoggerPort, type OffRampProvider, type OrderRequest, type Product } from '@pouch/domain';
+import { createAgentLlm } from '@pouch/infra-ai';
 import { ok } from '@pouch/shared';
 
 import { AgentChatService } from '../services/agent-chat-service';
@@ -118,8 +119,21 @@ export function createDemoAppServices(): {
   const router = new OffRampRouter(providers);
   const executor = new CashOutExecutor(router, providers, demoAccountProvider, repository, logger);
 
+  // Use Gemini LLM when configured, fall back to regex parser + template reply.
+  // This lets the demo run with conversational AI when GEMINI_API_KEY is set.
+  // We build a minimal config from process.env so createAgentLlm can detect
+  // the LLM settings without needing the full Zod-validated Config.
+  const { intentParser, replyStrategy } = createAgentLlm({
+    LLM_PROVIDER: process.env.LLM_PROVIDER as 'gemini' | undefined,
+    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+    LLM_MODEL: process.env.LLM_MODEL,
+  } as unknown as Parameters<typeof createAgentLlm>[0]);
+  const agentService = replyStrategy
+    ? new AgentChatService(intentParser, executor, repository, replyStrategy)
+    : new AgentChatService(intentParser, executor, repository);
+
   return {
-    agentService: new AgentChatService(new IntentParser(), executor, repository),
+    agentService,
     balanceService: new BalanceService(demoAccountProvider),
     orderService: new OrderService(repository),
   };
