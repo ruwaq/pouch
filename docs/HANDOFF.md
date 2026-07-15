@@ -217,6 +217,21 @@ pnpm dev         # API (:3001) + Web (:3000)
 - **Competencia:** Pouch es el ÚNICO proyecto de off-ramp (crypto → gift cards). 0 competidores directos en el hackathon.
 - **Arquitectura de deploy:** la API Hono está montada como Route Handler de Next.js (`apps/web/src/app/api/[...path]/route.ts`), no como servidor separado. Un solo deploy en Vercel.
 - **DEMO_MODE=true** es la variable crítica. Sin ella, Vercel (NODE_ENV=production) crashea porque loadConfig requiere DATABASE_URL, JWT_SECRET, etc. Para producción real: quitar DEMO_MODE y setear todas las credenciales.
+
+### Gemini model constraint (2026-07-15)
+- **⚠️  Only gemini-3.5-flash works.** gemini-2.0-flash → 404, gemini-2.5-* → 404. Model fallback array is empty in code.
+- **Free tier:** 1,500 req/day. When rate-limited, replies fall back to bilingual templates (regex + templateReply).
+- **Resilience:** Retry on 429/503 with exponential backoff (200ms, 400ms, 800ms). After 2 retries, falls back to templates.
+
+### Latest refactor: Gemini-powered conversational replies (2026-07-15)
+- **ReplyContext**: 9 scenarios (greeting, balance, search, confirmation, success, cancelled, insufficient, error, fallback)
+- **LlmReplyStrategy v2**: Gemini generates ALL replies, not just cash-out success. Per-scenario prompt engineering.
+- **Conversation memory**: last 10 messages per user stored in-memory, passed to Gemini for context.
+- **System prompt**: rewritten with personality, reply guidelines per scenario, bilingual instructions.
+- **Templates**: bilingual fallback for all 9 scenarios when Gemini is down.
+- **136 tests** (33 infra-ai, 31 api, 23 infra-web3, 22 domain, 12 web, 9 infra-offramp, 4 shared, 2 infra-db)
+- **All gates green**: 8/8 typecheck, 8/8 build, 8/8 test.
+- Cleanup: deleted stale dist/ dirs, .vtt transcripts, empty scripts/ dir. Redacted GCP API key from git history.
 - **Gemini funciona en demo mode:** `createDemoAppServices()` usa `createAgentLlm()` con env vars directos. Si GEMINI_API_KEY no está, usa regex fallback.
 - **Vercel project:** `pouch` en el team `alpakas-projects` (cuenta `pepepop2000@gmail.com`). El git author debe ser `pepepop2000@gmail.com` para deployar (Hobby plan bloquea otros autores).
 - **GitHub repo:** `ruwaq/pouch` — código completo menos `ci.yml` (scope del token). Para añadir CI: crear PAT con scope `workflow` o subir el archivo desde la UI.
