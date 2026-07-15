@@ -268,7 +268,7 @@ describe('API app', () => {
 
     expect(response.status).toBe(422);
     await expect(response.json()).resolves.toMatchObject({
-      error: 'Only cash-out purchase requests are supported right now.',
+      error: 'I can help you cash out crypto, check your balance, or search for gift cards. Try saying "Cash out $50 to Amazon" or "Show my balance".',
       type: 'UNSUPPORTED_INTENT',
     });
   });

@@ -1,6 +1,6 @@
 # Pouch — Bounty Submission Mapping
 
-> For UXmaxx Hackathon judges. This doc maps each bounty's criteria to where it's satisfied in the codebase and demo.
+> For UXmaxx Hackathon (Encode Club × Particle) and OKX AI Genesis Hackathon judges. This doc maps each bounty's criteria to where it's satisfied in the codebase and demo.
 
 ---
 
@@ -75,4 +75,58 @@
 
 - **ZeroDev SRA** ($500): Dropped. Free tier is testnet-only; Particle UA is mainnet-only → architecturally incompatible on a free budget. No code shipped for ZeroDev.
 - **Bitrefill real purchase**: Mock fulfillment for dev and demo (zero cost, zero demo risk). The adapter is real (quotes, webhook verification, redemption fetch) but no live purchase is executed.
-- **Production deployment**: Local demo only. Deploy is post-hackathon.
+- **Production deployment**: Deployed on Vercel in demo mode. Real on-chain settlement requires env vars (see `.env.example` Vercel section).
+
+---
+
+## OKX AI Genesis — Agent-to-Agent Track
+
+Pouch is an **Agent-to-Agent (A2A) off-ramp system** where 5 specialized agents collaborate to convert natural language into real-world value.
+
+### A2A Architecture
+
+| Agent | Role | Technology |
+|-------|------|-----------|
+| **Intent Parser Agent** | NL → structured cash-out intent | Gemini 3.5 Flash (`@google/genai` function-calling) + regex fallback |
+| **Balance Agent** | Read unified balance across chains | Particle Universal Accounts (EIP-7702) |
+| **Routing Agent** | Compare providers, find best route | Pure domain logic (`packages/domain/src/router.ts`) |
+| **Settlement Agent** | Pay provider gaslessly | Openfort backend wallet + fee sponsorship (`pay_for_user`) |
+| **Delivery Agent** | Purchase + deliver redemption code | Bitrefill API v2 (8,000+ brands) |
+
+### A2A flow trace (visible in demo)
+
+```
+● Reading unified balance       ✓  [3 assets, $55 total]
+● Finding best provider         ✓  [cheapest: Bitrefill]
+● Creating order with Bitrefill ✓
+● Funding agent wallet          ✓  [UA 7702 cross-chain]
+● Paid via Openfort gasless     ✓  [NO POPUP — gas sponsored]
+✅ Amazon gift card: [AMZN-XXXX-XXXX]
+```
+
+### Criteria mapping
+
+| Criterion | Where satisfied |
+|-----------|----------------|
+| **Agent-to-Agent orchestration** | `packages/domain/src/executor.ts` — `CashOutExecutor` coordinates 5 agents in sequence, each with typed ports. Trace steps visible in chat UI. |
+| **AI/LLM integration** | `packages/infra-ai/src/` — Gemini 3.5 Flash with function calling for intent parsing + conversational replies. Regex fallback ensures reliability without API key. |
+| **Chain abstraction** | Particle UA (EIP-7702) — funds consolidated from Arbitrum, Base, Polygon into a single unified balance. User never sees chains, gas tokens, or bridging. |
+| **Gasless UX** | Openfort fee sponsorship (`pay_for_user`) + Magic blind signatures — zero signing popups. Header shows "N signatures · zero popups" counter. |
+| **Real off-ramp** | Bitrefill adapter (`packages/infra-offramp/src/bitrefill/`) — real quotes, webhook verification, redemption fetch. |
+| **Modular + extensible** | Hexagonal architecture. Adding a new provider = 1 file. Domain layer is pure (no SDKs, no React, no fetch). |
+| **Live demo** | [pouch-orpin.vercel.app](https://pouch-orpin.vercel.app) — conversational agent with Gemini AI, multi-turn confirmation, full agent trace. |
+
+### Key files for evaluators
+
+| What | Where |
+|------|-------|
+| Agent orchestration | `packages/domain/src/executor.ts` |
+| Intent parsing (LLM) | `packages/infra-ai/src/llm-intent-parser.ts` |
+| Gemini provider | `packages/infra-ai/src/gemini-provider.ts` |
+| Balance agent (Particle UA) | `packages/infra-web3/src/particle/universal-account.ts` |
+| Settlement agent (Openfort) | `packages/infra-web3/src/openfort/openfort-provider.ts` |
+| Delivery agent (Bitrefill) | `packages/infra-offramp/src/bitrefill/bitrefill-adapter.ts` |
+| Chat endpoint | `apps/api/src/routes/agent/chat.ts` |
+| Chat UI (Next.js) | `apps/web/src/app/page.tsx` |
+| Env config (Zod) | `packages/shared/src/config.ts` |
+| Architecture docs | `docs/ARCHITECTURE.md` |

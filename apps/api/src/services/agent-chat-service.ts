@@ -87,6 +87,10 @@ export class AgentChatService implements AgentChatServiceLike {
       return this.handleProductSearch(userId, i);
     }
 
+    if (i.action === 'off_topic') {
+      return this.handleOffTopic(i);
+    }
+
     if (i.action === 'cash_out') {
       return this.handleCashOutPlan(userId, i);
     }
@@ -133,6 +137,16 @@ export class AgentChatService implements AgentChatServiceLike {
     );
     const reply = `Here's what I found for ${intent.category}${intent.brand ? ` (${intent.brand})` : ''}:\n${lines.join('\n')}\n\nWant to cash out $${amount} to one of these?`;
 
+    return this.emptyResult(intent, reply);
+  }
+
+  private handleOffTopic(intent: CashOutIntent): Result<AgentChatResponse, DomainError> {
+    const greetings = [
+      "Hey! 👋 I'm Pouch — your AI cash-out agent. I can convert your crypto into gift cards, mobile top-ups, and more. Try \"Cash out $50 to Amazon\" or \"Show my balance\".",
+      "Hi there! 🫛 I'm here to help you cash out crypto. Just tell me what you want — like \"Buy $25 Uber gift card\" or \"Top up my phone $10\".",
+      "Hello! I'm Pouch. Talk to me like you're chatting with a friend, and I'll handle the crypto part. What would you like to cash out today?",
+    ];
+    const reply = greetings[Math.floor(Math.random() * greetings.length)]!;
     return this.emptyResult(intent, reply);
   }
 

@@ -4,7 +4,7 @@
 
 Pouch is an AI cashout agent for crypto. Users speak in natural language and an AI agent converts their crypto into real-world value — gift cards, mobile top-ups, eSIM — without ever seeing wallets, gas, chains, or signing popups.
 
-Built for the **UXmaxx Hackathon** (Encode Club × Particle Network). Targets 4 bounties (~$4.1k–5.1k).
+Built for **UXmaxx Hackathon** (Encode Club × Particle Network) and **OKX AI Genesis Hackathon** (Agent-to-Agent track). Targets 4 bounties across both competitions.
 
 ---
 
@@ -108,6 +108,105 @@ Without any env keys, Pouch runs in **demo mode**: simulated balances, simulated
 | `JWT_SECRET` + `WEBHOOK_SECRET` | — | Auth + webhook verification (generate with `openssl rand -hex 32`) |
 
 See [`.env.example`](./.env.example) for the full annotated list.
+
+---
+
+## 🤖 For OKX AI Genesis Hackathon Evaluators
+
+Pouch is an **Agent-to-Agent (A2A) off-ramp system** — the user's conversational agent orchestrates cross-chain consolidation, provider routing, and gasless settlement through a network of specialized sub-agents.
+
+### How the A2A flow works
+
+```
+User: "Cash out $50 to Amazon"
+        │
+        ▼
+┌─────────────────────────────┐
+│  Intent Parser Agent (LLM)  │  ← Gemini 3.5 Flash (function-calling)
+│  Extracts: amount, target,  │     Regex fallback always available
+│  provider preference        │
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  Balance Agent (Particle)   │  ← Particle Universal Accounts (EIP-7702)
+│  Reads unified balance      │     Cross-chain: Arbitrum, Base, Polygon
+│  across all chains          │     Single query, zero user friction
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  Routing Agent (Domain)     │  ← Pure logic: compare providers,
+│  Finds best off-ramp route  │     prices, chain compatibility
+│  (Bitrefill, etc.)          │     Extensible: 1 file per provider
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  Settlement Agent (Openfort)│  ← Backend wallet + gas sponsorship
+│  Pays provider gaslessly    │     EIP-7702 delegation auto-applied
+│  [NO POPUP — zero user sig] │     Policy: pay_for_user on Arbitrum/Base
+└─────────────┬───────────────┘
+              │
+              ▼
+┌─────────────────────────────┐
+│  Delivery Agent (Bitrefill) │  ← Real off-ramp: gift cards, top-ups
+│  Purchases + delivers       │     8,000+ brands, webhook verification
+│  Redemption code to user    │     Idempotent, retry-safe
+└─────────────────────────────┘
+```
+
+### Key A2A characteristics
+
+| Feature | Implementation |
+|---------|---------------|
+| **Multi-agent orchestration** | 5 specialized agents (Intent → Balance → Route → Settle → Deliver) coordinated by `CashOutExecutor` |
+| **Chain abstraction** | Particle Universal Accounts (EIP-7702) — user never sees chains, gas tokens, or bridging |
+| **Gasless UX** | Openfort fee sponsorship (`pay_for_user`) + Magic blind signatures — zero signing popups |
+| **LLM-powered interface** | Gemini 3.5 Flash for natural language → structured intent; regex fallback for reliability |
+| **Provider-agnostic** | Adapter pattern: swap Bitrefill for any off-ramp provider in 1 file |
+| **Transparent trace** | Every agent step visible inline: balance → route → fund → gasless pay → deliver |
+
+### Live demo
+
+**URL:** [https://pouch-orpin.vercel.app](https://pouch-orpin.vercel.app)
+
+The demo runs in **simulated mode** (no real keys needed). Type any cash-out request and watch the full agent trace:
+- `"Cash out $25 to Amazon"`
+- `"Send $10 phone top-up to +1234567890"`
+- `"What's my balance?"`
+
+For the full production flow with real on-chain settlement (Particle UA + Openfort gasless + Bitrefill purchase), see the [Vercel Production](#-vercel-production-deployment) section in `.env.example`.
+
+### Tech stack for evaluators
+
+| Layer | Technology | Purpose |
+|-------|-----------|---------|
+| Agent orchestration | Hono + custom executor | Multi-step A2A pipeline |
+| Intent parsing | Gemini 3.5 Flash (`@google/genai`) | NL → structured cash-out intent |
+| Chain abstraction | Particle Network UA SDK (EIP-7702) | Cross-chain balance + consolidation |
+| Embedded wallet | Magic Labs (`magic-sdk`) | Blind signatures, zero popups |
+| Gas sponsorship | Openfort (`openfort-node`) | Agent wallet + `pay_for_user` |
+| Off-ramp | Bitrefill API v2 | Gift cards, mobile top-ups, eSIM |
+| Frontend | Next.js 15 (App Router) | Chat UI, agent trace, Tailwind v4 |
+| Validation | Zod | Shared config, typed API contracts |
+| Testing | Vitest | 136 tests across 8 packages |
+
+---
+
+## 🚀 Vercel Production Deployment
+
+To exit demo mode and enable real on-chain settlement on Vercel:
+
+1. Go to **Vercel Dashboard → pouch-orpin → Settings → Environment Variables**
+2. Add the variables listed in the [Vercel Production section of `.env.example`](./.env.example)
+3. Redeploy (`vercel --prod` or push to main)
+
+**Minimal production setup** (real off-ramp + AI, no on-chain):
+- `BITREFILL_API_KEY` + `GEMINI_API_KEY` + `LLM_PROVIDER=gemini`
+
+**Full production setup** (real on-chain + gasless):
+- All of the above + `PARTICLE_*` + `MAGIC_*` + `OPENFORT_*` + `WEB3_PROVIDER_MODE=particle` + `DEMO_MODE=false`
 
 ---
 

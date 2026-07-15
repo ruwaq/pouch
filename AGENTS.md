@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-15. Project status: **Phase 0-6 complete (127 tests). Conversational agent with Gemini 3.5 Flash + multi-turn confirmation + Try Demo. GitHub: https://github.com/ruwaq/pouch**.
+> Last updated: 2026-07-15. Project status: **Phase 0-6 complete (136 tests). Conversational agent with Gemini 3.5 Flash + multi-turn confirmation + Try Demo. Deployed on Vercel. Dual-hackathon: UXmaxx (Encode Club) + OKX AI Genesis (A2A track). GitHub: https://github.com/ruwaq/pouch**.
 
 ---
 

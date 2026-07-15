@@ -90,7 +90,7 @@ describe('LlmIntentParser', () => {
     const provider = fakeProvider(async () => ok({ text: 'hi there' }));
     const parser = new LlmIntentParser(provider, new IntentParser(), POUCH_TOOL_DECLARATIONS);
 
-    const result = await parser.parse('just saying hello');
+    const result = await parser.parse('what is the weather forecast for tomorrow');
 
     expect(result.ok).toBe(false);
   });

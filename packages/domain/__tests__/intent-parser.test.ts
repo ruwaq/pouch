@@ -43,7 +43,7 @@ describe('IntentParser', () => {
     });
   });
 
-  it('returns a structured error when the message is not a supported cash-out request', async () => {
+  it('returns a structured error when the message is truly unsupported', async () => {
     const parser = new IntentParser();
 
     const result = await parser.parse('What is the weather today?');
@@ -56,8 +56,86 @@ describe('IntentParser', () => {
 
     expect(result.error).toEqual({
       type: 'UNSUPPORTED_INTENT',
-      message: 'Only cash-out purchase requests are supported right now.',
+      message: 'I can help you cash out crypto, check your balance, or search for gift cards. Try saying "Cash out $50 to Amazon" or "Show my balance".',
     });
+  });
+
+  // ── New: regex parser handles greetings (off_topic) ──────────────────
+
+  it('returns off_topic for "hola"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('hola');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('off_topic');
+  });
+
+  it('returns off_topic for "what can you do?"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('what can you do?');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('off_topic');
+  });
+
+  it('returns off_topic for "help"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('help');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('off_topic');
+  });
+
+  it('returns off_topic for "hi"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('hi');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('off_topic');
+  });
+
+  // ── New: regex parser handles balance checks ────────────────────────
+
+  it('returns check_balance for "show my balance"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('show my balance');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('check_balance');
+  });
+
+  it('returns check_balance for "how much do i have"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('how much do i have');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('check_balance');
+  });
+
+  it('returns check_balance for "balance"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('balance');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('check_balance');
+  });
+
+  // ── New: regex parser handles product search ────────────────────────
+
+  it('returns search_products for "what gift cards do you have?"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('what gift cards do you have?');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('search_products');
+  });
+
+  it('returns search_products for "what can i buy"', async () => {
+    const parser = new IntentParser();
+    const result = await parser.parse('what can i buy');
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('search_products');
   });
 });
 
