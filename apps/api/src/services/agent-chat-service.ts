@@ -1,4 +1,4 @@
-import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, IntentParserStrategy, OffRampProvider, Order, OrderRepository, ReplyStrategy } from '@pouch/domain';
+import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, IntentParserStrategy, OffRampProvider, Order, OrderRepository, Product, ReplyContext, ReplyScenario, ReplyStrategy } from '@pouch/domain';
 import { isOk, ok, type Result } from '@pouch/shared';
 import type { BalanceServiceLike } from './balance-service';
 
@@ -14,13 +14,20 @@ export interface AgentChatServiceLike {
 
 // ── Conversation state (in-memory per user) ──────────────────────────
 
+interface ConversationMessage {
+  role: 'user' | 'agent';
+  content: string;
+}
+
 interface PendingCashOut {
   intent: CashOutIntent;
-  /** The plan text Gemini showed the user, so we can show it again on confirm. */
   planSummary: string;
 }
 
+const MAX_HISTORY = 10;
+
 const pendingConfirmations = new Map<string, PendingCashOut>();
+const conversationHistory = new Map<string, ConversationMessage[]>();
 
 // ── Helpers ──────────────────────────────────────────────────────────
 
@@ -33,7 +40,27 @@ function toDisplayBrand(brand: string | undefined): string {
     .join(' ');
 }
 
-// ── AgentChatService (conversational, multi-turn) ────────────────────
+function errorMessage(error: DomainError): string {
+  if ('message' in error && typeof error.message === 'string') return error.message;
+  return `Error: ${error.type}`;
+}
+
+function getHistory(userId: string): ConversationMessage[] {
+  if (!conversationHistory.has(userId)) {
+    conversationHistory.set(userId, []);
+  }
+  return conversationHistory.get(userId)!;
+}
+
+function pushHistory(userId: string, role: 'user' | 'agent', content: string): void {
+  const history = getHistory(userId);
+  history.push({ role, content });
+  while (history.length > MAX_HISTORY) {
+    history.shift();
+  }
+}
+
+// ── AgentChatService (conversational, multi-turn, LLM-powered replies) ────
 
 export class AgentChatService implements AgentChatServiceLike {
   constructor(
@@ -47,6 +74,7 @@ export class AgentChatService implements AgentChatServiceLike {
 
   async handleMessage(message: string, userId: string): Promise<Result<AgentChatResponse, DomainError>> {
     const trimmed = message.trim().toLowerCase();
+    pushHistory(userId, 'user', message);
 
     // ── Check for pending confirmation ──────────────────────────────
     const pending = pendingConfirmations.get(userId);
@@ -57,30 +85,34 @@ export class AgentChatService implements AgentChatServiceLike {
       }
       if (trimmed === 'no' || trimmed === 'cancel' || trimmed === 'never mind') {
         pendingConfirmations.delete(userId);
-        const reply = await this.composeReply(
-          pending.intent,
-          { orderId: '', status: 'payment_pending', trace: [] },
-          null,
-          { cancelled: true },
-        );
+        const reply = await this.buildReply(pending.intent, userId, 'cancelled');
         return this.emptyResult(pending.intent, reply);
       }
       // User said something else — treat as a new intent, clear pending.
       pendingConfirmations.delete(userId);
     }
 
-    // ── Call Gemini with tools ──────────────────────────────────────
+    // ── Parse intent ────────────────────────────────────────────────
     const intent = await this.parser.parse(message);
 
     if (!isOk(intent)) {
-      return intent;
+      const reply = await this.buildReply(
+        { action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+        userId,
+        'fallback',
+        { error: errorMessage(intent.error) },
+      );
+      return this.emptyResult(
+        { action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+        reply,
+      );
     }
 
     const i = intent.value;
 
-    // ── Handle different tool calls ─────────────────────────────────
+    // ── Route to handler ────────────────────────────────────────────
     if (i.action === 'check_balance') {
-      return this.handleBalanceCheck(userId);
+      return this.handleBalanceCheck(userId, i);
     }
 
     if (i.action === 'search_products') {
@@ -88,91 +120,74 @@ export class AgentChatService implements AgentChatServiceLike {
     }
 
     if (i.action === 'off_topic') {
-      return this.handleOffTopic(i);
+      return this.handleOffTopic(userId, i);
     }
 
     if (i.action === 'cash_out') {
       return this.handleCashOutPlan(userId, i);
     }
 
-    // Shouldn't happen — return as a generic reply
-    return this.emptyResultWithReply(
-      { action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
-      "I can help you cash out crypto. Try saying something like \"Cash out $50 to Amazon\" or \"Show my balance\".",
-    );
+    // Shouldn't happen — treat as fallback
+    const reply = await this.buildReply(i, userId, 'fallback');
+    return this.emptyResult(i, reply);
   }
 
   // ── Tool handlers ─────────────────────────────────────────────────
 
-  private async handleBalanceCheck(userId: string): Promise<Result<AgentChatResponse, DomainError>> {
+  private async handleBalanceCheck(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
     const result = await this.balanceService.getBalance(userId);
-    if (!isOk(result)) return result;
+    if (!isOk(result)) {
+      const reply = await this.buildReply(intent, userId, 'error', { error: errorMessage(result.error) });
+      return this.emptyResult(intent, reply);
+    }
 
     const b = result.value;
-    const lines = b.assets.map(
-      (a) => `  ${a.symbol} on chain ${a.chainId}: $${a.usdValue.toFixed(2)}`,
-    );
-    const reply = `You have $${b.total.toFixed(2)} across ${b.assets.length} asset${b.assets.length === 1 ? '' : 's'}:\n${lines.join('\n')}`;
-
-    return this.emptyResult(
-      { action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
-      reply,
-    );
+    const reply = await this.buildReply(intent, userId, 'balance', { balance: b });
+    return this.emptyResult(intent, reply);
   }
 
   private async handleProductSearch(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
     const provider = this.providers[0];
     if (!provider) {
-      return this.emptyResultWithReply(intent, "I don't have any providers available right now.");
+      const reply = await this.buildReply(intent, userId, 'error', { error: 'No providers available' });
+      return this.emptyResult(intent, reply);
     }
 
     const products = await provider.searchProducts(intent.brand ?? '', { category: intent.category });
-    if (!isOk(products) || products.value.length === 0) {
-      return this.emptyResultWithReply(intent, `I couldn't find any ${intent.category} products${intent.brand ? ` for "${intent.brand}"` : ''}.`);
-    }
-
-    const amount = intent.amount.value || 50;
-    const lines = products.value.slice(0, 3).map(
-      (p) => `  • ${p.name} — from $${p.denominations?.[0] ?? 10}`,
-    );
-    const reply = `Here's what I found for ${intent.category}${intent.brand ? ` (${intent.brand})` : ''}:\n${lines.join('\n')}\n\nWant to cash out $${amount} to one of these?`;
-
+    const reply = await this.buildReply(intent, userId, 'search', {
+      products: isOk(products) ? products.value : [],
+    });
     return this.emptyResult(intent, reply);
   }
 
-  private handleOffTopic(intent: CashOutIntent): Result<AgentChatResponse, DomainError> {
-    const greetings = [
-      "Hey! 👋 I'm Pouch — your AI cash-out agent. I can convert your crypto into gift cards, mobile top-ups, and more. Try \"Cash out $50 to Amazon\" or \"Show my balance\".",
-      "Hi there! 🫛 I'm here to help you cash out crypto. Just tell me what you want — like \"Buy $25 Uber gift card\" or \"Top up my phone $10\".",
-      "Hello! I'm Pouch. Talk to me like you're chatting with a friend, and I'll handle the crypto part. What would you like to cash out today?",
-      "¡Hola! 👋 Soy Pouch, tu agente de cash-out crypto. Puedo convertir tu crypto en gift cards, recargas de móvil, y más. Prueba \"Cambiar $50 a Amazon\" o \"Ver mi saldo\".",
-      "¡Hey! 🫛 Estoy aquí para ayudarte a sacar tu crypto. Solo dime qué quieres — como \"Comprar $25 de Uber\" o \"Recargar $10 de saldo\".",
-      "¡Buenas! Soy Pouch. Háblame como si fuera un amigo, y yo me encargo de la parte crypto. ¿Qué quieres retirar hoy?",
-    ];
-    const reply = greetings[Math.floor(Math.random() * greetings.length)]!;
+  private async handleOffTopic(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
+    const reply = await this.buildReply(intent, userId, 'greeting');
     return this.emptyResult(intent, reply);
   }
 
   private async handleCashOutPlan(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
     // Check balance first
     const balance = await this.balanceService.getBalance(userId);
-    if (!isOk(balance)) return balance;
+    if (!isOk(balance)) {
+      const reply = await this.buildReply(intent, userId, 'error', { error: errorMessage(balance.error) });
+      return this.emptyResult(intent, reply);
+    }
 
     if (balance.value.total < intent.amount.value) {
-      return this.emptyResultWithReply(
-        intent,
-        `You only have $${balance.value.total.toFixed(2)} — not enough for $${intent.amount.value.toFixed(2)}. Try a smaller amount.`,
-      );
+      const reply = await this.buildReply(intent, userId, 'insufficient', { balance: balance.value });
+      return this.emptyResult(intent, reply);
     }
 
     const displayBrand = toDisplayBrand(intent.brand);
-    const planSummary = `Cash out $${intent.amount.value.toFixed(2)} to ${displayBrand}`;
+    const planSummary = `cash out $${intent.amount.value.toFixed(2)} to ${displayBrand}`;
 
     // Store pending intent for confirmation
     pendingConfirmations.set(userId, { intent, planSummary });
 
-    const reply = `You have $${balance.value.total.toFixed(2)} across ${balance.value.assets.length} chains.\n\nI'm ready to ${planSummary}. Confirm?`;
-
+    const reply = await this.buildReply(intent, userId, 'confirmation', {
+      balance: balance.value,
+      planSummary,
+    });
     return this.emptyResult(intent, reply);
   }
 
@@ -180,11 +195,15 @@ export class AgentChatService implements AgentChatServiceLike {
     const execution = await this.executor.execute(intent, userId);
 
     if (!isOk(execution)) {
-      return execution;
+      const reply = await this.buildReply(intent, userId, 'error', { error: errorMessage(execution.error) });
+      return this.emptyResult(intent, reply);
     }
 
     const persistedOrder = await this.orders.findById(execution.value.orderId);
-    const reply = await this.composeReply(intent, execution.value, persistedOrder, { confirmed: true });
+    const reply = await this.buildReply(intent, userId, 'success', {
+      order: persistedOrder,
+      result: execution.value,
+    });
 
     return ok({
       ...execution.value,
@@ -193,32 +212,48 @@ export class AgentChatService implements AgentChatServiceLike {
     });
   }
 
-  // ── Reply composition ─────────────────────────────────────────────
+  // ── Reply composition (delegates to ReplyStrategy, with template fallback) ─
 
-  private async composeReply(
+  private async buildReply(
     intent: CashOutIntent,
-    result: CashOutResult,
-    order: Order | null,
-    context?: { cancelled?: boolean; confirmed?: boolean },
+    userId: string,
+    scenario: ReplyScenario,
+    extras?: {
+      balance?: { total: number; assets: Array<{ chainId: number; symbol: string; amount: number; usdValue: number }> };
+      products?: Product[];
+      order?: Order | null;
+      result?: CashOutResult;
+      error?: string;
+      planSummary?: string;
+    },
   ): Promise<string> {
-    if (context?.cancelled) {
-      return 'Cancelled. What would you like to do instead?';
+    const context: ReplyContext = {
+      intent,
+      scenario,
+      history: getHistory(userId),
+    };
+    if (extras?.balance) context.balance = extras.balance;
+    const products = extras?.products;
+    if (products) context.products = products;
+    if (extras?.order !== undefined) context.order = extras.order;
+    if (extras?.result) context.result = extras.result;
+    if (extras?.error) context.error = extras.error;
+    if (extras?.planSummary) context.planSummary = extras.planSummary;
+
+    if (!this.replyStrategy) {
+      const reply = templateReply(context);
+      pushHistory(userId, 'agent', reply);
+      return reply;
     }
 
-    const template = (): string => {
-      const displayBrand = toDisplayBrand(order?.product.brand ?? intent.brand);
-      if (context?.confirmed) {
-        return `✅ Done! Your ${displayBrand} cash-out for $${intent.amount.value.toFixed(2)} is complete. Order ${result.orderId}.`;
-      }
-      return `Starting your ${displayBrand} cash-out for $${intent.amount.value.toFixed(2)}. Order ${result.orderId} is ${result.status}.`;
-    };
-
-    if (!this.replyStrategy) return template();
-
     try {
-      return await this.replyStrategy.buildReply({ intent, result, order });
+      const reply = await this.replyStrategy.buildReply(context);
+      pushHistory(userId, 'agent', reply);
+      return reply;
     } catch {
-      return template();
+      const reply = templateReply(context);
+      pushHistory(userId, 'agent', reply);
+      return reply;
     }
   }
 
@@ -231,8 +266,58 @@ export class AgentChatService implements AgentChatServiceLike {
       reply,
     });
   }
+}
 
-  private emptyResultWithReply(intent: CashOutIntent, reply: string): Result<AgentChatResponse, DomainError> {
-    return this.emptyResult(intent, reply);
+// ── Deterministic template fallback (used when LLM is unavailable) ────────
+
+function templateReply(context: ReplyContext): string {
+  const amount = context.intent.amount.value.toFixed(2);
+  const brand = context.order?.product.brand ?? context.intent.brand;
+
+  switch (context.scenario) {
+    case 'greeting': {
+      const greetings = [
+        "Hey! 👋 I'm Pouch — your AI cash-out agent. I can convert your crypto into gift cards, mobile top-ups, and more. Try \"Cash out $50 to Amazon\" or \"Show my balance\".",
+        "¡Hola! 👋 Soy Pouch, tu agente de cash-out crypto. Puedo convertir tu crypto en gift cards, recargas de móvil, y más. Prueba \"Cambiar $50 a Amazon\" o \"Ver mi saldo\".",
+      ];
+      return greetings[Math.floor(Math.random() * greetings.length)]!;
+    }
+
+    case 'balance': {
+      const b = context.balance;
+      if (!b) return "I couldn't retrieve your balance right now.";
+      const lines = b.assets.map((a) => `  ${a.symbol} on chain ${a.chainId}: $${a.usdValue.toFixed(2)}`);
+      return `You have $${b.total.toFixed(2)} across ${b.assets.length} asset${b.assets.length === 1 ? '' : 's'}:\n${lines.join('\n')}`;
+    }
+
+    case 'search': {
+      const products = context.products ?? [];
+      if (products.length === 0) return `I couldn't find any ${context.intent.category} products. Try a different search.`;
+      const lines = products.slice(0, 3).map((p) => `  • ${p.name} — from $${p.denominations?.[0] ?? 10}`);
+      return `Here's what I found:\n${lines.join('\n')}\n\nWant to cash out to one of these?`;
+    }
+
+    case 'confirmation':
+      return `I'm ready to ${context.planSummary ?? `cash out $${amount} to ${brand ?? 'your selection'}`}. Confirm?`;
+
+    case 'success': {
+      const displayBrand = brand
+        ? brand.split(/\s+/).filter(Boolean).map((w) => w[0]?.toUpperCase() + w.slice(1)).join(' ')
+        : 'your selected product';
+      return `✅ Done! Your ${displayBrand} cash-out for $${amount} is complete.`;
+    }
+
+    case 'cancelled':
+      return 'Cancelled. What would you like to do instead?';
+
+    case 'insufficient':
+      return `You only have $${context.balance?.total.toFixed(2) ?? '0.00'} — not enough for $${amount}. Try a smaller amount.`;
+
+    case 'error':
+      return `⚠ Something went wrong. Please try again.`;
+
+    case 'fallback':
+    default:
+      return "I can help you cash out crypto. Try saying \"Cash out $50 to Amazon\" or \"Show my balance\".";
   }
 }

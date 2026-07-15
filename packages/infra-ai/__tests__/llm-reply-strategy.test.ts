@@ -47,12 +47,17 @@ describe('LlmReplyStrategy', () => {
     };
     const strategy = new LlmReplyStrategy(provider);
 
-    const reply = await strategy.buildReply({ intent: fakeIntent(), result: fakeResult(), order: fakeOrder() });
+    const reply = await strategy.buildReply({
+      scenario: 'success',
+      intent: fakeIntent(),
+      result: fakeResult(),
+      order: fakeOrder(),
+    });
 
     expect(reply).toBe('Done! Your $50 Amazon card is on the way. 🎉');
   });
 
-  it('passes brand, amount, status, and orderId context to the LLM prompt', async () => {
+  it('passes brand, amount, and orderId context to the LLM prompt', async () => {
     let seen = '';
     const provider: LLMProvider = {
       async generateText(req) {
@@ -66,6 +71,7 @@ describe('LlmReplyStrategy', () => {
     const strategy = new LlmReplyStrategy(provider);
 
     await strategy.buildReply({
+      scenario: 'success',
       intent: fakeIntent(),
       result: { orderId: 'order-999', status: 'delivered', trace: [] },
       order: { ...fakeOrder(), product: { ...fakeOrder().product, brand: 'steam' } },
@@ -74,7 +80,7 @@ describe('LlmReplyStrategy', () => {
     expect(seen).toContain('steam');
     expect(seen).not.toContain('amazon');
     expect(seen).toContain('order-999');
-    expect(seen).toContain('delivered');
+    expect(seen).toContain('completed successfully');
   });
 
   it('falls back to a deterministic template when the LLM fails', async () => {
@@ -88,7 +94,12 @@ describe('LlmReplyStrategy', () => {
     };
     const strategy = new LlmReplyStrategy(provider);
 
-    const reply = await strategy.buildReply({ intent: fakeIntent(), result: fakeResult(), order: fakeOrder() });
+    const reply = await strategy.buildReply({
+      scenario: 'success',
+      intent: fakeIntent(),
+      result: fakeResult(),
+      order: fakeOrder(),
+    });
 
     expect(reply).toContain('Amazon');
     expect(reply).toContain('order-123');
@@ -106,7 +117,12 @@ describe('LlmReplyStrategy', () => {
     };
     const strategy = new LlmReplyStrategy(provider);
 
-    const reply = await strategy.buildReply({ intent: fakeIntent(), result: fakeResult(), order: fakeOrder() });
+    const reply = await strategy.buildReply({
+      scenario: 'success',
+      intent: fakeIntent(),
+      result: fakeResult(),
+      order: fakeOrder(),
+    });
 
     expect(reply).toContain('Amazon');
   });
@@ -123,10 +139,80 @@ describe('LlmReplyStrategy', () => {
       };
       const strategy = new LlmReplyStrategy(provider);
 
-      const reply = await strategy.buildReply({ intent: fakeIntent(), result: fakeResult(), order: fakeOrder() });
+      const reply = await strategy.buildReply({
+        scenario: 'success',
+        intent: fakeIntent(),
+        result: fakeResult(),
+        order: fakeOrder(),
+      });
 
       expect(reply).toContain('Amazon');
       expect(reply).toContain('order-123');
     }
+  });
+
+  it('generates a greeting for the greeting scenario', async () => {
+    const provider: LLMProvider = {
+      async generateText() {
+        return ok("Hey! I'm Pouch, your crypto cash-out buddy.");
+      },
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const strategy = new LlmReplyStrategy(provider);
+
+    const reply = await strategy.buildReply({
+      scenario: 'greeting',
+      intent: { action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+    });
+
+    expect(reply).toContain('Pouch');
+  });
+
+  it('generates a balance reply for the balance scenario', async () => {
+    const provider: LLMProvider = {
+      async generateText() {
+        return ok('You have $100 across 2 assets.');
+      },
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const strategy = new LlmReplyStrategy(provider);
+
+    const reply = await strategy.buildReply({
+      scenario: 'balance',
+      intent: { action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+      balance: {
+        total: 100,
+        assets: [
+          { chainId: 42161, symbol: 'USDC', amount: 50, usdValue: 50 },
+          { chainId: 8453, symbol: 'ETH', amount: 0.02, usdValue: 50 },
+        ],
+      },
+    });
+
+    expect(reply).toContain('100');
+  });
+
+  it('falls back to template for greeting when LLM fails', async () => {
+    const provider: LLMProvider = {
+      async generateText() {
+        throw new Error('boom');
+      },
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const strategy = new LlmReplyStrategy(provider);
+
+    const reply = await strategy.buildReply({
+      scenario: 'greeting',
+      intent: { action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+    });
+
+    expect(reply).toContain('Pouch');
+    expect(reply).toContain('cash-out');
   });
 });

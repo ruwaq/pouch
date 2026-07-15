@@ -253,7 +253,7 @@ describe('API app', () => {
     });
   });
 
-  it('returns a user-facing parse error for unsupported messages', async () => {
+  it('returns a friendly fallback reply for unsupported messages', async () => {
     const app = buildAgentApp();
 
     const response = await app.request('/agent/chat', {
@@ -266,11 +266,11 @@ describe('API app', () => {
       }),
     });
 
-    expect(response.status).toBe(422);
-    await expect(response.json()).resolves.toMatchObject({
-      error: 'I can help you cash out crypto, check your balance, or search for gift cards. Try saying "Cash out $50 to Amazon" or "Show my balance".',
-      type: 'UNSUPPORTED_INTENT',
-    });
+    // Now returns 200 with a friendly fallback reply (conversational agent).
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.reply).toBeDefined();
+    expect(body.intent.action).toBe('off_topic');
   });
 
   it('processes the Bitrefill webhook once and ignores duplicates idempotently', async () => {

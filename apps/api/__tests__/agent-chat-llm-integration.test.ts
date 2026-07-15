@@ -173,7 +173,7 @@ describe('AgentChatService + LLM integration', () => {
     const llm = fakeLlm();
     // Free-form message the regex parser CANNOT parse — only the LLM can.
     llm.setFunctionCall('cash_out', { category: 'giftcard', brand: 'steam', amount: 20 });
-    llm.setText('Done! Your Steam card is on the way. 🎮');
+    llm.setText('Ready to cash out $20.00 to Steam. Say yes to confirm! 🎮');
 
     const parser = new LlmIntentParser(llm, neverRegex, POUCH_TOOL_DECLARATIONS);
     const replyStrategy = new LlmReplyStrategy(llm);
@@ -187,8 +187,9 @@ describe('AgentChatService + LLM integration', () => {
     const intent = result.value.intent as CashOutIntent;
     expect(intent.brand).toBe('steam');
     expect(intent.amount.value).toBe(20);
-    // New flow: confirmation prompt (not direct execution).
-    expect(result.value.reply).toContain('Confirm?');
+    // New flow: LLM-generated confirmation prompt (via ReplyStrategy).
+    expect(result.value.reply).toContain('Steam');
+    expect(result.value.reply).toContain('20');
     expect(result.value.orderId).toBe('');
   });
 
