@@ -44,9 +44,9 @@ export function MessageList() {
 }
 
 const SUGGESTIONS = [
-  'Cash out $25 to Amazon',
-  'How much do I have?',
-  'Cash out $10 to a Visa prepaid card',
+  'Cash out $50 to Amazon',
+  'Show my balance',
+  'Cash out $25 to Uber',
 ];
 
 function EmptyState() {

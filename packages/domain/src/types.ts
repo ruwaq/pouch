@@ -88,7 +88,7 @@ export interface WebhookEvent {
 }
 
 export interface CashOutIntent {
-  action: 'cash_out';
+  action: 'cash_out' | 'check_balance' | 'search_products' | 'off_topic';
   category: OffRampCategory;
   brand?: string;
   amount: Amount;

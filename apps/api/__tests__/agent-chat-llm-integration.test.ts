@@ -18,6 +18,8 @@ import { err, ok } from '@pouch/shared';
 import { LlmIntentParser, LlmReplyStrategy, POUCH_TOOL_DECLARATIONS, type LLMProvider } from '@pouch/infra-ai';
 
 import { AgentChatService } from '../src/services/agent-chat-service';
+import { BalanceService } from '../src/services/balance-service';
+import type { BalanceServiceLike } from '../src/services/balance-service';
 import { MemoryOrderRepository } from '../src/support/memory-order-repository';
 
 /**
@@ -160,13 +162,14 @@ function buildService(parser: IntentParserStrategy, replyStrategy?: ReplyStrateg
   const repository = new MemoryOrderRepository();
   const router = new OffRampRouter(providers);
   const executor = new CashOutExecutor(router, providers, stubAccountProvider, repository, logger);
+  const balanceService = new BalanceService(stubAccountProvider);
   return replyStrategy
-    ? new AgentChatService(parser, executor, repository, replyStrategy)
-    : new AgentChatService(parser, executor, repository);
+    ? new AgentChatService(parser, executor, repository, balanceService, providers, replyStrategy)
+    : new AgentChatService(parser, executor, repository, balanceService, providers);
 }
 
 describe('AgentChatService + LLM integration', () => {
-  it('uses the LLM-parsed intent end-to-end and the LLM conversational reply', async () => {
+  it('uses the LLM-parsed intent end-to-end and shows the confirmation prompt', async () => {
     const llm = fakeLlm();
     // Free-form message the regex parser CANNOT parse — only the LLM can.
     llm.setFunctionCall('cash_out', { category: 'giftcard', brand: 'steam', amount: 20 });
@@ -184,11 +187,12 @@ describe('AgentChatService + LLM integration', () => {
     const intent = result.value.intent as CashOutIntent;
     expect(intent.brand).toBe('steam');
     expect(intent.amount.value).toBe(20);
-    // LLM reply was used (not the template).
-    expect(result.value.reply).toBe('Done! Your Steam card is on the way. 🎮');
+    // New flow: confirmation prompt (not direct execution).
+    expect(result.value.reply).toContain('Confirm?');
+    expect(result.value.orderId).toBe('');
   });
 
-  it('falls back to regex parse + template reply when the LLM fails', async () => {
+  it('falls back to regex parse and shows confirmation prompt when the LLM fails', async () => {
     const llm = fakeLlm();
     llm.failNext(); // both generateWithTools and generateText return err
 
@@ -204,7 +208,7 @@ describe('AgentChatService + LLM integration', () => {
     const intent = result.value.intent as CashOutIntent;
     expect(intent.brand).toBe('amazon');
     expect(intent.amount.value).toBe(50);
-    // Template reply won (LLM failed) — deterministic phrasing.
-    expect(result.value.reply).toMatch(/^Done — your Amazon cash-out for \$50\.00 is payment_pending/);
+    // New flow: confirmation prompt.
+    expect(result.value.reply).toContain('Confirm?');
   });
 });

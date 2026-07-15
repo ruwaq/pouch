@@ -25,17 +25,25 @@ export function createAgentRoutes(agentService: AgentChatServiceLike): Hono {
     }
 
     const userId = typeof payload.userId === 'string' && payload.userId.trim() ? payload.userId : 'demo-user';
-    const result = await agentService.handleMessage(payload.message, userId);
 
-    if (!result.ok) {
-      context.status(toDomainErrorStatus(result.error));
-      return context.json({
-        error: toDomainErrorMessage(result.error),
-        type: result.error.type,
-      });
+    try {
+      const result = await agentService.handleMessage(payload.message, userId);
+
+      if (!result.ok) {
+        context.status(toDomainErrorStatus(result.error));
+        const detail = 'message' in result.error ? (result.error as { message: string }).message : undefined;
+        return context.json({
+          error: toDomainErrorMessage(result.error),
+          type: result.error.type,
+          ...(detail ? { detail } : {}),
+        });
+      }
+
+      return context.json(result.value, 200);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return context.json({ error: 'Chat service error', detail: msg }, 500);
     }
-
-    return context.json(result.value, 200);
   });
 
   return router;

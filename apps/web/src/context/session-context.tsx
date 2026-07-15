@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { apiPost } from '../lib/api-client';
+import { apiPost, demoLogin as apiDemoLogin } from '../lib/api-client';
 import {
   getEvmAddress,
   hasMagicConfig,
@@ -30,6 +30,9 @@ interface SessionContextValue {
   session: Session | null;
   login: (email: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** One-click demo login — no email required. */
+  demoLogin: () => Promise<void>;
+  loading: boolean;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -47,6 +50,7 @@ export async function signOut(): Promise<void> {
 export function SessionProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>('loading');
   const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(false);
 
   // On mount: if a Magic session already exists, read its EVM address.
   // We do NOT re-mint the cookie here — the httpOnly pouch_session cookie
@@ -91,9 +95,20 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     setStatus('anonymous');
   }, []);
 
+  const demoLogin = useCallback(async () => {
+    setLoading(true);
+    try {
+      const next = await apiDemoLogin();
+      setSession(next);
+      setStatus('authenticated');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const value = useMemo<SessionContextValue>(
-    () => ({ status, session, login, logout }),
-    [status, session, login, logout],
+    () => ({ status, session, login, logout, demoLogin, loading }),
+    [status, session, login, logout, demoLogin, loading],
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

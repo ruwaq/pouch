@@ -5,13 +5,12 @@
   "installCommand": "pnpm install --frozen-lockfile",
   "build": {
     "env": {
-      "DEMO_MODE": "true",
       "APP_URL": "https://pouch-orpin.vercel.app",
       "SETTLEMENT_CHAIN_ID": "42161",
       "SUPPORTED_CHAINS": "42161,8453",
-      "DATABASE_URL": "postgresql://demo:demo@localhost:5432/demo",
-      "JWT_SECRET": "vercel-demo-jwt-secret-minimum-32-chars!!",
-      "WEBHOOK_SECRET": "vercel-demo-webhook-secret-minimum-32ch!"
+      "DATABASE_URL": "postgresql://placeholder:placeholder@localhost:5432/placeholder",
+      "JWT_SECRET": "placeholder-jwt-secret-minimum-32-chars!!",
+      "WEBHOOK_SECRET": "placeholder-webhook-secret-minimum-32!"
     }
   }
 }

@@ -1,21 +1,21 @@
-import { GoogleGenAI } from '@google/genai';
 import { IntentParser, type IntentParserStrategy, type ReplyStrategy } from '@pouch/domain';
 import type { Config } from '@pouch/shared';
 
-import type { GeminiClient } from './gemini-client';
 import { GeminiProvider } from './gemini-provider';
 import { LlmIntentParser } from './llm-intent-parser';
 import { LlmReplyStrategy } from './llm-reply-strategy';
 import type { LLMProvider } from './llm-provider';
 import { POUCH_TOOL_DECLARATIONS } from './llm-tools';
 
-const DEFAULT_GEMINI_MODEL = 'gemini-2.0-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 
 /**
  * Constructs the LLMProvider when configuration is complete and valid.
  * Returns undefined when: no provider set, OR provider set but its key is
- * missing. Callers then fall back to the regex parser. This is the ONLY file
- * that imports @google/genai — the SDK never reaches the pure units.
+ * missing. Callers then fall back to the regex parser.
+ *
+ * Uses the Gemini REST API (fetch) directly — no SDK, no ESM imports.
+ * Reliable in Vercel serverless environments.
  */
 export function createLlmProvider(config: Config): LLMProvider | undefined {
   if (config.LLM_PROVIDER !== 'gemini') {
@@ -25,9 +25,8 @@ export function createLlmProvider(config: Config): LLMProvider | undefined {
     return undefined;
   }
 
-  const client = new GoogleGenAI({ apiKey: config.GEMINI_API_KEY }) as GeminiClient;
   const model = config.LLM_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
-  return new GeminiProvider(client, model);
+  return new GeminiProvider(config.GEMINI_API_KEY, model);
 }
 
 /**

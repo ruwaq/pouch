@@ -27,14 +27,15 @@ describe('buildOffRampProviders', () => {
     expect(providers[0]?.id).toBe('bitrefill');
   });
 
-  it('throws when no configured providers can be built', () => {
+  it('returns an empty array when no configured providers can be built', () => {
     const config = loadConfig({
       ...baseEnv,
       OFFRAMP_PROVIDERS: 'bitrefill',
       BITREFILL_API_KEY: '',
     });
 
-    expect(() => buildOffRampProviders(config)).toThrow('No off-ramp providers configured');
+    const providers = buildOffRampProviders(config);
+    expect(providers).toHaveLength(0);
   });
 
   it('fails fast when the settlement chain is unsupported', () => {

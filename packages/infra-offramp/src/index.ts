@@ -37,7 +37,9 @@ export function buildOffRampProviders(config: Config): OffRampProvider[] {
   }
 
   if (providers.length === 0) {
-    throw new Error('No off-ramp providers configured. Check OFFRAMP_PROVIDERS env var.');
+    // Don't crash — let the executor return a proper "no provider" error.
+    // This allows the app to boot without an off-ramp key (e.g. while waiting
+    // for Bitrefill approval) while auth, balance, AI, and DB still work.
   }
 
   return providers;

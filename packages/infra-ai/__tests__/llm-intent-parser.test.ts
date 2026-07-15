@@ -44,16 +44,26 @@ describe('LlmIntentParser', () => {
     });
   });
 
-  it('falls back to regex when the LLM returns a non-cash_out function', async () => {
+  it('handles off_topic function calls without falling back to regex', async () => {
     const provider = fakeProvider(async () => ok({ functionCall: { name: 'off_topic', args: {} } }));
     const parser = new LlmIntentParser(provider, new IntentParser(), POUCH_TOOL_DECLARATIONS);
 
-    // regex parser handles the canonical phrasing even though the LLM said off_topic
-    const result = await parser.parse('cash out $50 to amazon');
+    const result = await parser.parse('hello');
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.brand).toBe('amazon');
+    expect(result.value.action).toBe('off_topic');
+  });
+
+  it('handles check_balance function calls', async () => {
+    const provider = fakeProvider(async () => ok({ functionCall: { name: 'check_balance', args: {} } }));
+    const parser = new LlmIntentParser(provider, new IntentParser(), POUCH_TOOL_DECLARATIONS);
+
+    const result = await parser.parse('how much do I have');
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.action).toBe('check_balance');
   });
 
   it('falls back to regex when the LLM returns plain text (no function call)', async () => {

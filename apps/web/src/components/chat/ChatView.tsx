@@ -22,7 +22,7 @@ export function ChatView() {
           <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             {session?.evmAddress ? (
               <span className="hidden text-xs text-[var(--muted)] sm:inline">
-                {session.evmAddress.slice(0, 6)}…{session.evmAddress.slice(-4)}
+                {session.userId === 'demo-user' ? 'Demo' : `${session.evmAddress.slice(0, 6)}…${session.evmAddress.slice(-4)}`}
               </span>
             ) : null}
             <Button variant="ghost" onClick={() => void logout()}>
@@ -32,8 +32,8 @@ export function ChatView() {
         </header>
 
         {session?.userId === 'demo-user' || !session ? (
-          <div className="border-b border-amber-500/20 bg-amber-500/10 px-4 py-2 text-center text-xs text-amber-200">
-            Demo mode — balances and payments are simulated. Add a Magic key for real wallet auth.
+          <div className="border-b border-[var(--accent)]/20 bg-[var(--accent)]/5 px-4 py-2 text-center text-xs text-[var(--muted-2)]">
+            Demo session — no login required. Balances are simulated.
           </div>
         ) : null}
 

@@ -97,7 +97,7 @@ function buildAgentApp() {
   const repository = new MemoryOrderRepository();
   const router = new OffRampRouter(providers);
   const executor = new CashOutExecutor(router, providers, demoAccountProvider, repository, logger);
-  const service = new AgentChatService(new IntentParser(), executor, repository);
+  const service = new AgentChatService(new IntentParser(), executor, repository, new BalanceService(demoAccountProvider), providers);
   const balanceService = new BalanceService(demoAccountProvider);
   const orderService = new OrderService(repository);
 
@@ -220,7 +220,6 @@ describe('API app', () => {
     const body = await response.json();
 
     expect(body).toMatchObject({
-      orderId: 'order-demo-1',
       status: 'payment_pending',
       intent: {
         brand: 'amazon',
@@ -230,11 +229,9 @@ describe('API app', () => {
         },
       },
     });
-    expect(body.reply).toContain('Amazon');
-    expect(body.reply).toContain('$50.00');
+    // New flow: confirmation prompt (not direct execution).
+    expect(body.reply).toContain('Confirm?');
     expect(Array.isArray(body.trace)).toBe(true);
-    expect(body.trace.length).toBeGreaterThan(0);
-    expect(body.trace[0]).toMatchObject({ status: 'complete' });
   });
 
   it('rejects invalid request bodies', async () => {
@@ -270,7 +267,7 @@ describe('API app', () => {
     });
 
     expect(response.status).toBe(422);
-    await expect(response.json()).resolves.toEqual({
+    await expect(response.json()).resolves.toMatchObject({
       error: 'Only cash-out purchase requests are supported right now.',
       type: 'UNSUPPORTED_INTENT',
     });
@@ -348,30 +345,36 @@ describe('API app', () => {
     });
   });
 
-  it('returns the created order from GET /orders/:id', async () => {
+  it('returns the created order from GET /orders/:id after confirmation', async () => {
     const app = buildAgentApp();
 
+    // Step 1: trigger cash-out (shows confirmation)
     await app.request('/agent/chat', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message: 'Cash out $50 to Amazon',
-        userId: 'demo-user',
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'Cash out $50 to Amazon', userId: 'demo-user' }),
     });
 
-    const response = await app.request('/orders/order-demo-1?userId=demo-user');
+    // Step 2: confirm
+    const confirmRes = await app.request('/agent/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: 'yes', userId: 'demo-user' }),
+    });
 
+    expect(confirmRes.status).toBe(200);
+    const confirmBody = await confirmRes.json();
+    const orderId = confirmBody.orderId;
+    expect(orderId).toBeTruthy();
+
+    // Step 3: fetch the order
+    const response = await app.request(`/orders/${orderId}?userId=demo-user`);
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      id: 'order-demo-1',
+      id: orderId,
       providerId: 'demo-provider',
       status: 'payment_pending',
-      product: {
-        name: 'Amazon US',
-      },
+      product: { name: 'Amazon US' },
     });
   });
 

@@ -62,3 +62,8 @@ export async function apiPost<T>(path: string, body: unknown): Promise<T> {
   if (!res.ok) return parseError(res);
   return (await res.json()) as T;
 }
+
+/** One-click demo login — creates a session for judges without email/Magic. */
+export async function demoLogin(): Promise<{ userId: string; evmAddress: string }> {
+  return apiPost('/auth/demo', null);
+}

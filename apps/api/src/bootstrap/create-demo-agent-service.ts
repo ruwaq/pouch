@@ -79,9 +79,13 @@ class DemoProvider implements OffRampProvider {
 const demoAccountProvider: AccountProvider = {
   async getUnifiedBalance() {
     return ok({
-      total: 150,
-      assets: [{ chainId: 42161, symbol: 'USDC', amount: 150, usdValue: 150 }],
-      requiresConsolidation: false,
+      total: 100,
+      assets: [
+        { chainId: 42161, symbol: 'USDC', amount: 45, usdValue: 45 },
+        { chainId: 8453, symbol: 'USDC', amount: 30, usdValue: 30 },
+        { chainId: 8453, symbol: 'ETH', amount: 0.007, usdValue: 25 },
+      ],
+      requiresConsolidation: true,
     });
   },
   async consolidate() {
@@ -128,9 +132,10 @@ export function createDemoAppServices(): {
     GEMINI_API_KEY: process.env.GEMINI_API_KEY,
     LLM_MODEL: process.env.LLM_MODEL,
   } as unknown as Parameters<typeof createAgentLlm>[0]);
+  const balanceService = new BalanceService(demoAccountProvider);
   const agentService = replyStrategy
-    ? new AgentChatService(intentParser, executor, repository, replyStrategy)
-    : new AgentChatService(intentParser, executor, repository);
+    ? new AgentChatService(intentParser, executor, repository, balanceService, providers, replyStrategy)
+    : new AgentChatService(intentParser, executor, repository, balanceService, providers);
 
   return {
     agentService,

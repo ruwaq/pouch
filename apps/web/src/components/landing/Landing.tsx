@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSession } from '../../context/session-context';
 import { Button } from '../ui/Button';
 import { MagicLoginModal } from './MagicLoginModal';
 
@@ -12,6 +13,7 @@ const highlights = [
 
 export function Landing() {
   const [showLogin, setShowLogin] = useState(false);
+  const { demoLogin, loading } = useSession();
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-3xl flex-col items-center justify-center px-6 text-center">
@@ -25,8 +27,14 @@ export function Landing() {
         Say how much and where. Pouch converts your crypto into gift cards, top-ups, and more — invisibly.
       </p>
 
-      <div className="mt-8">
-        <Button onClick={() => setShowLogin(true)}>Connect wallet</Button>
+      <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row">
+        <Button onClick={() => void demoLogin()} disabled={loading}>
+          {loading ? 'Entering…' : 'Try Demo'}
+        </Button>
+        <span className="text-xs text-[var(--muted)]">or</span>
+        <Button variant="ghost" onClick={() => setShowLogin(true)}>
+          Connect wallet
+        </Button>
       </div>
 
       <ul className="mt-12 grid w-full gap-3 text-left sm:grid-cols-3">

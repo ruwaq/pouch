@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { setCookie } from 'hono/cookie';
+import { SignJWT } from 'jose';
 
 import { createRuntimeAppServices } from './bootstrap/create-runtime-app-services';
 import { createAuthMiddleware, type AuthEnv } from './middleware/auth';
@@ -51,6 +53,27 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
   app.route('/agent', createAgentRoutes(agentService));
   app.route('/balance', createBalanceRoutes(balanceService));
   app.route('/orders', createOrderRoutes(orderService));
+
+  // Demo login — creates a session for judges who don't want to sign up.
+  // Issues a valid JWT for 'demo-user' so the app works without Magic.
+  app.post('/auth/demo', async (context) => {
+    const secret = new TextEncoder().encode(jwtSecret);
+    const jwt = await new SignJWT({ sub: 'demo-user', evmAddress: '0xdemo' })
+      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+      .setIssuedAt()
+      .setExpirationTime('24h')
+      .sign(secret);
+
+    setCookie(context, 'pouch_session', jwt, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Lax',
+      path: '/',
+      maxAge: 7 * 24 * 60 * 60,
+    });
+
+    return context.json({ userId: 'demo-user', evmAddress: '0xdemo' }, 200);
+  });
 
   if (bitrefillWebhookService) {
     app.route('/webhooks/bitrefill', createBitrefillWebhookRoutes(bitrefillWebhookService));

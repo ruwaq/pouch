@@ -3,6 +3,14 @@ import { useEffect, useState } from 'react';
 import { apiGet } from '../../lib/api-client';
 import type { Order } from '../../lib/types';
 
+const CHAIN_NAMES: Record<number, string> = {
+  42161: 'Arbitrum',
+  8453: 'Base',
+  137: 'Polygon',
+  1: 'Ethereum',
+  10: 'Optimism',
+};
+
 export function ReceiptCard({ orderId }: { orderId: string }) {
   const [order, setOrder] = useState<Order | null>(null);
 
@@ -38,6 +46,11 @@ export function ReceiptCard({ orderId }: { orderId: string }) {
       </div>
       <p className="mt-1 text-sm text-[var(--muted-2)]">
         ${order.faceValue.value.toFixed(2)} via {order.providerId}
+        {order.payment?.chainId ? (
+          <span className="ml-1 text-xs text-[var(--muted)]">
+            on {CHAIN_NAMES[order.payment.chainId] ?? `Chain ${order.payment.chainId}`}
+          </span>
+        ) : null}
       </p>
       {order.redemption?.code ? (
         <p className="mt-2 break-all rounded-lg bg-black/30 p-2 font-mono text-xs text-emerald-300">

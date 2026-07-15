@@ -1,6 +1,6 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-15 (Discord research + strategy confirmed + Arbitrum alert)
+Last updated: 2026-07-15 (Conversational agent: Gemini 3.5 Flash + multi-turn + confirmation flow)
 
 ## Strategic direction — CONFIRMED
 
@@ -148,18 +148,20 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 
 ### Verified state (2026-07-15)
 ```bash
-# La demo funciona en producción:
-curl https://pouch-orpin.vercel.app/api/health
-# → {"ok":true,"service":"api","mode":"demo"}
-
-curl -X POST https://pouch-orpin.vercel.app/api/agent/chat \
+# Conversational agent with Gemini 3.5 Flash + multi-turn confirmation:
+curl -s -X POST http://localhost:3001/api/agent/chat \
   -H 'content-type: application/json' \
-  -d '{"message":"Cash out $25 to Amazon"}'
-# → AgentChatResponse con reply conversacional de Gemini + 4-step trace
+  -d '{"message":"Cash out $50 to Amazon","userId":"demo-user"}'
+# → "You have $100.00 across 3 chains. I'm ready to Cash out $50.00 to Amazon. Confirm?"
+
+curl -s -X POST http://localhost:3001/api/agent/chat \
+  -H 'content-type: application/json' \
+  -d '{"message":"yes","userId":"demo-user"}'
+# → AgentChatResponse with 6-step trace [UA 7702] + [NO POPUP]
 
 # Local:
 pnpm typecheck   # 8/8 packages
-pnpm test        # 126 tests
+pnpm test        # 127 tests
 pnpm build       # 8/8 packages
 pnpm dev         # API (:3001) + Web (:3000)
 ```
@@ -206,7 +208,10 @@ pnpm dev         # API (:3001) + Web (:3000)
 - `apps/api/src/routes/` — all route definitions
 
 ## Notes for the next session
-- **La demo está LIVE en https://pouch-orpin.vercel.app** — modo demo con Gemini AI conversacional.
+- **La demo está LIVE en https://pouch-orpin.vercel.app** — modo "Try Demo" (sin login), Gemini 3.5 Flash conversacional, multi-chain consolidation UA 7702 + Openfort gasless + NO POPUP.
+- **Gemini 3.5 Flash funciona** — REST API directa, modelo `gemini-3.5-flash` (API key en `.env`, no commiteada). Si falla por cuota, el regex parser es el fallback automático.
+- **Conversational agent implementado** — 4 tools (check_balance, search_products, cash_out, off_topic), multi-turno con confirmación antes de ejecutar. El usuario dice "yes" para confirmar, "no" para cancelar.
+- **JWT_SECRET + WEBHOOK_SECRET generados** (2026-07-15). `vercel.json` limpio sin `DEMO_MODE`. Para producción: solo falta setear las credenciales de providers en Vercel.
 - **Estrategia confirmada (2026-07-15):** Mainnet con ~$5 USDC. Particle UA NO tiene testnet (confirmado por DevRel en Discord 3 veces). Todos los equipos están en la misma situación.
 - **⚠️ Arbitrum tiene issues (Jul 14-15):** "System maintenance" reportado por múltiples equipos. Si persiste, cambiar settlement a Base (`SETTLEMENT_CHAIN_ID=8453`). El código ya lo soporta.
 - **Competencia:** Pouch es el ÚNICO proyecto de off-ramp (crypto → gift cards). 0 competidores directos en el hackathon.
@@ -264,6 +269,25 @@ SUPPORTED_CHAINS=8453,42161
 - ✅ Phase 4: Openfort gas sponsorship + CI lint + demo hardening (code complete, 126 tests)
 - ✅ **Phase 5: Deploy a Vercel** — Hono API como Route Handler, DEMO_MODE, Gemini LIVE
 - ✅ **Demo pública funcionando:** https://pouch-orpin.vercel.app
+- ✅ **Phase 6: Conversational Agent (2026-07-15)** — Gemini 3.5 Flash, multi-turn confirmation flow, REST API (no SDK)
+
+### Phase 6 — Conversational Agent (DONE 2026-07-15)
+- ✅ **Gemini 3.5 Flash** — model default cambiado de `gemini-2.0-flash` (deprecado) a `gemini-3.5-flash` (stable)
+- ✅ **REST API directa** — `gemini-provider.ts` usa `fetch()` a `generativelanguage.googleapis.com` en vez del SDK `@google/genai` (evita ESM issues en serverless)
+- ✅ **4 tools** — Gemini maneja `cash_out`, `check_balance`, `search_products`, `off_topic`
+- ✅ **Multi-turno con confirmación** — `AgentChatService` rewrite completo:
+  - `check_balance` → muestra balance multi-chain
+  - `search_products` → busca productos disponibles
+  - `cash_out` → **NO ejecuta**. Muestra plan y pide confirmación ("¿Confirmas?")
+  - `off_topic` → respuesta conversacional
+- ✅ **Estado de conversación** — intent pendiente guardado en `Map<userId, PendingCashOut>`. Confirmaciones: `yes`, `ok`, `do it`, `confirm`, `sí`, `si`. Cancelaciones: `no`, `cancel`, `never mind`.
+- ✅ **Hybrid services** — demo-user usa memoria + simulación; real users usan DB + Particle UA + Openfort
+- ✅ **Try Demo button** — landing page con botón "Try Demo" que hace login sin email vía `/auth/demo`
+- ✅ **127 tests** (33 infra-ai, 31 api, 23 infra-web3, 13 domain, 12 web, 9 infra-offramp, 4 shared, 2 infra-db)
+
+### Gemini 3.5 Flash key (AI Studio)
+- **API Key:** (redacted — stored in `.env`, not committed)
+- **Modelo:** `gemini-3.5-flash` (stable, Jul 2026)
 
 ---
 
@@ -335,12 +359,15 @@ Esto confirma que el drop de ZeroDev fue correcto — incluso si no hubiera sido
 
 | # | Tarea | Prioridad | Estado |
 |---|-------|-----------|--------|
-| 1 | **Migrar a producción real** — setear Particle + Magic + Openfort + Bitrefill keys en Vercel. Quitar `DEMO_MODE`. | 🔴 Crítica | ⬜ Pendiente |
-| 2 | **Pulir demo seed multi-chain** — balances en Base + Arbitrum para mostrar cross-chain consolidation | 🟡 Alta | ⬜ Pendiente |
-| 3 | **Video/gif de la demo** para el submission | 🟡 Alta | ⬜ Pendiente |
-| 4 | **DB real** — setear Supabase DATABASE_URL + correr migración para persistencia | 🟢 Media | ⬜ Pendiente |
-| 5 | **Subir CI workflow a GitHub** — crear PAT con scope `workflow` o subir desde la UI | 🟢 Media | ⬜ Pendiente |
-| 6 | **Conectar GitHub a Vercel** — auto-deploy en cada push | 🟢 Baja | ⬜ Pendiente |
+| 1 | **Migrar a producción real** — setear Particle + Magic + Openfort keys. Quitar `DEMO_MODE`. | 🔴 Crítica | 🟡 Listo (keys seteadas, vercel.json limpio) |
+| 2 | **Pulir demo seed multi-chain** — balances en Arbitrum + Base con consolidation UA 7702 | 🟡 Alta | ✅ Hecho (2026-07-15) |
+| 3 | **Conversational Agent** — Gemini 3.5 Flash multi-turno con confirmación | 🟡 Alta | ✅ Hecho (2026-07-15) |
+| 4 | **Video/gif de la demo** para el submission | 🟡 Alta | ⬜ Pendiente |
+| 5 | **Bitrefill API key** — off-ramp con gift cards reales | 🟢 Media | ⬜ Pendiente |
+| 6 | **DB real** — probar persistencia en Supabase con usuarios reales | 🟢 Media | ⬜ Pendiente |
+| 7 | **Subir CI workflow a GitHub** — crear PAT con scope `workflow` | 🟢 Baja | ⬜ Pendiente |
+
+**Demo multi-chain (2026-07-15):** El demo seed ahora muestra 3 assets en 2 chains: USDC Arbitrum ($45), USDC Base ($30), ETH Base ($25). `requiresConsolidation: true` activa el trace "Consolidating via Universal Account [UA 7702]". BalancePill muestra nombres de chain (Arbitrum, Base) + dropdown pulido con indicador "Multi-chain — consolidates via UA 7702". ReceiptCard muestra chain name. Suggestion chips actualizados: "Cash out $50 to Amazon", "Show my balance", "Cash out $25 to Uber".
 
 **Nota:** Si Arbitrum sigue con problemas, cambiar `SETTLEMENT_CHAIN_ID=8453` (Base) y `SUPPORTED_CHAINS=8453,42161`. El código ya lo soporta.
 
