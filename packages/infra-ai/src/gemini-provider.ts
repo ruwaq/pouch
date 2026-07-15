@@ -11,8 +11,10 @@ import type {
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
-/** Models to try in order. The first successful one wins. */
-const MODEL_FALLBACKS = ['gemini-2.0-flash', 'gemini-3.5-flash'];
+/** Models to try in order. The first successful one wins.
+ *  NOTE: gemini-2.0-flash and gemini-2.5-* are NOT available on this API key.
+ *  Only gemini-3.5-flash works. Keep this list to just that model. */
+const MODEL_FALLBACKS: string[] = [];
 
 /** HTTP status codes that should trigger a retry (rate-limit, overload). */
 const RETRYABLE_STATUSES = new Set([429, 503]);

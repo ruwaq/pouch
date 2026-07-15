@@ -7,6 +7,7 @@ import { LlmReplyStrategy } from './llm-reply-strategy';
 import type { LLMProvider } from './llm-provider';
 import { POUCH_TOOL_DECLARATIONS } from './llm-tools';
 
+/** Only gemini-3.5-flash works on this API key. gemini-2.0-flash returns 404, gemini-2.5-* returns 404. */
 const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
 
 /**
