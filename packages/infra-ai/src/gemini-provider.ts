@@ -11,6 +11,18 @@ import type {
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
+/** Models to try in order. The first successful one wins. */
+const MODEL_FALLBACKS = ['gemini-2.0-flash', 'gemini-3.5-flash'];
+
+/** HTTP status codes that should trigger a retry (rate-limit, overload). */
+const RETRYABLE_STATUSES = new Set([429, 503]);
+
+/** Max retries per model before moving to the next fallback. */
+const MAX_RETRIES_PER_MODEL = 2;
+
+/** Base delay in ms for exponential backoff (200ms, 400ms, 800ms). */
+const BASE_RETRY_DELAY_MS = 200;
+
 interface GeminiFunctionCall {
   name: string;
   args: Record<string, unknown>;
@@ -31,6 +43,11 @@ interface GeminiResponse {
  * Adapts the Gemini REST API (generativelanguage.googleapis.com) to the
  * LLMProvider port. Uses plain fetch() — no SDK, no ESM imports, works
  * reliably in Vercel serverless.
+ *
+ * Resilience features:
+ * - Model fallback: tries gemini-2.0-flash → gemini-3.5-flash
+ * - Retry on 429/503 with exponential backoff
+ * - generateText avoids systemInstruction field (free tier workaround)
  */
 export class GeminiProvider implements LLMProvider {
   constructor(
@@ -39,70 +56,115 @@ export class GeminiProvider implements LLMProvider {
   ) {}
 
   async generateWithTools(request: LlmToolRequest): Promise<Result<LlmToolResponse, DomainError>> {
-    try {
-      const body = {
-        systemInstruction: {
-          parts: [{ text: request.systemInstruction }],
-        },
-        contents: [{ parts: [{ text: request.message }] }],
-        tools: [{ functionDeclarations: request.tools.map(toFunctionDeclaration) }],
+    const body = {
+      systemInstruction: {
+        parts: [{ text: request.systemInstruction }],
+      },
+      contents: [{ parts: [{ text: request.message }] }],
+      tools: [{ functionDeclarations: request.tools.map(toFunctionDeclaration) }],
+    };
+
+    const data = await this.fetchWithFallback<GeminiResponse>(
+      (model) => `${model}:generateContent`,
+      body,
+    );
+
+    if (!data.ok) return data;
+
+    const part = data.value?.candidates?.[0]?.content?.parts?.[0];
+    const out: LlmToolResponse = {};
+
+    if (part?.functionCall) {
+      out.functionCall = {
+        name: part.functionCall.name,
+        args: part.functionCall.args ?? {},
       };
-
-      const data = await this.fetchModel<GeminiResponse>(`${this.model}:generateContent`, body);
-
-      const part = data?.candidates?.[0]?.content?.parts?.[0];
-      const out: LlmToolResponse = {};
-
-      if (part?.functionCall) {
-        out.functionCall = {
-          name: part.functionCall.name,
-          args: part.functionCall.args ?? {},
-        };
-      } else if (typeof part?.text === 'string') {
-        out.text = part.text;
-      }
-
-      return ok(out);
-    } catch (error) {
-      return err(toUnknownDomainError(`Gemini generateWithTools failed: ${describeError(error)}`));
+    } else if (typeof part?.text === 'string') {
+      out.text = part.text;
     }
+
+    return ok(out);
   }
 
   async generateText(request: LlmTextRequest): Promise<Result<string, DomainError>> {
-    try {
-      // Inline system instruction into contents to avoid intermittent 503
-      // on the Gemini free tier when using the systemInstruction field.
-      const body = {
-        contents: [{
-          parts: [{
-            text: request.systemInstruction
-              ? `System: ${request.systemInstruction}\n\nUser: ${request.message}`
-              : request.message,
-          }],
+    // Inline system instruction into contents to avoid intermittent 503
+    // on the Gemini free tier when using the systemInstruction field.
+    const body = {
+      contents: [{
+        parts: [{
+          text: request.systemInstruction
+            ? `System: ${request.systemInstruction}\n\nUser: ${request.message}`
+            : request.message,
         }],
-      };
+      }],
+    };
 
-      const data = await this.fetchModel<GeminiResponse>(`${this.model}:generateContent`, body);
-      return ok(data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '');
-    } catch (error) {
-      return err(toUnknownDomainError(`Gemini generateText failed: ${describeError(error)}`));
-    }
+    const data = await this.fetchWithFallback<GeminiResponse>(
+      (model) => `${model}:generateContent`,
+      body,
+    );
+
+    if (!data.ok) return data;
+    return ok(data.value?.candidates?.[0]?.content?.parts?.[0]?.text ?? '');
   }
 
-  private async fetchModel<T>(path: string, body: unknown): Promise<T> {
-    const url = `${GEMINI_BASE}/models/${path}?key=${this.apiKey}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+  // ── Model fallback + retry ───────────────────────────────────────────
 
-    if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`Gemini API ${res.status}: ${text.slice(0, 200)}`);
+  /**
+   * Tries each model in MODEL_FALLBACKS, retrying on 429/503 with exponential
+   * backoff. Returns the first successful response, or the last error.
+   */
+  private async fetchWithFallback<T>(
+    pathFn: (model: string) => string,
+    body: unknown,
+  ): Promise<Result<T, DomainError>> {
+    const models = [this.model, ...MODEL_FALLBACKS.filter((m) => m !== this.model)];
+    let lastError: DomainError | undefined;
+
+    for (const model of models) {
+      for (let attempt = 0; attempt < MAX_RETRIES_PER_MODEL; attempt++) {
+        try {
+          const url = `${GEMINI_BASE}/models/${pathFn(model)}?key=${this.apiKey}`;
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(body),
+          });
+
+          if (res.ok) {
+            return ok((await res.json()) as T);
+          }
+
+          if (RETRYABLE_STATUSES.has(res.status)) {
+            const delay = BASE_RETRY_DELAY_MS * Math.pow(2, attempt);
+            if (attempt < MAX_RETRIES_PER_MODEL - 1) {
+              await sleep(delay);
+              continue; // retry same model
+            }
+            // All retries exhausted for this model → try next model
+            lastError = toUnknownDomainError(
+              `Gemini ${model} ${res.status} after ${MAX_RETRIES_PER_MODEL} retries`,
+            );
+            break; // break inner loop, try next model
+          }
+
+          // Non-retryable error → fail immediately
+          const text = await res.text().catch(() => '');
+          return err(toUnknownDomainError(`Gemini ${model} ${res.status}: ${text.slice(0, 200)}`));
+        } catch (error) {
+          lastError = toUnknownDomainError(
+            `Gemini ${model} fetch failed: ${describeError(error)}`,
+          );
+          if (attempt < MAX_RETRIES_PER_MODEL - 1) {
+            await sleep(BASE_RETRY_DELAY_MS * Math.pow(2, attempt));
+            continue;
+          }
+          break;
+        }
+      }
     }
 
-    return (await res.json()) as T;
+    return err(lastError ?? toUnknownDomainError('Gemini: all models exhausted'));
   }
 }
 
@@ -113,4 +175,8 @@ function toFunctionDeclaration(tool: ToolDeclaration): unknown {
 function describeError(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
