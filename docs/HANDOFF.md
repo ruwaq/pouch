@@ -1,6 +1,6 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-14 (Phase 4 code complete — Openfort + CI + demo hardening)
+Last updated: 2026-07-15 (DEPLOYED to Vercel + Gemini AI live)
 
 ## Strategic direction — CONFIRMED
 
@@ -135,6 +135,35 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 - ✅ **Demo hardening** — friendly error bubbles (domain-specific), balance skeleton loading, mobile responsive breakpoints, demo banner clarity.
 - ✅ **Submission prep** — README rewritten (bounties + demo + env checklist), `docs/SUBMISSION.md` bounty mapping.
 
+### Phase 5 — Deploy + Gemini (DONE 2026-07-15)
+- ✅ **Vercel deploy LIVE:** https://pouch-orpin.vercel.app — chat UI + API en un solo proyecto Next.js
+- ✅ **Hono API montada como Next.js Route Handler** (`apps/web/src/app/api/[...path]/route.ts`) — la API Hono corre como serverless function dentro de Next.js, sin servidor separado
+- ✅ **`DEMO_MODE=true`** env override: el runtime short-circuit a `createDemoAppServices()` sin importar `NODE_ENV=production`. Funciona con `.trim()` porque Vercel añade newlines a los valores env
+- ✅ **Gemini AI LIVE:** `GEMINI_API_KEY` + `LLM_PROVIDER=gemini` seteados en Vercel → respuestas conversacionales reales del bot (no templates)
+- ✅ **LLM integrado en demo mode:** `createDemoAppServices()` ahora usa `createAgentLlm()` cuando `GEMINI_API_KEY` está disponible (regex fallback si no)
+- ✅ **vercel.json** monorepo config (rootDirectory=apps/web, framework=nextjs, pnpm install)
+- ✅ **next.config.ts** con `transpilePackages` para workspace packages + `serverExternalPackages` para SDKs pesados
+- ✅ **GitHub repo:** https://github.com/ruwaq/pouch (código completo, sin CI workflow — bloqueado por scope del token)
+- ⚠️ **CI workflow (`ci.yml`)** NO está en GitHub — el token OAuth de `ruwaq` no tiene scope `workflow`. El archivo existe localmente pero se removió del push. Para subirlo: crear un PAT con scope `workflow` o subirlo desde la UI de GitHub.
+
+### Verified state (2026-07-15)
+```bash
+# La demo funciona en producción:
+curl https://pouch-orpin.vercel.app/api/health
+# → {"ok":true,"service":"api","mode":"demo"}
+
+curl -X POST https://pouch-orpin.vercel.app/api/agent/chat \
+  -H 'content-type: application/json' \
+  -d '{"message":"Cash out $25 to Amazon"}'
+# → AgentChatResponse con reply conversacional de Gemini + 4-step trace
+
+# Local:
+pnpm typecheck   # 8/8 packages
+pnpm test        # 126 tests
+pnpm build       # 8/8 packages
+pnpm dev         # API (:3001) + Web (:3000)
+```
+
 ---
 
 ## Key files to continue from
@@ -170,11 +199,15 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 - `apps/api/src/routes/` — all route definitions
 
 ## Notes for the next session
-- The design spec + roadmap are the source of truth for what to build.
-- The LLM layer goes in a new `packages/infra-ai/` — domain defines `IntentParserStrategy`, infra implements it.
-- Particle UA is mainnet-only. The spike uses real funds (~$1). DemoAccountProvider stays for tests.
-- SDK versions (npm-verified 2026-07-13): `@particle-network/universal-account-sdk@^2.0.3`, `ethers@^6.17.0`, `@magic-sdk/admin@^2.8.2`, `jose@^6.2.3`
-- The SDK's `package.json` has a broken `exports` field (no `types` condition). Worked around via `paths` overrides in `infra-web3/tsconfig.json` + `api/tsconfig.json`.
+- **La demo está LIVE en https://pouch-orpin.vercel.app** — modo demo con Gemini AI conversacional.
+- **Arquitectura de deploy:** la API Hono está montada como Route Handler de Next.js (`apps/web/src/app/api/[...path]/route.ts`), no como servidor separado. Un solo deploy en Vercel.
+- **DEMO_MODE=true** es la variable crítica. Sin ella, Vercel (NODE_ENV=production) crashea porque loadConfig requiere DATABASE_URL, JWT_SECRET, etc.
+- **Gemini funciona en demo mode:** `createDemoAppServices()` usa `createAgentLlm()` con env vars directos. Si GEMINI_API_KEY no está, usa regex fallback.
+- **Vercel project:** `pouch` en el team `alpakas-projects` (cuenta `pepepop2000@gmail.com`). El git author debe ser `pepepop2000@gmail.com` para deployar (Hobby plan bloquea otros autores).
+- **GitHub repo:** `ruwaq/pouch` — código completo menos `ci.yml` (scope del token). Para añadir CI: crear PAT con scope `workflow` o subir el archivo desde la UI.
+- **Diferentes cuentas:** GitHub=`ruwaq` (PrometeoDEV), Vercel=`pepepop2000`. No están conectados — el deploy es via CLI, no via GitHub integration.
+- Particle UA es mainnet-only. El spike usa fondos reales (~$1 USDC). Para hacerlo real en la demo: setear PARTICLE_*, MAGIC_*, OPENFORT_* en Vercel.
+- The SDK's `package.json` has a broken `exports` field. Worked around via `paths` overrides.
 
 ---
 
@@ -182,11 +215,9 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 
 ### First message to send to the agent:
 ```
-Continúa el proyecto Pouch. Lee docs/HANDOFF.md y
-docs/superpowers/specs/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md (Phase 4 spec,
-approved 2026-07-14). Luego usa el skill writing-plans para escribir el plan de
-implementación detallado de Phase 4 (Openfort agent wallet + CI lint + demo hardening).
-El scope YA ESTÁ DECIDIDO — no relevar decisiones. Ejecutar directo.
+Continúa el proyecto Pouch. Lee docs/HANDOFF.md para el estado actual.
+El proyecto está DEPLOYADO en Vercel (https://pouch-orpin.vercel.app) con
+modo demo + Gemini AI. Lee HANDOFF.md y dime qué falta para el hackathon.
 ```
 
 ### What's done (don't redo):
@@ -196,7 +227,17 @@ El scope YA ESTÁ DECIDIDO — no relevar decisiones. Ejecutar directo.
 - ✅ Phase 2: LLM layer (infra-ai + Gemini function-calling + regex fallback)
 - ✅ Phase 3: Frontend (chat UI + agent trace + Magic login + receipt), E2E verified in demo mode
 - ✅ Initial Drizzle migration generated
-- ✅ **Phase 4 spec written** — scope locked, decisions confirmed (see below)
+- ✅ Phase 4: Openfort gas sponsorship + CI lint + demo hardening (code complete, 126 tests)
+- ✅ **Phase 5: Deploy a Vercel** — Hono API como Route Handler, DEMO_MODE, Gemini LIVE
+- ✅ **Demo pública funcionando:** https://pouch-orpin.vercel.app
+
+### What's left (opcional, para mejorar la demo):
+- ⬜ **Subir CI workflow a GitHub** — crear PAT con scope `workflow` o subir `.github/workflows/ci.yml` desde la UI
+- ⬜ **Conectar GitHub repo a Vercel** — para auto-deploy en cada push (requiere misma cuenta o integración)
+- ⬜ **Transacciones reales (opcional):** setear Magic + Particle + Openfort keys en Vercel para balances/pagos reales
+- ⬜ **DB real (opcional):** setear Supabase DATABASE_URL + correr migración para persistencia real
+- ⬜ **Video/gif de la demo** para el submission
+- ⬜ **Pulir el seed de la demo** — quizás balances más variados (multi-chain) para mostrar mejor el cross-chain
 
 ### Phase 4 decisions (LOCKED 2026-07-14 — do not revisit):
 - **Openfort:** BUILD. Agent backend wallet (Opción A). `AgentWalletPort` in domain (optional), `OpenfortAgentWallet` in infra-web3. SDK `@openfort/openfort-node@^0.10.8`, deferred ESM import (same pattern as Particle fix).
@@ -210,15 +251,16 @@ El scope YA ESTÁ DECIDIDO — no relevar decisiones. Ejecutar directo.
 2. **DB migration (Phase 1):** `pnpm db:migrate` (needs live Postgres)
 3. **Openfort dashboard setup (Phase 4):** Create project → enable backend wallets (get `WALLET_SECRET`) → policy (Base+Arbitrum, `sponsorEvmTransaction`) → feeSponsorship (`pay_for_user`) → 3 IDs in `.env`. Documented step-by-step in the Phase 4 spec §5.
 
-### Bounties targeted after Phase 4 ($4.1k–5.1k):
-- UA Track ($1.5–2.5k) — Phase 1
+### Bounties targeted ($4.1k–5.1k):
+- UA Track ($1.5–2.5k) — Phase 1 (UA consolidation + 7702)
 - Arbitrum ($2k) — settlement chain config
-- Magic Labs ($500) — Phase 3
-- Openfort ($100) — Phase 4
+- Magic Labs ($500) — Phase 3 (blind signatures, zero popups)
+- Openfort ($100) — Phase 4 (agent wallet + gas sponsorship)
 
-### Verification before starting implementation:
+### Verification (todo pasa):
 ```bash
-pnpm typecheck   # should pass (8/8 packages)
-pnpm test        # should pass (104 tests)
-pnpm build       # should pass (8/8 packages)
+pnpm typecheck   # 8/8 packages
+pnpm test        # 126 tests
+pnpm build       # 8/8 packages
+# Demo live: https://pouch-orpin.vercel.app
 ```
