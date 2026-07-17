@@ -15,3 +15,38 @@ html, body {
   color: var(--fg);
   font-family: Inter, system-ui, -apple-system, sans-serif;
 }
+
+/* ── Educational tooltips ─────────────────────────────────────────── */
+
+/* Tooltip arrow */
+.group:hover .group-hover\:visible {
+  visibility: visible;
+}
+.group:hover .group-hover\:opacity-100 {
+  opacity: 1;
+}
+
+/* ── Expand/collapse animation ────────────────────────────────────── */
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slide-in-from-top-1 {
+  from { transform: translateY(-0.25rem); }
+  to { transform: translateY(0); }
+}
+
+.animate-in {
+  animation-duration: 200ms;
+  animation-fill-mode: both;
+}
+
+.fade-in {
+  animation-name: fade-in;
+}
+
+.slide-in-from-top-1 {
+  animation-name: slide-in-from-top-1;
+}

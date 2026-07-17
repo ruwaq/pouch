@@ -57,7 +57,7 @@ describe('OffRampRouter', () => {
     };
 
     const router = new OffRampRouter(
-      [buildProvider('bitrefill', 50), buildProvider('reloadly', 52.5)],
+      [buildProvider('bitrefill', 50), buildProvider('provider-b', 52.5)],
       new CheapestStrategy(),
     );
 
@@ -70,6 +70,6 @@ describe('OffRampRouter', () => {
     }
 
     expect(result.value.quote.providerId).toBe('bitrefill');
-    expect(result.value.consideredProviders).toEqual(['bitrefill', 'reloadly']);
+    expect(result.value.consideredProviders).toEqual(['bitrefill', 'provider-b']);
   });
 });

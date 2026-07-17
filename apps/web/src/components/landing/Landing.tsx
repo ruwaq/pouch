@@ -4,12 +4,7 @@ import { useState } from 'react';
 import { useSession } from '../../context/session-context';
 import { Button } from '../ui/Button';
 import { MagicLoginModal } from './MagicLoginModal';
-
-const highlights = [
-  'Natural language cash-out flow',
-  'Cross-chain consolidation via Universal Accounts',
-  'Provider routing across gift cards, top-ups, and eSIMs',
-];
+import { HowItWorks } from '../education/HowItWorks';
 
 export function Landing() {
   const [showLogin, setShowLogin] = useState(false);
@@ -37,16 +32,9 @@ export function Landing() {
         </Button>
       </div>
 
-      <ul className="mt-12 grid w-full gap-3 text-left sm:grid-cols-3">
-        {highlights.map((h) => (
-          <li
-            key={h}
-            className="rounded-xl border border-[var(--border)] bg-[var(--card)] p-4 text-sm text-[var(--muted-2)]"
-          >
-            {h}
-          </li>
-        ))}
-      </ul>
+      <div className="mt-12 w-full">
+        <HowItWorks variant="landing" />
+      </div>
 
       {showLogin ? <MagicLoginModal onClose={() => setShowLogin(false)} /> : null}
     </main>

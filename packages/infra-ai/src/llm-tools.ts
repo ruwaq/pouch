@@ -107,7 +107,7 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: 'off_topic',
     description:
-      'The user message is a greeting or not related to cashing out — in English or Spanish (hola, buenos días, gracias, qué puedes hacer, etc.). Call this to reply conversationally.',
+      'The user message is a greeting, a question about what Pouch can do, or an unsupported operation (send, transfer, swap, exchange, bridge, stake, deposit, withdraw crypto to a wallet). Pouch is an off-ramp agent only — it converts crypto to gift cards, top-ups, and eSIMs. Call this tool to reply conversationally and explain what Pouch CAN do.',
     parameters: { type: T.OBJECT, properties: {} },
   },
 ];

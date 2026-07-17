@@ -1,4 +1,4 @@
-import type { ReplyContext, ReplyScenario, ReplyStrategy } from '@pouch/domain';
+import type { ReplyContext, ReplyStrategy } from '@pouch/domain';
 import { isOk } from '@pouch/shared';
 
 import type { LLMProvider } from './llm-provider';
@@ -40,8 +40,13 @@ function buildPrompt(context: ReplyContext): string {
     : '';
 
   switch (context.scenario) {
-    case 'greeting':
-      return `The user sent a greeting or casual message: "${context.intent.brand ?? 'hello'}". Write a single short, friendly sentence introducing yourself as Pouch (the crypto cash-out agent). Mention they can cash out to gift cards, mobile top-ups, or eSIM. Keep it under 2 lines.${historyBlock}`;
+    case 'greeting': {
+      const lastUserMsg = context.history?.filter((m) => m.role === 'user').pop()?.content;
+      const userSaid = lastUserMsg && lastUserMsg !== context.intent.brand
+        ? `"${lastUserMsg.slice(0, 150)}"`
+        : 'a greeting';
+      return `The user said: ${userSaid}. Write a single short, friendly sentence. If the user asked for something Pouch cannot do (send crypto, swap tokens, transfer between chains), politely explain that Pouch is a crypto off-ramp agent — it converts crypto to gift cards, mobile top-ups, and eSIMs. If the user is just greeting you, introduce yourself briefly. Keep it under 2 lines.${historyBlock}`;
+    }
 
     case 'balance':
       return balancePrompt(context) + historyBlock;

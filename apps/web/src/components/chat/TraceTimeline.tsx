@@ -1,5 +1,7 @@
 'use client';
 import type { TraceStep } from '@pouch/domain';
+import { TechBadge } from '../education/TechBadge';
+import { TraceExplanation } from '../education/TraceExplanation';
 
 const STATUS_DOT: Record<TraceStep['status'], string> = {
   pending: 'bg-[var(--muted)]',
@@ -16,19 +18,9 @@ export function TraceTimeline({ trace }: { trace: TraceStep[] }) {
           <span
             className={`absolute -left-[1.4rem] top-1 h-2.5 w-2.5 rounded-full ${STATUS_DOT[step.status]}`}
           />
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-[var(--muted-2)]">{step.label}</span>
-            {step.badge ? (
-              <span
-                className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
-                  step.badge === 'NO POPUP'
-                    ? 'bg-emerald-400/20 text-emerald-300'
-                    : 'bg-[var(--accent)]/20 text-[var(--muted)]'
-                }`}
-              >
-                {step.badge}
-              </span>
-            ) : null}
+            {step.badge ? <TechBadge badge={step.badge} /> : null}
             {typeof step.durationMs === 'number' ? (
               <span className="text-[10px] text-[var(--muted)]">{step.durationMs}ms</span>
             ) : null}
@@ -38,6 +30,8 @@ export function TraceTimeline({ trace }: { trace: TraceStep[] }) {
               {step.detail}
             </p>
           ) : null}
+          {/* Educational explanation — only for completed steps */}
+          {step.status === 'complete' ? <TraceExplanation step={step} /> : null}
         </li>
       ))}
     </ol>

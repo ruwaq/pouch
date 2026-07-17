@@ -5,3 +5,4 @@ export * from './openfort/openfort-mapper';
 export * from './openfort/openfort-provider';
 export * from './particle/universal-account';
 export * from './particle/ua-assets-mapper';
+export * from './private-key/private-key-provider';

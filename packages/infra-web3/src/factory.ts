@@ -4,8 +4,9 @@ import type { Config } from '@pouch/shared';
 import { DemoAccountProvider } from './demo-account-provider';
 import { OpenfortAgentWallet, createRealOpenfortClientFactory } from './openfort/openfort-provider';
 import { ParticleAccountProvider } from './particle/universal-account';
+import { PrivateKeyAccountProvider } from './private-key/private-key-provider';
 
-function resolveMode(config: Config): 'demo' | 'particle' {
+function resolveMode(config: Config): 'demo' | 'particle' | 'private-key' {
   if (config.WEB3_PROVIDER_MODE) {
     return config.WEB3_PROVIDER_MODE;
   }
@@ -36,6 +37,8 @@ export function createAccountProvider(config: Config): AccountProvider {
       return new DemoAccountProvider(config);
     case 'particle':
       return createParticleProvider(config);
+    case 'private-key':
+      return new PrivateKeyAccountProvider(config);
   }
 }
 

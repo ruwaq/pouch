@@ -15,6 +15,7 @@ const fakeAgentResponse: AgentChatResponse = {
     amount: { value: 25, currency: 'USD' },
   },
   reply: 'Done.',
+  phase: 'reply',
 } as AgentChatResponse;
 
 describe('chat-context helpers', () => {

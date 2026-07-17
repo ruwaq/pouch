@@ -19,7 +19,6 @@ import { LlmIntentParser, LlmReplyStrategy, POUCH_TOOL_DECLARATIONS, type LLMPro
 
 import { AgentChatService } from '../src/services/agent-chat-service';
 import { BalanceService } from '../src/services/balance-service';
-import type { BalanceServiceLike } from '../src/services/balance-service';
 import { MemoryOrderRepository } from '../src/support/memory-order-repository';
 
 /**

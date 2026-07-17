@@ -19,15 +19,15 @@ const DEFAULT_GEMINI_MODEL = 'gemini-3.5-flash';
  * Reliable in Vercel serverless environments.
  */
 export function createLlmProvider(config: Config): LLMProvider | undefined {
-  if (config.LLM_PROVIDER !== 'gemini') {
+  if (config.LLM_PROVIDER?.trim() !== 'gemini') {
     return undefined;
   }
-  if (!config.GEMINI_API_KEY) {
+  if (!config.GEMINI_API_KEY?.trim()) {
     return undefined;
   }
 
   const model = config.LLM_MODEL?.trim() || DEFAULT_GEMINI_MODEL;
-  return new GeminiProvider(config.GEMINI_API_KEY, model);
+  return new GeminiProvider(config.GEMINI_API_KEY.trim(), model);
 }
 
 /**

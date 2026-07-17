@@ -1,4 +1,4 @@
-import { CashOutExecutor, IntentParser, OffRampRouter, type AccountProvider, type LoggerPort, type OffRampProvider, type OrderRequest, type Product } from '@pouch/domain';
+import { CashOutExecutor, OffRampRouter, type AccountProvider, type LoggerPort, type OffRampProvider, type OrderRequest, type Product } from '@pouch/domain';
 import { createAgentLlm } from '@pouch/infra-ai';
 import { ok } from '@pouch/shared';
 
@@ -113,7 +113,7 @@ export function createDemoOrderService(): OrderService {
   return createDemoAppServices().orderService;
 }
 
-export function createDemoAppServices(): {
+export function createDemoAppServices(accountProvider?: AccountProvider): {
   agentService: AgentChatService;
   balanceService: BalanceService;
   orderService: OrderService;
@@ -121,25 +121,34 @@ export function createDemoAppServices(): {
   const providers = [new DemoProvider()];
   const repository = new MemoryOrderRepository();
   const router = new OffRampRouter(providers);
-  const executor = new CashOutExecutor(router, providers, demoAccountProvider, repository, logger);
+  const realAccountProvider = accountProvider ?? demoAccountProvider;
+  const executor = new CashOutExecutor(router, providers, realAccountProvider, repository, logger);
 
   // Use Gemini LLM when configured, fall back to regex parser + template reply.
   // This lets the demo run with conversational AI when GEMINI_API_KEY is set.
   // We build a minimal config from process.env so createAgentLlm can detect
   // the LLM settings without needing the full Zod-validated Config.
+  const llmProvider = (process.env.LLM_PROVIDER ?? '').trim();
+  const geminiKey = (process.env.GEMINI_API_KEY ?? '').trim();
+  const llmModel = (process.env.LLM_MODEL ?? '').trim();
+  
+  console.error('[demo] LLM config:', { llmProvider, hasKey: Boolean(geminiKey), model: llmModel || 'default' });
+  
   const { intentParser, replyStrategy } = createAgentLlm({
-    LLM_PROVIDER: process.env.LLM_PROVIDER as 'gemini' | undefined,
-    GEMINI_API_KEY: process.env.GEMINI_API_KEY,
-    LLM_MODEL: process.env.LLM_MODEL,
+    LLM_PROVIDER: llmProvider || undefined,
+    GEMINI_API_KEY: geminiKey || undefined,
+    LLM_MODEL: llmModel || undefined,
   } as unknown as Parameters<typeof createAgentLlm>[0]);
-  const balanceService = new BalanceService(demoAccountProvider);
+  
+  console.error('[demo] replyStrategy configured:', Boolean(replyStrategy));
+  const balanceService = new BalanceService(realAccountProvider);
   const agentService = replyStrategy
     ? new AgentChatService(intentParser, executor, repository, balanceService, providers, replyStrategy)
     : new AgentChatService(intentParser, executor, repository, balanceService, providers);
 
   return {
     agentService,
-    balanceService: new BalanceService(demoAccountProvider),
+    balanceService: new BalanceService(realAccountProvider),
     orderService: new OrderService(repository),
   };
 }

@@ -24,6 +24,7 @@
     "ethers": "^6.17.0"
   },
   "devDependencies": {
+    "dotenv": "^17.4.2",
     "tsx": "^4.20.3"
   }
 }

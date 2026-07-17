@@ -42,11 +42,37 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
     });
   });
 
-  app.get('/health', (context) => {
+  app.get('/health', async (context) => {
+    const llmProvider = (process.env.LLM_PROVIDER ?? '').trim();
+    const hasGeminiKey = Boolean((process.env.GEMINI_API_KEY ?? '').trim());
+    
+    // Test Gemini API directly
+    let geminiStatus = 'not_tested';
+    let geminiReply = '';
+    if (hasGeminiKey) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${process.env.GEMINI_API_KEY!.trim()}`,
+          { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'System: You are a helpful assistant.\n\nUser: Say hi in one sentence' }] }] }) }
+        );
+        geminiStatus = res.ok ? 'ok' : `error_${res.status}`;
+        if (res.ok) {
+          const data = await res.json() as any;
+          geminiReply = String(data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '').slice(0, 100);
+        }
+      } catch (e) {
+        geminiStatus = `fetch_error: ${String(e).slice(0, 100)}`;
+      }
+    }
+    
     return context.json({
       ok: true,
       service: 'api',
       mode: runtimeServices.mode,
+      llm: llmProvider || 'none',
+      geminiConfigured: hasGeminiKey,
+      geminiStatus,
+      geminiReply,
     });
   });
 

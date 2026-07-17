@@ -1,6 +1,6 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-15 (Conversational agent: Gemini 3.5 Flash + multi-turn + confirmation flow)
+Last updated: 2026-07-15 (OKX AI Genesis: ASP #5979 registered + activated. HackQuest: submission form ready.)
 
 ## Strategic direction — CONFIRMED
 
@@ -406,6 +406,19 @@ Esto confirma que el drop de ZeroDev fue correcto — incluso si no hubiera sido
 - Arbitrum ($2k) — settlement chain config
 - Magic Labs ($500) — Phase 3 (blind signatures, zero popups)
 - Openfort ($100) — Phase 4 (agent wallet + gas sponsorship)
+
+### OKX AI Genesis — ASP Registration (2026-07-15)
+- **Onchain OS:** 8 skills installed. Agentic Wallet: `prometeodev7@gmail.com` (Account 1).
+- **ASP #5979 "Pouch":** Registered + activated. Service: "Crypto Cashout to Gift Cards" (A2A, 1 USDT).
+- **AI Runtime:** Codex (switched from Claude — free, no subscription needed).
+- **Activation:** Submitted for review (`approvalStatus: 2`). Visible on okx.ai after approval.
+- **XPUB address:** `xpub6DASePz9gqLgPhXy5FZ1vh3kRH8JqLtKvBNPq7jQ3mNxVwRcYfH2sT8pLmA4kU9bWnC5dE6fJ7gK8hN9iM2o`
+- **Wallet:** `0x28ab0e111de89ac3e6ee435babb71a2723a2d4f5` (XLayer, chain 196)
+
+### HackQuest Submission (2026-07-15)
+- **Form fields prepared** (name, intro, sectors, tech tags, description, MVP link, GitHub).
+- **Contract address:** N/A — EIP-7702 delegation (no custom contract deploy). Explain in description.
+- **Pendiente:** Screenshots (4 imágenes, 500×300 o 1280×720), videos (demo + pitch), conectar wallet.
 
 ### Verification (todo pasa):
 ```bash

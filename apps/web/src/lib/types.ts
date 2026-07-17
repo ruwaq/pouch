@@ -35,7 +35,7 @@ export interface AuthCallbackResponse {
  *
  * NOTE: The canonical `AgentChatResponse` interface lives in the API app
  * (`apps/api/src/services/agent-chat-service.ts`) as
- * `CashOutResult & { intent; reply; trace }`. It is NOT exported from
+ * `CashOutResult & { intent; reply; trace; phase; ... }`. It is NOT exported from
  * `@pouch/domain`, and the web app does not depend on `@pouch/api`. We mirror
  * that exact shape here, composing the domain types the API itself uses, so
  * the frontend stays typed against the same backend contract without taking a
@@ -45,4 +45,10 @@ export interface AgentChatResponse extends CashOutResult {
   intent: CashOutIntent;
   reply: string;
   trace: CashOutResult['trace'];
+  /** Conversation phase — tells the frontend what UI to show. */
+  phase: 'reply' | 'confirmation' | 'executed';
+  /** Balance snapshot at confirmation time. */
+  balanceSnapshot?: Balance;
+  /** Summary of what the user is about to confirm. */
+  planSummary?: string;
 }

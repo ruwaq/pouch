@@ -3,6 +3,7 @@
 import { ChatProvider, useChat } from '../../context/chat-context';
 import { useSession } from '../../context/session-context';
 import { Button } from '../ui/Button';
+import { TechBadge } from '../education/TechBadge';
 import { BalancePill } from './BalancePill';
 import { MessageList } from './MessageList';
 import { ChatInput } from './ChatInput';
@@ -34,6 +35,7 @@ export function ChatView() {
         {session?.userId === 'demo-user' || !session ? (
           <div className="border-b border-[var(--accent)]/20 bg-[var(--accent)]/5 px-4 py-2 text-center text-xs text-[var(--muted-2)]">
             Demo session — no login required. Balances are simulated.
+            Click &ldquo;What&rsquo;s happening?&rdquo; on each trace step to learn how Pouch works.
           </div>
         ) : null}
 
@@ -52,8 +54,8 @@ function ZeroPopupBadge() {
   );
   if (count === 0) return null;
   return (
-    <span className="rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-300">
-      {count} signature{count === 1 ? '' : 's'} · zero popups
+    <span className="flex items-center gap-1.5 rounded-full bg-emerald-400/15 px-3 py-1 text-xs font-medium text-emerald-300">
+      {count} signature{count === 1 ? '' : 's'} · <TechBadge badge="NO POPUP" />
     </span>
   );
 }

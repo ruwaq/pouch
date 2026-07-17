@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet, ApiError } from '../../lib/api-client';
 import { useChat } from '../../context/chat-context';
+import { TechBadge } from '../education/TechBadge';
 import type { BalanceResponse } from '../../lib/types';
 
 const CHAIN_NAMES: Record<number, string> = {
@@ -15,8 +16,6 @@ const CHAIN_NAMES: Record<number, string> = {
 
 export function BalancePill() {
   const { messages } = useChat();
-  // Count agent turns — a new one means a cash-out just completed and the
-  // server-side balance changed, so we re-fetch. (Mount = initial fetch.)
   const agentTurnCount = messages.filter((m) => m.role === 'agent').length;
 
   const [balance, setBalance] = useState<BalanceResponse | null>(null);
@@ -28,7 +27,6 @@ export function BalancePill() {
     try {
       setBalance(await apiGet<BalanceResponse>('/balance'));
     } catch (e) {
-      // In demo mode without a cookie this still works; a 401 means not authed.
       if (!(e instanceof ApiError && e.status === 401)) {
         setBalance(null);
       }
@@ -83,7 +81,7 @@ export function BalancePill() {
             })}
             {balance.requiresConsolidation ? (
               <p className="mt-2 border-t border-[var(--border)] pt-2 text-[10px] text-amber-300">
-                ⚡ Multi-chain — consolidates via UA 7702
+                ⚡ Multi-chain — consolidates via <TechBadge badge="UA 7702" />
               </p>
             ) : null}
           </div>

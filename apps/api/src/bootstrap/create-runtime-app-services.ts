@@ -1,4 +1,4 @@
-import { CashOutExecutor, OffRampRouter, type AccountProvider, type AgentWalletPort, type Balance, type LoggerPort, type OffRampProvider, type OrderRepository, type OrderRequest, type Product, type SendPaymentParams, type TxResult } from '@pouch/domain';
+import { CashOutExecutor, OffRampRouter, type AccountProvider, type AgentWalletPort, type LoggerPort, type OffRampProvider, type OrderRepository } from '@pouch/domain';
 import { createAgentLlm } from '@pouch/infra-ai';
 import { buildOffRampProviders } from '@pouch/infra-offramp';
 import {
@@ -7,9 +7,8 @@ import {
   DrizzleWebhookEventStore,
   type WebhookEventStore,
 } from '@pouch/infra-db';
-import { createAccountProvider, createAgentWallet } from '@pouch/infra-web3';
-import { loadConfig, ok, type Config, type Result } from '@pouch/shared';
-import type { DomainError } from '@pouch/domain';
+import { createAccountProvider, createAgentWallet, PrivateKeyAccountProvider } from '@pouch/infra-web3';
+import { loadConfig, ok, type Config } from '@pouch/shared';
 
 import { BitrefillWebhookService } from '../services/bitrefill-webhook-service';
 import { AgentChatService, type AgentChatServiceLike } from '../services/agent-chat-service';
@@ -191,8 +190,37 @@ export function createRuntimeAppServices(options: {
   const dependencies = options.dependencies ?? {};
 
   // Explicit demo override — skip all real config and use simulated services.
+  // If a PRIVATE_KEY is set, use the PrivateKeyAccountProvider for real on-chain
+  // balances instead of simulated ones. This gives judges real data to verify.
   const demoFlag = (env.DEMO_MODE ?? process.env.DEMO_MODE ?? '').trim();
   if (demoFlag === 'true') {
+    const privateKey = (env.PRIVATE_KEY ?? process.env.PRIVATE_KEY ?? '').trim();
+    if (privateKey) {
+      // Build a minimal config for the private-key provider
+      const settlementChainId = Number(env.SETTLEMENT_CHAIN_ID ?? process.env.SETTLEMENT_CHAIN_ID ?? '42161');
+      const supportedChains = (env.SUPPORTED_CHAINS ?? process.env.SUPPORTED_CHAINS ?? '42161,8453')
+        .split(',')
+        .map((c) => Number(c.trim()))
+        .filter((c) => !Number.isNaN(c));
+
+      const pkConfig = {
+        PRIVATE_KEY: privateKey,
+        SETTLEMENT_CHAIN_ID: settlementChainId,
+        SUPPORTED_CHAINS: supportedChains,
+        RPC_URL_42161: (env.RPC_URL_42161 ?? process.env.RPC_URL_42161 ?? '').trim() || undefined,
+        RPC_URL_8453: (env.RPC_URL_8453 ?? process.env.RPC_URL_8453 ?? '').trim() || undefined,
+        NODE_ENV: (env.NODE_ENV ?? process.env.NODE_ENV ?? 'development') as 'development' | 'production',
+      } as unknown as Config;
+
+      const realAccountProvider = new PrivateKeyAccountProvider(pkConfig);
+      const demoServices = createDemoAppServices(realAccountProvider);
+
+      return {
+        mode: 'demo',
+        ...demoServices,
+      };
+    }
+
     return {
       mode: 'demo',
       ...createDemoAppServices(),

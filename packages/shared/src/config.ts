@@ -36,15 +36,13 @@ export const ConfigSchema = z.object({
   OFFRAMP_PROVIDERS: StringListSchema.default('bitrefill'),
   BITREFILL_API_KEY: z.string().optional(),
   BITREFILL_BASE_URL: z.string().url().default('https://api.bitrefill.com/v2'),
-  RELOADLY_CLIENT_ID: z.string().optional(),
-  RELOADLY_CLIENT_SECRET: z.string().optional(),
-  RELOADLY_TOPUPS_BASE_URL: z.string().url().default('https://topups.reloadly.com'),
-  RELOADLY_GIFTCARDS_BASE_URL: z.string().url().default('https://giftcards.reloadly.com'),
-  RELOADLY_ESIMS_BASE_URL: z.string().url().default('https://esims.reloadly.com'),
-  RELOADLY_AUTH_URL: z.string().url().default('https://auth.reloadly.com/oauth/token'),
-
-  WEB3_PROVIDER_MODE: z.enum(['demo', 'particle']).optional(),
+  WEB3_PROVIDER_MODE: z.enum(['demo', 'particle', 'private-key']).optional(),
   DEMO_USER_BALANCE_USD: z.coerce.number().positive().default(150),
+
+  // Private-key mode: a pre-funded wallet for demo with real on-chain balances.
+  PRIVATE_KEY: z.string().optional(),
+  RPC_URL_42161: z.string().url().optional(),
+  RPC_URL_8453: z.string().url().optional(),
 
   MAGIC_PUBLISHABLE_KEY: z.string().optional(),
   MAGIC_SECRET_KEY: z.string().optional(),
@@ -54,7 +52,6 @@ export const ConfigSchema = z.object({
   OPENFORT_SECRET_KEY: z.string().optional(),
   OPENFORT_WALLET_SECRET: z.string().optional(),
   OPENFORT_FEE_SPONSORSHIP_ID: z.string().optional(),
-  ZERODEV_PROJECT_ID: z.string().optional(),
 
   LLM_PROVIDER: z.enum(['gemini']).optional(),
   GEMINI_API_KEY: z.string().optional(),

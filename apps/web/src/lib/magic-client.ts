@@ -8,11 +8,12 @@ import { EVMExtension } from '@magic-ext/evm';
 // derive the concrete instance type from the extensions we configure.
 type MagicInstance = InstanceWithExtensions<SDKBase, EVMExtension[]>;
 
-// EVM config for the @magic-ext/evm extension. Mainnet only — see AGENTS.md
-// (Particle UA / ZeroDev SRA are mainnet-only; Magic blind signatures are too).
-const EVM_MAINNET_CONFIG = {
-  rpcUrl: 'https://eth-mainnet.g.alchemy.com/v2/demo',
-  chainId: 1,
+// EVM config for the @magic-ext/evm extension.
+// Chain ID and RPC URL are configurable via env vars.
+// Default: Ethereum mainnet (chainId 1) with public Alchemy demo RPC.
+const EVM_CONFIG = {
+  rpcUrl: process.env.NEXT_PUBLIC_ETH_RPC_URL || 'https://eth-mainnet.g.alchemy.com/v2/demo',
+  chainId: Number(process.env.NEXT_PUBLIC_MAGIC_CHAIN_ID) || 1,
   default: true,
 };
 
@@ -34,8 +35,8 @@ export function getMagic(): MagicInstance {
     );
   }
   instance = new Magic(key, {
-    extensions: [new EVMExtension([EVM_MAINNET_CONFIG])],
-    network: 'mainnet',
+    extensions: [new EVMExtension([EVM_CONFIG])],
+    network: 'mainnet' as const,
   });
   return instance;
 }

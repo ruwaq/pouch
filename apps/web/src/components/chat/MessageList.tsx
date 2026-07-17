@@ -5,6 +5,7 @@ import { useChat } from '../../context/chat-context';
 import { AgentTurn } from './AgentTurn';
 import { Spinner } from '../ui/Spinner';
 import { AgentErrorBubble } from './AgentErrorBubble';
+import { HowItWorks } from '../education/HowItWorks';
 
 export function MessageList() {
   const { messages, isSending, error, errorType } = useChat();
@@ -52,8 +53,17 @@ const SUGGESTIONS = [
 function EmptyState() {
   const { sendMessage, isSending } = useChat();
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-      <p className="text-sm text-[var(--muted)]">Ask Pouch to cash out your crypto.</p>
+    <div className="flex h-full flex-col items-center justify-center gap-6 text-center">
+      <div className="space-y-2">
+        <p className="text-lg font-semibold text-[var(--fg)]">
+          👋 Welcome to the Pouch Demo
+        </p>
+        <p className="text-sm text-[var(--muted)] max-w-sm">
+          This demo shows how Pouch converts crypto to gift cards — invisibly.
+          No wallets, no gas, no chains.
+        </p>
+      </div>
+
       <div className="flex flex-wrap justify-center gap-2">
         {SUGGESTIONS.map((s) => (
           <button
@@ -65,6 +75,10 @@ function EmptyState() {
             {s}
           </button>
         ))}
+      </div>
+
+      <div className="w-full max-w-xs border-t border-[var(--border)] pt-4">
+        <HowItWorks variant="empty-state" />
       </div>
     </div>
   );

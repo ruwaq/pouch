@@ -17,6 +17,10 @@ const SEARCH_PATTERN = /\b(search|what\s+(?:gift\s*)?cards?|what\s+can\s+(?:i|yo
 /** Cash-out actions — buy, purchase, cash out, top up. Bilingual (EN + ES). */
 const SUPPORTED_ACTION_PATTERN = /\b(cash\s*out|cashout|buy|purchase|top\s*up|topup|refill|comprar|cambiar|env[ií]ar|recargar|recarga|pagar|retirar|sacar|gastar)\b/i;
 
+/** Actions the user might try that Pouch doesn't support — send, swap, transfer, etc.
+ *  When matched, we give a helpful message explaining what Pouch CAN do. */
+const UNSUPPORTED_ACTION_PATTERN = /\b(send|transfer|withdraw|swap|exchange|convert|bridge|stake|lend|borrow|deposit|unwrap|wrap)\b/i;
+
 const DOLLAR_AMOUNT_PATTERN = /\$(\d+(?:\.\d{1,2})?)/i;
 const USD_AMOUNT_PATTERN = /(\d+(?:\.\d{1,2})?)\s*(?:usd|dollars?)\b/i;
 const TARGET_PATTERN = /\b(?:to|for)\s+([a-z0-9][a-z0-9 .&+\-]*)$/i;
@@ -80,17 +84,27 @@ export class IntentParser implements IntentParserStrategy {
       return ok({ action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
     }
 
-    // ── 2. Balance check ──────────────────────────────────────────────
+    // ── 2. Unsupported actions (send, swap, transfer, etc.) ─────────
+    // Check BEFORE balance/search so "send to my wallet" doesn't match
+    // the balance pattern just because it contains "wallet".
+    if (UNSUPPORTED_ACTION_PATTERN.test(normalized)) {
+      return err({
+        type: 'UNSUPPORTED_INTENT',
+        message: "Pouch is a crypto off-ramp agent — I convert crypto to gift cards, mobile top-ups, and eSIMs. I don't support sending crypto to wallets, swapping tokens, or transferring between chains. Try 'Cash out $50 to Amazon' or 'Show my balance'.",
+      });
+    }
+
+    // ── 3. Balance check ──────────────────────────────────────────────
     if (BALANCE_PATTERN.test(normalized)) {
       return ok({ action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
     }
 
-    // ── 3. Product search ─────────────────────────────────────────────
+    // ── 4. Product search ─────────────────────────────────────────────
     if (SEARCH_PATTERN.test(normalized)) {
       return ok({ action: 'search_products', category: 'giftcard', amount: { value: 50, currency: 'USD' } });
     }
 
-    // ── 4. Cash-out ───────────────────────────────────────────────────
+    // ── 5. Cash-out ───────────────────────────────────────────────────
     if (!SUPPORTED_ACTION_PATTERN.test(normalized)) {
       return err({
         type: 'UNSUPPORTED_INTENT',
