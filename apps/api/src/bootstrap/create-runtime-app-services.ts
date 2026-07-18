@@ -205,6 +205,7 @@ export function createRuntimeAppServices(options: {
 
       const pkConfig = {
         PRIVATE_KEY: privateKey,
+        SECOND_PRIVATE_KEY: (env.SECOND_PRIVATE_KEY ?? process.env.SECOND_PRIVATE_KEY ?? '').trim() || undefined,
         SETTLEMENT_CHAIN_ID: settlementChainId,
         SUPPORTED_CHAINS: supportedChains,
         RPC_URL_42161: (env.RPC_URL_42161 ?? process.env.RPC_URL_42161 ?? '').trim() || undefined,

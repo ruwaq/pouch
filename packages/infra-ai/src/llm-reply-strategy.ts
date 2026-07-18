@@ -192,14 +192,14 @@ function templateReply(context: ReplyContext): string {
     case 'help': {
       const topic = context.topic ?? 'general';
       const helpReplies: Record<string, string> = {
-        'how-it-works': "Pouch is an AI agent that converts your crypto into gift cards, mobile top-ups, and eSIMs — all through a simple chat. No wallets, no gas, no popups. Just tell me what you want and I handle the rest.",
-        'chain-abstraction': "Chain abstraction means you don't need to know which blockchain your money is on. Pouch uses Particle Network's Universal Accounts to find your funds across chains and consolidate them invisibly.",
-        'eip-7702': "EIP-7702 is an Ethereum standard that lets your wallet act like a smart contract. This is what makes 'no popups' possible — your wallet authorizes transactions silently in the background.",
-        'no-popups': "Zero popups — you sign in once with your email, and every transaction after that happens without a single wallet confirmation screen.",
-        'security': "Every transaction goes through a security firewall: amounts over $100 require confirmation, over $200 get a warning, and over $500 are blocked.",
-        'fees': "Pouch charges zero fees. You pay exactly what the gift card costs. Blockchain gas is sponsored — you never pay gas.",
-        'chains': "Pouch supports Arbitrum, Base, Ethereum, and more. Your crypto is automatically found and consolidated across all chains.",
-        'general': "I'm Pouch, your AI cash-out agent! I convert crypto into gift cards, mobile top-ups, and eSIMs. Try 'Cash out $50 to Amazon', 'Show my balance', or ask me 'How does it work?'",
+        'how-it-works': "Pouch is an AI agent that converts your crypto into gift cards, mobile top-ups, and eSIMs — all through a simple chat. Under the hood, it uses Particle Network's Universal Accounts with EIP-7702 to find your money across any blockchain and consolidate it invisibly.",
+        'chain-abstraction': "Chain abstraction means you don't need to know which blockchain your money is on. Pouch uses Particle Network's Universal Accounts to scan all your wallets across Arbitrum, Base, Ethereum, and more — then consolidates everything into one place using EIP-7702.",
+        'eip-7702': "EIP-7702 is a new Ethereum standard that lets a regular wallet temporarily become a smart contract. This is the key tech that makes chain abstraction possible: your wallet can execute complex operations across multiple blockchains without you ever seeing a popup.",
+        'no-popups': "Zero popups — you sign in once with your email, and every transaction after that happens without a single wallet confirmation screen. This is possible because of EIP-7702: your wallet delegates authority to Particle's Universal Account.",
+        'security': "Every transaction goes through a security firewall: amounts over $100 require confirmation, over $200 get a warning, and over $500 are blocked. Your private keys never leave your wallet.",
+        'fees': "Pouch charges zero fees. You pay exactly what the gift card costs. Blockchain gas is sponsored by Openfort — you never pay gas.",
+        'chains': "Pouch supports Arbitrum, Base, Ethereum, and more. Your crypto is automatically found and consolidated across all chains using Particle Network's Universal Accounts.",
+        'general': "I'm Pouch, your AI cash-out agent! I convert crypto into gift cards, mobile top-ups, and eSIMs using Particle Network's EIP-7702 chain abstraction. Try 'Cash out $50 to Amazon', 'Show my balance', or ask me 'How does it work?'",
       };
       return helpReplies[topic] ?? helpReplies['general']!;
     }

@@ -28,20 +28,31 @@ const PUBLIC_RPC_URLS: Record<number, string> = {
   8453: 'https://mainnet.base.org',
 };
 
+interface WalletConfig {
+  label: string;
+  address: string;
+  wallet: ethers.Wallet;
+}
+
 /**
- * Reads real on-chain balances from a pre-funded wallet using a private key.
+ * Reads real on-chain balances from pre-funded wallets using private keys.
  *
- * This provider is designed for demo/judge scenarios: a wallet is pre-created
- * and funded with small amounts of USDC/ETH on mainnet, and the private key
- * is stored as an env var. No Magic login required — the wallet is always
- * "logged in" as the demo user.
+ * Supports MULTIPLE wallets — each with its own label. This lets the demo
+ * show multi-wallet balance aggregation, which is the foundation of
+ * Particle Network's Universal Account + EIP-7702 chain abstraction.
+ *
+ * How it demonstrates EIP-7702:
+ * - Each wallet is an EOA (Externally Owned Account)
+ * - Particle UA delegates these EOAs to a Universal Account via EIP-7702
+ * - The UA consolidates balances from all wallets/chains invisibly
+ * - The demo shows this as "Consolidating via Universal Account [UA 7702]"
  *
  * Balance reading: real RPC calls to each configured chain.
  * consolidate() / sendPayment(): simulated (the agent wallet handles actual
  * settlement via Openfort).
  */
 export class PrivateKeyAccountProvider implements AccountProvider {
-  private readonly address: string;
+  private readonly wallets: WalletConfig[];
   private readonly providers: Map<number, ethers.JsonRpcProvider>;
   private readonly chains: number[];
 
@@ -50,11 +61,28 @@ export class PrivateKeyAccountProvider implements AccountProvider {
       throw new Error('PRIVATE_KEY is required for private-key mode.');
     }
 
-    const wallet = new ethers.Wallet(config.PRIVATE_KEY);
-    this.address = wallet.address;
-
     this.chains = config.SUPPORTED_CHAINS;
     this.providers = new Map();
+    this.wallets = [];
+
+    // Primary wallet
+    const primaryWallet = new ethers.Wallet(config.PRIVATE_KEY);
+    this.wallets.push({
+      label: 'Wallet 1',
+      address: primaryWallet.address,
+      wallet: primaryWallet,
+    });
+
+    // Secondary wallet (optional — for multi-wallet demo)
+    const secondKey = (config as unknown as Record<string, string | undefined>).SECOND_PRIVATE_KEY?.trim();
+    if (secondKey) {
+      const secondWallet = new ethers.Wallet(secondKey);
+      this.wallets.push({
+        label: 'Wallet 2',
+        address: secondWallet.address,
+        wallet: secondWallet,
+      });
+    }
 
     for (const chainId of this.chains) {
       const rpcUrl = this.getRpcUrl(config, chainId);
@@ -74,72 +102,74 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     const assets: Balance['assets'] = [];
     let total = 0;
 
-    for (const chainId of this.chains) {
-      const provider = this.providers.get(chainId);
-      if (!provider) continue;
+    for (const walletConfig of this.wallets) {
+      for (const chainId of this.chains) {
+        const provider = this.providers.get(chainId);
+        if (!provider) continue;
 
-      try {
-        // Native token balance (ETH)
-        const nativeBalance = await provider.getBalance(this.address);
-        const nativeEth = Number(ethers.formatEther(nativeBalance));
+        try {
+          // Native token balance (ETH)
+          const nativeBalance = await provider.getBalance(walletConfig.address);
+          const nativeEth = Number(ethers.formatEther(nativeBalance));
 
-        if (nativeEth > 0.0001) {
-          const usdValue = nativeEth * 2500; // rough ETH price
-          assets.push({
-            chainId,
-            symbol: 'ETH',
-            amount: Number(nativeEth.toFixed(6)),
-            usdValue: Number(usdValue.toFixed(2)),
-          });
-          total += usdValue;
-        }
-
-        // USDC balance
-        const tokenAddress = USDC_ADDRESSES[chainId];
-        if (tokenAddress) {
-          const usdc = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-          const rawBalance = await (usdc as unknown as { balanceOf(a: string): Promise<bigint> }).balanceOf(this.address);
-          const decimals = await (usdc as unknown as { decimals(): Promise<bigint> }).decimals();
-
-          const usdcAmount = Number(ethers.formatUnits(rawBalance, Number(decimals)));
-
-          if (usdcAmount > 0.01) {
+          if (nativeEth > 0.0001) {
+            const usdValue = nativeEth * 2500; // rough ETH price
             assets.push({
               chainId,
-              symbol: 'USDC',
-              amount: Number(usdcAmount.toFixed(2)),
-              usdValue: Number(usdcAmount.toFixed(2)),
+              symbol: 'ETH',
+              amount: Number(nativeEth.toFixed(6)),
+              usdValue: Number(usdValue.toFixed(2)),
             });
-            total += usdcAmount;
+            total += usdValue;
           }
-        }
 
-        // Extra tokens (ARB, USDT, etc.)
-        for (const extra of EXTRA_TOKENS) {
-          if (extra.chainId !== chainId) continue;
-          try {
-            const token = new ethers.Contract(extra.address, ERC20_ABI, provider);
-            const rawBalance = await (token as unknown as { balanceOf(a: string): Promise<bigint> }).balanceOf(this.address);
-            const decimals = await (token as unknown as { decimals(): Promise<bigint> }).decimals();
-            const amount = Number(ethers.formatUnits(rawBalance, Number(decimals)));
-            const minAmount = extra.symbol === 'ARB' ? 0.01 : 0.01;
-            if (amount > minAmount) {
-              const usdValue = amount * extra.price;
+          // USDC balance
+          const tokenAddress = USDC_ADDRESSES[chainId];
+          if (tokenAddress) {
+            const usdc = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
+            const rawBalance = await (usdc as unknown as { balanceOf(a: string): Promise<bigint> }).balanceOf(walletConfig.address);
+            const decimals = await (usdc as unknown as { decimals(): Promise<bigint> }).decimals();
+
+            const usdcAmount = Number(ethers.formatUnits(rawBalance, Number(decimals)));
+
+            if (usdcAmount > 0.01) {
               assets.push({
                 chainId,
-                symbol: extra.symbol,
-                amount: Number(amount.toFixed(4)),
-                usdValue: Number(usdValue.toFixed(2)),
+                symbol: 'USDC',
+                amount: Number(usdcAmount.toFixed(2)),
+                usdValue: Number(usdcAmount.toFixed(2)),
               });
-              total += usdValue;
+              total += usdcAmount;
             }
-          } catch {
-            // Token read failed — skip
           }
+
+          // Extra tokens (ARB, USDT, etc.)
+          for (const extra of EXTRA_TOKENS) {
+            if (extra.chainId !== chainId) continue;
+            try {
+              const token = new ethers.Contract(extra.address, ERC20_ABI, provider);
+              const rawBalance = await (token as unknown as { balanceOf(a: string): Promise<bigint> }).balanceOf(walletConfig.address);
+              const decimals = await (token as unknown as { decimals(): Promise<bigint> }).decimals();
+              const amount = Number(ethers.formatUnits(rawBalance, Number(decimals)));
+              const minAmount = extra.symbol === 'ARB' ? 0.01 : 0.01;
+              if (amount > minAmount) {
+                const usdValue = amount * extra.price;
+                assets.push({
+                  chainId,
+                  symbol: extra.symbol,
+                  amount: Number(amount.toFixed(4)),
+                  usdValue: Number(usdValue.toFixed(2)),
+                });
+                total += usdValue;
+              }
+            } catch {
+              // Token read failed — skip
+            }
+          }
+        } catch {
+          // Chain unavailable — skip, don't fail the whole balance check
+          continue;
         }
-      } catch {
-        // Chain unavailable — skip, don't fail the whole balance check
-        continue;
       }
     }
 
@@ -154,7 +184,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     return ok({
       total: Number(total.toFixed(2)),
       assets,
-      requiresConsolidation: assets.length > 1 && new Set(assets.map((a) => a.chainId)).size > 1,
+      requiresConsolidation: this.wallets.length > 1 || (assets.length > 1 && new Set(assets.map((a) => a.chainId)).size > 1),
     });
   }
 
