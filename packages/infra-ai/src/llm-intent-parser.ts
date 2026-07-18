@@ -68,11 +68,13 @@ export class LlmIntentParser implements IntentParserStrategy {
       }
       case 'check_balance':
         return ok({ action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
-      case 'search_products': {
-        const amount = typeof fc.args.amount === 'number' ? fc.args.amount : 50;
+case 'search_products': {
+        const amount = typeof fc.args.amount === 'number' ? fc.args.amount : undefined;
         const brand = typeof fc.args.brand === 'string' ? fc.args.brand : undefined;
-        return ok({ action: 'search_products', category: 'giftcard', amount: { value: 0, currency: 'USD' }, ...(brand ? { brand } : {}) });
+        return ok({ action: 'search_products', category: 'giftcard', amount: { value: amount ?? 50, currency: 'USD' }, ...(brand ? { brand } : {}) });
       }
+      case 'help':
+        return ok({ action: 'help', category: 'giftcard', amount: { value: 0, currency: 'USD' }, ...(typeof fc.args.topic === 'string' ? { brand: fc.args.topic } : {}) });
       case 'off_topic':
         return ok({ action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
       default:

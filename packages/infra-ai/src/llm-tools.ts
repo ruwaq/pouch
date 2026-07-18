@@ -96,11 +96,26 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: 'search_products',
     description:
-      'The user wants to browse what they can get for an amount, without purchasing yet — in English or Spanish (qué puedo comprar, mostrar productos, catálogo, etc.).',
+      'The user wants to browse or see what they can buy. Accepts an optional budget amount to filter results. Use for: "what can I buy", "show me gift cards", "qué tienes para $20", "what do you have", "catálogo", etc.',
     parameters: {
       type: T.OBJECT,
       properties: {
-        amount: { type: T.NUMBER, description: 'USD budget to browse for.' },
+        amount: { type: T.NUMBER, description: 'Optional USD budget to filter by. Omit to show all products.' },
+        brand: { type: T.STRING, description: 'Optional brand to search for, e.g. "amazon", "uber", "steam".' },
+      },
+    },
+  },
+  {
+    name: 'help',
+    description:
+      'The user is asking how Pouch works, or wants to learn about the technology behind it. Questions about chain abstraction, EIP-7702, security, fees, supported chains, "no popups", Magic, Particle Network, Openfort, or how their crypto is protected. Also use for "how does this work", "cómo funciona", "is it safe", "what are the fees", "what chains do you support", "what is chain abstraction", "why no popups", etc.',
+    parameters: {
+      type: T.OBJECT,
+      properties: {
+        topic: {
+          type: T.STRING,
+          description: 'What the user is asking about. One of: "how-it-works", "chain-abstraction", "eip-7702", "no-popups", "security", "fees", "chains", "general".',
+        },
       },
     },
   },

@@ -163,6 +163,10 @@ export class AgentChatService implements AgentChatServiceLike {
       return this.handleOffTopic(userId, i);
     }
 
+    if (i.action === 'help') {
+      return this.handleHelp(userId, i);
+    }
+
     if (i.action === 'cash_out') {
       return this.handleCashOutPlan(userId, i);
     }
@@ -202,6 +206,13 @@ export class AgentChatService implements AgentChatServiceLike {
 
   private async handleOffTopic(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
     const reply = await this.buildReply(intent, userId, 'fallback');
+    return this.emptyResult(intent, reply);
+  }
+
+  private async handleHelp(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
+    const extras: { topic?: string } = {};
+    if (intent.brand) extras.topic = intent.brand;
+    const reply = await this.buildReply(intent, userId, 'help', extras);
     return this.emptyResult(intent, reply);
   }
 
@@ -288,6 +299,7 @@ export class AgentChatService implements AgentChatServiceLike {
       result?: CashOutResult;
       error?: string;
       planSummary?: string;
+      topic?: string;
     },
   ): Promise<string> {
     const context: ReplyContext = {
@@ -302,6 +314,7 @@ export class AgentChatService implements AgentChatServiceLike {
     if (extras?.result) context.result = extras.result;
     if (extras?.error) context.error = extras.error;
     if (extras?.planSummary) context.planSummary = extras.planSummary;
+    if (extras?.topic) context.topic = extras.topic;
 
     if (this.replyStrategy) {
       try {
@@ -381,6 +394,21 @@ function templateReply(context: ReplyContext): string {
 
     case 'error':
       return `⚠ Something went wrong. Please try again.`;
+
+    case 'help': {
+      const topic = context.topic ?? 'general';
+      const helpReplies: Record<string, string> = {
+        'how-it-works': "Pouch is an AI agent that converts your crypto into gift cards, mobile top-ups, and eSIMs — all through a simple chat. No wallets, no gas, no popups. Just tell me what you want and I handle the rest.",
+        'chain-abstraction': "Chain abstraction means you don't need to know which blockchain your money is on. Pouch uses Particle Network's Universal Accounts to find your funds across Arbitrum, Base, and Ethereum — and consolidates them invisibly.",
+        'eip-7702': "EIP-7702 is a new Ethereum standard that lets your wallet act like a smart contract. This is the tech that makes 'no popups' possible — your wallet authorizes transactions silently in the background.",
+        'no-popups': "No popups means exactly that — zero wallet confirmation screens. You sign in once with your email (via Magic's blind signatures), and every transaction after that happens without a single click.",
+        'security': "Every transaction goes through a security firewall: amounts over $100 require confirmation, over $200 trigger a warning, and over $500 are blocked. Your money is safe.",
+        'fees': "Pouch charges zero fees. You pay exactly what the gift card costs. The blockchain gas fees are sponsored by Openfort — you never pay gas.",
+        'chains': "Pouch supports Arbitrum, Base, Ethereum, and more. Your crypto is automatically found and consolidated across all chains.",
+        'general': "I'm Pouch, your AI cash-out agent! I convert crypto into gift cards, mobile top-ups, and eSIMs. Try 'Cash out $50 to Amazon', 'Show my balance', or ask me 'How does it work?'",
+      };
+      return helpReplies[topic] ?? helpReplies['general']!;
+    }
 
     case 'fallback':
     default:

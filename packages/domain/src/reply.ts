@@ -10,6 +10,7 @@ export type ReplyScenario =
   | 'cancelled'      // user cancelled the pending cash-out
   | 'insufficient'   // not enough balance for the requested amount
   | 'error'          // generic or provider error
+  | 'help'           // educational: how it works, chain abstraction, security, fees
   | 'fallback';      // unknown intent / unhandled action
 
 /**
@@ -31,6 +32,8 @@ export interface ReplyContext {
   error?: string;
   /** Summary of the planned cash-out (set for 'confirmation' scenario). */
   planSummary?: string;
+  /** Help topic the user asked about (set for 'help' scenario). */
+  topic?: string;
   /**
    * Recent conversation history for context-aware replies.
    * Most recent message is last. Max 10 entries.

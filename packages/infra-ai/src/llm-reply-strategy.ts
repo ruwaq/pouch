@@ -69,6 +69,11 @@ function buildPrompt(context: ReplyContext): string {
     case 'error':
       return `Something went wrong while processing the user's request. The error was: "${context.error ?? 'unknown error'}". Write a single short, friendly sentence apologizing and suggesting they try again or ask for help. Do NOT mention technical details. Keep it under 2 lines.${historyBlock}`;
 
+    case 'help': {
+      const topic = context.topic ?? 'general';
+      return `The user asked about: "${topic}". They want to learn how Pouch works. Use your educational knowledge (from the system prompt) to explain clearly in plain language. Use analogies. Keep it under 3 sentences. Never use technical jargon. Be encouraging — offer to help them cash out after.${historyBlock}`;
+    }
+
     case 'fallback':
     default:
       return `The user said something Pouch doesn't understand. Write a single short, friendly sentence gently steering them back to what Pouch can do: cash out crypto to gift cards, mobile top-ups, or eSIM. Suggest they try "Cash out $50 to Amazon" or "Show my balance".${historyBlock}`;
@@ -183,6 +188,21 @@ function templateReply(context: ReplyContext): string {
 
     case 'error':
       return `⚠ Something went wrong. Please try again or ask for help.`;
+
+    case 'help': {
+      const topic = context.topic ?? 'general';
+      const helpReplies: Record<string, string> = {
+        'how-it-works': "Pouch is an AI agent that converts your crypto into gift cards, mobile top-ups, and eSIMs — all through a simple chat. No wallets, no gas, no popups. Just tell me what you want and I handle the rest.",
+        'chain-abstraction': "Chain abstraction means you don't need to know which blockchain your money is on. Pouch uses Particle Network's Universal Accounts to find your funds across chains and consolidate them invisibly.",
+        'eip-7702': "EIP-7702 is an Ethereum standard that lets your wallet act like a smart contract. This is what makes 'no popups' possible — your wallet authorizes transactions silently in the background.",
+        'no-popups': "Zero popups — you sign in once with your email, and every transaction after that happens without a single wallet confirmation screen.",
+        'security': "Every transaction goes through a security firewall: amounts over $100 require confirmation, over $200 get a warning, and over $500 are blocked.",
+        'fees': "Pouch charges zero fees. You pay exactly what the gift card costs. Blockchain gas is sponsored — you never pay gas.",
+        'chains': "Pouch supports Arbitrum, Base, Ethereum, and more. Your crypto is automatically found and consolidated across all chains.",
+        'general': "I'm Pouch, your AI cash-out agent! I convert crypto into gift cards, mobile top-ups, and eSIMs. Try 'Cash out $50 to Amazon', 'Show my balance', or ask me 'How does it work?'",
+      };
+      return helpReplies[topic] ?? helpReplies['general']!;
+    }
 
     case 'fallback':
     default:
