@@ -1,7 +1,6 @@
 'use client';
 
 import { useChat } from '../../context/chat-context';
-import { TechBadge } from '../education/TechBadge';
 
 const BADGE_COLORS: Record<string, string> = {
   'NO POPUP': 'bg-emerald-400/15 text-emerald-300 border-emerald-400/30',
