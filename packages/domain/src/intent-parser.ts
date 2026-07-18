@@ -87,14 +87,21 @@ export class IntentParser implements IntentParserStrategy {
   async parse(message: string): Promise<Result<CashOutIntent, DomainError>> {
     const normalized = message.toLowerCase().trim();
 
-    // ── 1. Greetings / off-topic ──────────────────────────────────────
+    // ── 1. Help / educational ────────────────────────────────────────
+    //     Check BEFORE greetings so "how does this work?" isn't caught
+    //     as off_topic just because it contains "how".
+    if (HELP_PATTERN.test(normalized)) {
+      return ok({ action: 'help', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
+    }
+
+    // ── 2. Greetings / off-topic ──────────────────────────────────────
     if (OFF_TOPIC_PATTERN.test(normalized)) {
       return ok({ action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
     }
 
-    // ── 2. Unsupported actions (send, swap, transfer, etc.) ─────────
-    // Check BEFORE balance/search so "send to my wallet" doesn't match
-    // the balance pattern just because it contains "wallet".
+    // ── 3. Unsupported actions (send, swap, transfer, etc.) ─────────
+    //     Check BEFORE balance/search so "send to my wallet" doesn't match
+    //     the balance pattern just because it contains "wallet".
     if (UNSUPPORTED_ACTION_PATTERN.test(normalized)) {
       return err({
         type: 'UNSUPPORTED_INTENT',
@@ -102,19 +109,14 @@ export class IntentParser implements IntentParserStrategy {
       });
     }
 
-    // ── 3. Balance check ──────────────────────────────────────────────
+    // ── 4. Balance check ──────────────────────────────────────────────
     if (BALANCE_PATTERN.test(normalized)) {
       return ok({ action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
     }
 
-    // ── 4. Product search ─────────────────────────────────────────────
+    // ── 5. Product search ─────────────────────────────────────────────
     if (SEARCH_PATTERN.test(normalized)) {
       return ok({ action: 'search_products', category: 'giftcard', amount: { value: 50, currency: 'USD' } });
-    }
-
-    // ── 5. Help / educational ────────────────────────────────────────
-    if (HELP_PATTERN.test(normalized)) {
-      return ok({ action: 'help', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
     }
 
     // ── 6. Cash-out ───────────────────────────────────────────────────

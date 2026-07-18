@@ -122,7 +122,7 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: 'off_topic',
     description:
-      'The user message is a greeting, a question about what Pouch can do, or an unsupported operation (send/transfer to wallet address, swap, exchange, bridge, stake, deposit, withdraw crypto — in any language: enviar, transferir, mandar, intercambiar, etc.). Pouch is an off-ramp agent only — it converts crypto to gift cards, top-ups, and eSIMs. Call this tool to reply conversationally and explain what Pouch CAN do.',
+      'The user is greeting, saying thanks, or asking for something Pouch CANNOT do (send crypto to a wallet, swap tokens, bridge, stake, deposit, withdraw — in any language: enviar, transferir, mandar, intercambiar). IMPORTANT: if the user is asking HOW something works or WHAT something is (e.g. "how does this work", "what is chain abstraction", "is it safe"), use the help tool instead. This tool is for truly off-topic or unsupported requests.',
     parameters: { type: T.OBJECT, properties: {} },
   },
 ];
