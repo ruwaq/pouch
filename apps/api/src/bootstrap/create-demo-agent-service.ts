@@ -22,7 +22,7 @@ class DemoProvider implements OffRampProvider {
         name: `${brand.toUpperCase()} Demo`,
         brand,
         category: 'giftcard',
-        denominations: [10, 25, 50, 100],
+        denominations: [5, 10, 25, 50, 100],
       },
     ]);
   }
@@ -51,7 +51,7 @@ class DemoProvider implements OffRampProvider {
         name: `${brand.toUpperCase()} Demo`,
         brand,
         category: 'giftcard',
-        denominations: [10, 25, 50, 100],
+        denominations: [5, 10, 25, 50, 100],
       },
       faceValue: request.amount,
       payment: {

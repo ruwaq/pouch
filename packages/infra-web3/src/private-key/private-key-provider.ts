@@ -15,6 +15,13 @@ const USDC_ADDRESSES: Record<number, string> = {
   8453: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',  // USDC Base
 };
 
+// Additional ERC-20 tokens to check (symbol, address, USD price)
+const EXTRA_TOKENS: Array<{ symbol: string; chainId: number; address: string; price: number }> = [
+  { symbol: 'ARB', chainId: 42161, address: '0x912CE59144191C1204E64559FE8253a0e49E6548', price: 0.088 },
+  { symbol: 'USDT', chainId: 42161, address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', price: 1.0 },
+  { symbol: 'USDT', chainId: 8453, address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', price: 1.0 },
+];
+
 // Public RPC URLs (fallback if no env var set)
 const PUBLIC_RPC_URLS: Record<number, string> = {
   42161: 'https://arb1.arbitrum.io/rpc',
@@ -104,6 +111,30 @@ export class PrivateKeyAccountProvider implements AccountProvider {
               usdValue: Number(usdcAmount.toFixed(2)),
             });
             total += usdcAmount;
+          }
+        }
+
+        // Extra tokens (ARB, USDT, etc.)
+        for (const extra of EXTRA_TOKENS) {
+          if (extra.chainId !== chainId) continue;
+          try {
+            const token = new ethers.Contract(extra.address, ERC20_ABI, provider);
+            const rawBalance = await (token as unknown as { balanceOf(a: string): Promise<bigint> }).balanceOf(this.address);
+            const decimals = await (token as unknown as { decimals(): Promise<bigint> }).decimals();
+            const amount = Number(ethers.formatUnits(rawBalance, Number(decimals)));
+            const minAmount = extra.symbol === 'ARB' ? 0.01 : 0.01;
+            if (amount > minAmount) {
+              const usdValue = amount * extra.price;
+              assets.push({
+                chainId,
+                symbol: extra.symbol,
+                amount: Number(amount.toFixed(4)),
+                usdValue: Number(usdValue.toFixed(2)),
+              });
+              total += usdValue;
+            }
+          } catch {
+            // Token read failed — skip
           }
         }
       } catch {

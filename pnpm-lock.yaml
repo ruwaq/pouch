@@ -53,6 +53,9 @@ importers:
       '@pouch/shared':
         specifier: workspace:*
         version: link:../../packages/shared
+      dotenv:
+        specifier: ^17.4.2
+        version: 17.4.2
       hono:
         specifier: ^4.9.1
         version: 4.12.29

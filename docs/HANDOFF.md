@@ -1,6 +1,30 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-18 (Phase 7: Security Firewall complete. 148 tests. 8 post-review fixes applied. Gemini 3.5 Flash verified — only working model. Deadline: Jul 20, 2026, 1:59 PM GMT+2.)
+Last updated: 2026-07-18 (Session: real-mode migration. ✅ ARB deposit confirmed — 119.48 ARB live on Arbitrum. Hybrid mode active: DEMO_MODE=true + PRIVATE_KEY for real balances. Deadline: Jul 20, 2026, 1:59 PM GMT+2.)
+
+## 🚨 NEXT SESSION: START HERE
+
+**CRITICAL:** Real on-chain balances are live via hybrid mode. See `docs/superpowers/specs/2026-07-18-real-mode-migration.md` for the plan.
+
+### Quick start for next session:
+```
+Continúa el proyecto Pouch. Lee docs/HANDOFF.md para el estado actual.
+
+Hybrid mode activo: DEMO_MODE=true + PRIVATE_KEY + WEB3_PROVIDER_MODE=private-key.
+Wallet: 0xA5fA06d58b0c90A9a3b53725E326BcCbB0BFe3DD
+Balance real: 119.48 ARB en Arbitrum (~$10.51).
+
+Para probar local:
+pnpm dev:api → GET /balance?userId=demo-user → debe mostrar ARB real
+pnpm dev:web → http://localhost:3000 → chat con Gemini + balances reales
+
+IMPORTANTE: NO quitar DEMO_MODE. El modo híbrido (DEMO_MODE=true + PRIVATE_KEY)
+es el correcto. Quitar DEMO_MODE activa producción completa que requiere
+DATABASE_URL, JWT_SECRET, Bitrefill key, etc. — y crashea sin ellas.
+Deadline: Jul 20, 2026, 1:59 PM GMT+2.
+```
+
+---
 
 ## Strategic direction — CONFIRMED
 
@@ -66,16 +90,25 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 - Drizzle-backed repositories (orders + webhook events + users)
 - Runtime bootstrap with env-driven provider loading and fail-fast
 - `ParticleAccountProvider` — real read-only balance via UA SDK `getPrimaryAssets()` (Phase 1)
+- `PrivateKeyAccountProvider` — real on-chain balance via ethers RPC calls (hybrid mode, 2026-07-18)
 - Auth: `@magic-sdk/admin` DID verification → `jose` JWT cookie (Phase 1)
 - Transaction planner: `TransactionPlanner` plans UA txs, returns unsigned plans for browser signing (Phase 1)
 - Initial Drizzle migration generated (`packages/infra-db/drizzle/0000_*.sql`)
+
+### Hybrid mode (demo + real balances, 2026-07-18)
+- `DEMO_MODE=true` + `PRIVATE_KEY` set → `PrivateKeyAccountProvider` reads real on-chain balances
+- `createRuntimeAppServices` detects the combo and injects the real provider into `createDemoAppServices()`
+- Balance: real on-chain data (Arbitrum RPC). Off-ramp: simulated. Orders: in-memory. LLM: Gemini.
+- No DB required — `MemoryOrderRepository` for demo-user orders
+- This is the **recommended mode for hackathon judging** — real balances without full production stack
 
 ### Demo / temporary (until manual gates run)
 - `infra-web3` defaults to `WEB3_PROVIDER_MODE=demo` — `DemoAccountProvider` simulates balances/payments
 - Auth middleware has `allowDemoFallback: true` in demo mode (no cookie → `demo-user`); production enforces 401
 - Intent parser uses Gemini function-calling (Phase 2) when `LLM_PROVIDER=gemini`+`GEMINI_API_KEY` set, else regex — and falls back to regex on ANY LLM failure (demo never breaks). Reply is conversational (LLM) or template, same fallback rule.
-- Frontend (Phase 3): Magic login modal + chat UI + agent trace timeline + receipt card + balance pill + zero-popup counter. Works in demo mode without a Magic key (verified E2E). Real Magic auth + UA 7702 signing = Phase 4 (gated on Manual Gate 1).
+- Frontend (Phase 3): Magic login modal + chat UI + agent trace timeline + receipt card + balance pill + zero-popup counter. Works in demo mode without a Magic key (verified E2E). Real Magic auth + UA 7702 signing = not yet built (gated on Manual Gate 1).
 - The spike script (`packages/infra-web3/spike/ua-spike.mts`) is written but NOT yet run against real funds
+- **⚠️ Local dev requires `dotenv`:** `tsx` does NOT auto-load `.env` files. `server.ts` loads it explicitly via `dotenv` + dynamic `await import('./app')`. If you add new env vars, restart the dev server.
 
 ---
 
@@ -124,9 +157,9 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 - ✅ ChatProvider (`/agent/chat`), Landing + Magic login modal, session-gated page shell
 - ✅ ChatView (header + BalancePill + zero-popup counter + demo banner), MessageList (user/agent bubbles + auto-scroll + empty-state suggestions), ChatInput (Enter to send), AgentTurn + TraceTimeline (NO POPUP emphasis) + ReceiptCard (polls `/orders/:id`)
 - ⏭️ Real Magic auth needs `NEXT_PUBLIC_MAGIC_PUBLISHABLE_KEY` set (demo mode works without it)
-- ⏭️ UA 7702 browser signing (`sign7702Authorization` + `/transactions/plan/*` → `sendTransaction`) — Phase 4, gated on Manual Gate 1 (the UA spike). A `ua-signer.ts` seam is sketched in the plan (Task 14) but not wired.
+- ⏭️ UA 7702 browser signing (`sign7702Authorization` + `/transactions/plan/*` → `sendTransaction`) — not yet built, gated on Manual Gate 1 (the UA spike). A `ua-signer.ts` seam is sketched in the plan but not wired.
 
-### Phase 4 — Bounties + polish (CODE COMPLETE 2026-07-14)
+### Phase 4 — Bounties + polish (CODE COMPLETE 2026-07-14; 3 items dropped)
 - ✅ **Spec written (2026-07-14):** [`docs/superpowers/specs/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md`](./superpowers/specs/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md)
 - ❌ **ZeroDev SRA DROPPED (2026-07-14):** Researched pricing — free tier is testnet-only; production $69–500/mo. Particle UA is mainnet-only → ZeroDev testnet cannot route to it. Architecturally broken on a free budget, not just expensive. Bounty ($500) soltado. `/deposit` page dropped with it (it only existed to host SRA). `ZERODEV_PROJECT_ID` stays in config but factory ignores it.
 - ❌ **Bitrefill real purchase DROPPED:** Mock fulfillment for dev AND demo. Zero cost.
@@ -197,8 +230,13 @@ pnpm dev         # API (:3001) + Web (:3000)
 ### Infra (real implementations)
 - `packages/infra-web3/src/particle/universal-account.ts` — ParticleAccountProvider (read-only balance)
 - `packages/infra-web3/src/particle/ua-assets-mapper.ts` — UA → domain Balance mapper
-- `packages/infra-web3/src/factory.ts` — AccountProvider DI (demo + particle modes)
+- `packages/infra-web3/src/private-key/private-key-provider.ts` — **PrivateKeyAccountProvider (hybrid mode: real on-chain balances via ethers)**
+- `packages/infra-web3/src/factory.ts` — AccountProvider DI (demo + particle + private-key modes)
 - `packages/infra-web3/spike/ua-spike.mts` — raw-key spike script (MANUAL GATE: run with funds)
+- `packages/infra-ai/src/gemini/gemini-provider.ts` — Gemini REST API client (function-calling + retry)
+- `packages/infra-ai/src/llm-intent-parser.ts` — LlmIntentParser (regex fallback on any failure)
+- `packages/infra-ai/src/llm-reply-strategy.ts` — LlmReplyStrategy (9 scenarios, template fallback)
+- `packages/infra-ai/src/factory.ts` — createAgentLlm (provider-agnostic, lazy SDK import)
 - `packages/infra-offramp/src/bitrefill/*` — complete adapter
 - `packages/infra-db/src/repositories/*` — Drizzle repos (orders + webhook events + users)
 
@@ -242,7 +280,7 @@ pnpm dev         # API (:3001) + Web (:3000)
 - **Conversation memory**: last 10 messages per user stored in-memory, passed to Gemini for context.
 - **System prompt**: rewritten with personality, reply guidelines per scenario, bilingual instructions.
 - **Templates**: bilingual fallback for all 9 scenarios when Gemini is down.
-- **136 tests** (33 infra-ai, 31 api, 23 infra-web3, 22 domain, 12 web, 9 infra-offramp, 4 shared, 2 infra-db)
+- **148 tests** (33 infra-ai, 31 api, 23 infra-web3, 22 domain, 12 web, 9 infra-offramp, 4 shared, 2 infra-db)
 - **All gates green**: 8/8 typecheck, 8/8 build, 8/8 test.
 - Cleanup: deleted stale dist/ dirs, .vtt transcripts, empty scripts/ dir. Redacted GCP API key from git history.
 - **Gemini funciona en demo mode:** `createDemoAppServices()` usa `createAgentLlm()` con env vars directos. Si GEMINI_API_KEY no está, usa regex fallback.
@@ -302,7 +340,8 @@ SUPPORTED_CHAINS=8453,42161
 - ✅ **Phase 5: Deploy a Vercel** — Hono API como Route Handler, DEMO_MODE, Gemini LIVE
 - ✅ **Demo pública funcionando:** https://pouch-orpin.vercel.app
 - ✅ **Phase 6: Conversational Agent (2026-07-15)** — Gemini 3.5 Flash, multi-turn confirmation flow, REST API (no SDK)
-- ✅ **Phase 7: Security Firewall (2026-07-18)** — Pre-execution deterministic checks (amount, category, provider). Risk scoring 0-100. SecurityBadge UI. SECURITY_BLOCKED error. Backward compatible. 148 tests (+15 security, +3 executor). 8 post-review fixes applied.
+- ✅ **Phase 7: Security Firewall (2026-07-18)** — Pre-execution deterministic checks (amount, category, provider). Risk scoring 0-100. SecurityBadge UI. SECURITY_BLOCKED error. Backward compatible. 148 tests. 8 post-review fixes applied.
+- ✅ **Hybrid mode (2026-07-18)** — Real ARB balance ($10.51) via PrivateKeyAccountProvider + DEMO_MODE=true. dotenv loading. Chat E2E verified with real balances.
 
 ### Phase 7 — Security Firewall (DONE 2026-07-18)
 - ✅ **SecurityChecker** — deterministic checks in domain (`packages/domain/src/security.ts`): amount limits, category allowlists, confirmation threshold, provider verification. Inspired by AgentShield's `_localCheck()` pattern.

@@ -24,6 +24,7 @@
     "@pouch/infra-offramp": "workspace:*",
     "@pouch/infra-web3": "workspace:*",
     "@pouch/shared": "workspace:*",
+    "dotenv": "^17.4.2",
     "hono": "^4.9.1",
     "jose": "^6.2.3"
   },
