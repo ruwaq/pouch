@@ -6,6 +6,16 @@ import { mapCashOutArgs } from './llm-tools';
 import { POUCH_SYSTEM_PROMPT } from './system-prompt';
 
 /**
+ * Patterns for operations Pouch deterministically does NOT support.
+ * When the message matches one of these, we skip the LLM entirely and
+ * return a helpful error immediately. This is faster and more reliable
+ * than hoping the LLM picks the right tool — especially for edge cases
+ * like "envia" (Spanish for "send") which Gemini 3.5 Flash sometimes
+ * misclassifies as check_balance or cash_out.
+ */
+const UNSUPPORTED_PATTERN = /\b(send|transfer|withdraw|swap|exchange|convert|bridge|stake|lend|borrow|deposit|unwrap|wrap|env[ií]a[r]?|mandar|transferir|intercambiar|mover\s+a)\b/i;
+
+/**
  * IntentParserStrategy backed by an LLM (function-calling), with a deterministic
  * regex parser as the final fallback. Resilience rule (spec §7): on ANY LLM
  * failure — provider error, non-cash_out function, plain-text reply, or bad
@@ -20,6 +30,20 @@ export class LlmIntentParser implements IntentParserStrategy {
   ) {}
 
   async parse(message: string): Promise<Result<CashOutIntent, DomainError>> {
+    // ── Deterministic pre-check for unsupported operations ──────────
+    //     Skip the LLM for known-bad inputs like "send to wallet",
+    //     "swap tokens", "bridge to chain". These are cheap to detect
+    //     with regex and Gemini 3.5 Flash sometimes misclassifies them.
+    if (UNSUPPORTED_PATTERN.test(message)) {
+      return {
+        ok: false,
+        error: {
+          type: 'UNSUPPORTED_INTENT',
+          message: "Pouch is a crypto off-ramp agent — I convert crypto to gift cards, mobile top-ups, and eSIMs. I don't support sending crypto to wallets, swapping tokens, or transferring between chains. Try 'Cash out $50 to Amazon' or 'Show my balance'.",
+        },
+      };
+    }
+
     const result = await this.llm.generateWithTools({
       message,
       systemInstruction: POUCH_SYSTEM_PROMPT,
@@ -47,7 +71,7 @@ export class LlmIntentParser implements IntentParserStrategy {
       case 'search_products': {
         const amount = typeof fc.args.amount === 'number' ? fc.args.amount : 50;
         const brand = typeof fc.args.brand === 'string' ? fc.args.brand : undefined;
-        return ok({ action: 'search_products', category: 'giftcard', amount: { value: amount, currency: 'USD' }, ...(brand ? { brand } : {}) });
+        return ok({ action: 'search_products', category: 'giftcard', amount: { value: 0, currency: 'USD' }, ...(brand ? { brand } : {}) });
       }
       case 'off_topic':
         return ok({ action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } });

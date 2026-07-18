@@ -14,12 +14,15 @@ const BALANCE_PATTERN = /\b((?:show|check|my|what'?s\s+my)?\s*balance|how\s+much
 /** Product search / catalog — maps to search_products. Bilingual (EN + ES). */
 const SEARCH_PATTERN = /\b(search|what\s+(?:gift\s*)?cards?|what\s+can\s+(?:i|you)\s+buy|what\s+do\s+you\s+have|show\s+products?|list|catalog|available|qu[eé]\s+(?:puedo|puedes)\s+comprar|qu[eé]\s+(?:tienes?|hay)|mu[eé]strame|productos|cat[aá]logo|disponible|buscar)\b/i;
 
-/** Cash-out actions — buy, purchase, cash out, top up. Bilingual (EN + ES). */
-const SUPPORTED_ACTION_PATTERN = /\b(cash\s*out|cashout|buy|purchase|top\s*up|topup|refill|comprar|cambiar|env[ií]ar|recargar|recarga|pagar|retirar|sacar|gastar)\b/i;
+/** Cash-out actions — buy, purchase, cash out, top up. Bilingual (EN + ES).
+ *  NOTE: "enviar" is NOT here — it's ambiguous (send to wallet vs send gift card).
+ *  Send-to-wallet is unsupported; it's caught by UNSUPPORTED_ACTION_PATTERN above. */
+const SUPPORTED_ACTION_PATTERN = /\b(cash\s*out|cashout|buy|purchase|top\s*up|topup|refill|comprar|cambiar|recargar|recarga|pagar|retirar|sacar|gastar)\b/i;
 
 /** Actions the user might try that Pouch doesn't support — send, swap, transfer, etc.
- *  When matched, we give a helpful message explaining what Pouch CAN do. */
-const UNSUPPORTED_ACTION_PATTERN = /\b(send|transfer|withdraw|swap|exchange|convert|bridge|stake|lend|borrow|deposit|unwrap|wrap)\b/i;
+ *  When matched, we give a helpful message explaining what Pouch CAN do.
+ *  Bilingual: English + Spanish (enviar, mandar, transferir, intercambiar). */
+const UNSUPPORTED_ACTION_PATTERN = /\b(send|transfer|withdraw|swap|exchange|convert|bridge|stake|lend|borrow|deposit|unwrap|wrap|env[ií]a[r]?|mandar|transferir|intercambiar|cambiar\s+a|mover\s+a)\b/i;
 
 const DOLLAR_AMOUNT_PATTERN = /\$(\d+(?:\.\d{1,2})?)/i;
 const USD_AMOUNT_PATTERN = /(\d+(?:\.\d{1,2})?)\s*(?:usd|dollars?)\b/i;
