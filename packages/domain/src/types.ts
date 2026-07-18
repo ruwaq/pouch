@@ -120,6 +120,8 @@ export interface BalanceAsset {
   symbol: string;
   amount: number;
   usdValue: number;
+  /** Human-readable wallet label (e.g. "Wallet 1", "Wallet 2") for multi-wallet demos. */
+  walletLabel?: string;
 }
 
 export interface Balance {

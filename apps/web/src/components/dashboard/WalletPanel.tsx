@@ -8,6 +8,7 @@ interface BalanceAsset {
   symbol: string;
   amount: number;
   usdValue: number;
+  walletLabel?: string;
 }
 
 interface BalanceData {
@@ -61,47 +62,59 @@ export function WalletPanel() {
   if (!balance || balance.assets.length === 0) {
     return (
       <PanelCard title="💰 Wallets">
-        <p className="text-xs text-[var(--muted)]">No funds detected on any chain.</p>
+        <p className="text-xs text-[var(--muted)]">No funds detected on any wallet or chain.</p>
       </PanelCard>
     );
   }
 
-  // Group assets by chain
-  const byChain = new Map<number, BalanceAsset[]>();
+  // Group assets by wallet label
+  const byWallet = new Map<string, BalanceAsset[]>();
   for (const a of balance.assets) {
-    const list = byChain.get(a.chainId) ?? [];
+    const key = a.walletLabel ?? 'Wallet';
+    const list = byWallet.get(key) ?? [];
     list.push(a);
-    byChain.set(a.chainId, list);
+    byWallet.set(key, list);
   }
 
+  const walletCount = byWallet.size;
+  const chainCount = new Set(balance.assets.map((a) => a.chainId)).size;
+
   return (
-    <PanelCard title="💰 Wallets & Balances">
+    <PanelCard title={`💰 Wallets (${walletCount} wallet${walletCount > 1 ? 's' : ''})`}>
       <div className="space-y-3">
         {/* Total */}
         <div className="flex items-center justify-between rounded-lg bg-[var(--accent)]/10 px-3 py-2">
-          <span className="text-xs font-medium text-[var(--fg)]">Total Balance</span>
+          <span className="text-xs font-medium text-[var(--fg)]">
+            Total Balance · {chainCount} chain{chainCount > 1 ? 's' : ''}
+          </span>
           <span className="text-sm font-bold text-[var(--accent)]">${balance.total.toFixed(2)}</span>
         </div>
 
-        {/* Per-chain breakdown */}
-        {Array.from(byChain.entries()).map(([chainId, assets]) => (
-          <div key={chainId} className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-                {CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}
-              </span>
-              <span className="h-px flex-1 bg-[var(--border)]" />
-            </div>
-            {assets.map((a, i) => (
-              <div key={i} className="flex items-center justify-between rounded bg-[var(--bg)] px-3 py-1.5 border border-[var(--border)]/50">
-                <span className="text-xs text-[var(--fg)]">
-                  {a.symbol} <span className="text-[var(--muted)]">{a.amount}</span>
-                </span>
-                <span className="text-xs font-medium text-[var(--fg)]">${a.usdValue.toFixed(2)}</span>
+        {/* Per-wallet breakdown */}
+        {Array.from(byWallet.entries()).map(([walletLabel, assets]) => {
+          const walletTotal = assets.reduce((sum, a) => sum + a.usdValue, 0);
+          return (
+            <div key={walletLabel} className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-semibold text-[var(--fg)]">{walletLabel}</span>
+                <span className="text-[11px] font-medium text-[var(--accent)]">${walletTotal.toFixed(2)}</span>
               </div>
-            ))}
-          </div>
-        ))}
+              {assets.map((a, i) => (
+                <div key={i} className="flex items-center justify-between rounded border border-[var(--border)]/50 bg-[var(--bg)] px-3 py-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="rounded bg-[var(--border)]/50 px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted)]">
+                      {CHAIN_NAMES[a.chainId] ?? `Chain ${a.chainId}`}
+                    </span>
+                    <span className="text-xs text-[var(--fg)]">
+                      {a.amount} {a.symbol}
+                    </span>
+                  </div>
+                  <span className="text-xs font-medium text-[var(--fg)]">${a.usdValue.toFixed(2)}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
 
         {/* Consolidation status */}
         <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
@@ -112,8 +125,8 @@ export function WalletPanel() {
           <span>{balance.requiresConsolidation ? '⚠️' : '✅'}</span>
           <span>
             {balance.requiresConsolidation
-              ? 'Multi-chain detected — Particle UA EIP-7702 consolidation ready'
-              : 'Single chain — no consolidation needed'}
+              ? `${walletCount > 1 ? 'Multi-wallet' : 'Multi-chain'} detected — Particle UA EIP-7702 consolidation ready`
+              : 'Single wallet, single chain — no consolidation needed'}
           </span>
         </div>
       </div>

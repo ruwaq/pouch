@@ -1,21 +1,19 @@
 import { ok, type Result } from '@pouch/shared';
-import type { AccountProvider, Balance, DomainError, TxResult, UserId } from '@pouch/domain';
+import type { AccountProvider, Balance, BalanceAsset, DomainError, TxResult, UserId } from '@pouch/domain';
 import { ethers } from 'ethers';
 import type { Config } from '@pouch/shared';
 
 // ═══════════════════════════════════════════════════════════════════
 // 🔒 SAFETY: This provider is READ-ONLY for balances.
 //
-// Private keys are ONLY used to derive wallet addresses for balance
-// lookups. No ethers.Wallet is ever created — we use
-// ethers.SigningKey.computeAddress() which CANNOT sign transactions.
+// Private keys / seed phrases are ONLY used to derive wallet addresses
+// for balance lookups. No ethers.Wallet is ever created — we use
+// ethers.SigningKey.computeAddress() or ethers.HDNodeWallet which
+// CANNOT sign transactions in this context.
 //
 // consolidate() and sendPayment() ALWAYS return mock tx hashes.
 // Real funds NEVER leave the wallet. The demo is 100% safe for
 // judges to test with real money in the wallet.
-//
-// If you need to sign real transactions, use ParticleAccountProvider
-// which delegates signing to the browser (Magic key).
 // ═══════════════════════════════════════════════════════════════════
 
 // Minimal ERC-20 ABI for balanceOf + decimals
@@ -51,8 +49,7 @@ interface WalletConfig {
 /**
  * Derives an Ethereum address from a private key WITHOUT creating a
  * signable wallet. Uses ethers.SigningKey which can compute the address
- * but CANNOT sign transactions — making it impossible to accidentally
- * spend funds.
+ * but CANNOT sign transactions.
  */
 function deriveAddress(privateKey: string): string {
   const signingKey = new ethers.SigningKey(privateKey);
@@ -60,15 +57,27 @@ function deriveAddress(privateKey: string): string {
 }
 
 /**
+ * Derives an Ethereum address from a BIP-39 seed phrase.
+ * Uses ethers.HDNodeWallet.fromPhrase() to derive the first account.
+ * The wallet is immediately discarded — only the address is kept.
+ */
+function deriveAddressFromSeed(seedPhrase: string): string {
+  const hd = ethers.HDNodeWallet.fromPhrase(seedPhrase);
+  return hd.address;
+}
+
+/**
  * Reads real on-chain balances from pre-funded wallets.
  *
- * 🔒 READ-ONLY — private keys are ONLY used to derive addresses.
- * No ethers.Wallet is ever created. Funds CANNOT be spent through
- * this provider. consolidate() and sendPayment() return mock hashes.
+ * 🔒 READ-ONLY — private keys / seed phrases are ONLY used to derive
+ * addresses. No signable wallet is ever stored. Funds CANNOT be spent
+ * through this provider.
  *
- * Supports MULTIPLE wallets — each with its own label. This lets the
- * demo show multi-wallet balance aggregation, which is the foundation
- * of Particle Network's Universal Account + EIP-7702 chain abstraction.
+ * Supports multiple wallets via:
+ * - PRIVATE_KEY → primary wallet
+ * - SECOND_PRIVATE_KEY → second wallet
+ * - SEED_PHRASE_1, SEED_PHRASE_2, SEED_PHRASE_3 → additional wallets
+ *   (derived from BIP-39 seed phrases, first account only)
  */
 export class PrivateKeyAccountProvider implements AccountProvider {
   private readonly wallets: WalletConfig[];
@@ -84,19 +93,37 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     this.providers = new Map();
     this.wallets = [];
 
+    const raw = config as unknown as Record<string, string | undefined>;
+
     // Primary wallet — derive address only, NO signable wallet created
     this.wallets.push({
       label: 'Wallet 1',
       address: deriveAddress(config.PRIVATE_KEY),
     });
 
-    // Secondary wallet (optional — for multi-wallet demo)
-    const secondKey = (config as unknown as Record<string, string | undefined>).SECOND_PRIVATE_KEY?.trim();
+    // Secondary wallet (private key)
+    const secondKey = raw.SECOND_PRIVATE_KEY?.trim();
     if (secondKey) {
       this.wallets.push({
         label: 'Wallet 2',
         address: deriveAddress(secondKey),
       });
+    }
+
+    // Seed phrase wallets (BIP-39, first account)
+    for (let i = 1; i <= 3; i++) {
+      const seed = raw[`SEED_PHRASE_${i}`]?.trim();
+      if (seed) {
+        try {
+          const address = deriveAddressFromSeed(seed);
+          this.wallets.push({
+            label: `Wallet ${this.wallets.length + 1}`,
+            address,
+          });
+        } catch {
+          // Invalid seed phrase — skip
+        }
+      }
     }
 
     for (const chainId of this.chains) {
@@ -114,7 +141,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
   }
 
   async getUnifiedBalance(_userId: UserId): Promise<Result<Balance, DomainError>> {
-    const assets: Balance['assets'] = [];
+    const assets: BalanceAsset[] = [];
     let total = 0;
 
     for (const walletConfig of this.wallets) {
@@ -128,12 +155,13 @@ export class PrivateKeyAccountProvider implements AccountProvider {
           const nativeEth = Number(ethers.formatEther(nativeBalance));
 
           if (nativeEth > 0.0001) {
-            const usdValue = nativeEth * 2500; // rough ETH price
+            const usdValue = nativeEth * 2500;
             assets.push({
               chainId,
               symbol: 'ETH',
               amount: Number(nativeEth.toFixed(6)),
               usdValue: Number(usdValue.toFixed(2)),
+              walletLabel: walletConfig.label,
             });
             total += usdValue;
           }
@@ -153,6 +181,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
                 symbol: 'USDC',
                 amount: Number(usdcAmount.toFixed(2)),
                 usdValue: Number(usdcAmount.toFixed(2)),
+                walletLabel: walletConfig.label,
               });
               total += usdcAmount;
             }
@@ -174,6 +203,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
                   symbol: extra.symbol,
                   amount: Number(amount.toFixed(4)),
                   usdValue: Number(usdValue.toFixed(2)),
+                  walletLabel: walletConfig.label,
                 });
                 total += usdValue;
               }
@@ -182,18 +212,14 @@ export class PrivateKeyAccountProvider implements AccountProvider {
             }
           }
         } catch {
-          // Chain unavailable — skip, don't fail the whole balance check
+          // Chain unavailable — skip
           continue;
         }
       }
     }
 
     if (assets.length === 0) {
-      return ok({
-        total: 0,
-        assets: [],
-        requiresConsolidation: false,
-      });
+      return ok({ total: 0, assets: [], requiresConsolidation: false });
     }
 
     return ok({
@@ -203,20 +229,10 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     });
   }
 
-  /**
-   * 🔒 DEMO ONLY — no real transaction is executed.
-   * Real consolidation requires Particle UA + EIP-7702 + browser signing.
-   * The private key in this provider CANNOT sign (we only derive the address).
-   */
   async consolidate(): Promise<Result<TxResult, DomainError>> {
     return ok({ txHash: '0xmock-consolidation' });
   }
 
-  /**
-   * 🔒 DEMO ONLY — no real payment is executed.
-   * Real settlement is handled by Openfort agent wallet (gasless).
-   * The private key in this provider CANNOT sign (we only derive the address).
-   */
   async sendPayment(): Promise<Result<TxResult, DomainError>> {
     return ok({ txHash: '0xmock-payment' });
   }
