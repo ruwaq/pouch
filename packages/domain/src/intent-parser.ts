@@ -5,8 +5,10 @@ import type { CashOutIntent, OffRampCategory } from './types';
 
 // ── Pattern definitions ────────────────────────────────────────────────
 
-/** Greetings, help, casual chat — maps to off_topic. Bilingual (EN + ES). */
-const OFF_TOPIC_PATTERN = /\b(hola|hi|hello|hey|heya?|yo|sup|what'?s\s+up|good\s+(morning|afternoon|evening)|howdy|bonjour|ciao|help|what\s+(can|do)\s+you\s+do|how\s+does\s+this\s+work|commands|thanks|thank\s+you|gracias|merci|buenos?\s*(d[ií]as|tardes|noches)|qu[eé]\s+tal|qu[eé]\s+puedes?\s+hacer|ayuda|comandos|qu[eé]\s+es\s+esto|c[uó]mo\s+funciona)\b/i;
+/** Greetings, help, casual chat — maps to off_topic. Bilingual (EN + ES).
+ *  NOTE: Educational queries (how does it work, what is chain abstraction, etc.)
+ *  are handled by HELP_PATTERN, not here. */
+const OFF_TOPIC_PATTERN = /\b(hola|hi|hello|hey|heya?|yo|sup|what'?s\s+up|good\s+(morning|afternoon|evening)|howdy|bonjour|ciao|help|what\s+(can|do)\s+you\s+do|commands|thanks|thank\s+you|gracias|merci|buenos?\s*(d[ií]as|tardes|noches)|qu[eé]\s+tal|qu[eé]\s+puedes?\s+hacer|ayuda|comandos)\b/i;
 
 /** Balance-related queries — maps to check_balance. Bilingual (EN + ES). */
 const BALANCE_PATTERN = /\b((?:show|check|my|what'?s\s+my)?\s*balance|how\s+much\s+(?:do\s+i\s+have|money|usd|usdc|crypto)|what\s+do\s+i\s+have|(?:revis|ver|mira|checa|chequea|mu[eé]strame|cu[aá]nto\s+(?:tengo|hay)|mi\s+)?\s*(?:saldo|billeter|billetera|cartera|balance|fondos|cuenta|wallet|dinero|plata)|cu[aá]nto\s+(?:tengo|hay|dinero|plata))\b/i;
