@@ -15,7 +15,7 @@ const BALANCE_PATTERN = /\b((?:show|check|my|what'?s\s+my)?\s*balance|how\s+much
 const SEARCH_PATTERN = /\b(search|what\s+(?:gift\s*)?cards?|what\s+can\s+(?:i|you)\s+buy|what\s+do\s+you\s+have|show\s+products?|list|catalog|available|qu[eé]\s+(?:puedo|puedes)\s+comprar|qu[eé]\s+(?:tienes?|hay)|mu[eé]strame|productos|cat[aá]logo|disponible|buscar)\b/i;
 
 /** Help / educational queries — how does it work, what is chain abstraction, etc. Bilingual. */
-const HELP_PATTERN = /\b(how\s+(does\s+it|do\s+you)\s+work|what\s+is\s+(chain\s+abstraction|eip.?7702|a\s+universal\s+account)|how\s+(is\s+it|are\s+you)\s+(safe|secure)|what\s+are\s+the\s+fees|what\s+chains?\s+(do\s+you\s+)?support|why\s+no\s+popups?|c[oó]mo\s+funciona|qu[eé]\s+es\s+(chain\s+abstraction|eip.?7702|universal\s+account)|es\s+seguro|c[oó]mo\s+(es\s+que|se\s+hace)\s+sin\s+popups?|qu[eé]\s+comisiones?\s+(tiene|cobras?))\b/i;
+const HELP_PATTERN = /\b(how\s+(does\s+(it|this|that)\s+work|do\s+you\s+work|is\s+(it|this)\s+(safe|secure))|what\s+is\s+(chain\s+abstraction|eip.?7702|a\s+universal\s+account|this)|what\s+are\s+the\s+fees|what\s+chains?\s+(do\s+you\s+)?support|why\s+no\s+popups?|is\s+(it|this)\s+(safe|secure)|c[oó]mo\s+funciona|qu[eé]\s+es\s+(chain\s+abstraction|eip.?7702|universal\s+account|esto)|es\s+seguro|c[oó]mo\s+(es\s+que|se\s+hace)\s+sin\s+popups?|qu[eé]\s+comisiones?\s+(tiene|cobras?)|qu[eé]\s+es\s+esto)\b/i;
 
 /** Cash-out actions — buy, purchase, cash out, top up. Bilingual (EN + ES).
  *  NOTE: "enviar" is NOT here — it's ambiguous (send to wallet vs send gift card).
