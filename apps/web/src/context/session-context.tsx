@@ -57,13 +57,24 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // persists server-side for 7 days. Only read the address from Magic.
   useEffect(() => {
     let cancelled = false;
+    const TIMEOUT_MS = 8_000; // Magic SDK can hang if iframe is blocked by CSP
+
     (async () => {
       if (!hasMagicConfig()) {
         if (!cancelled) setStatus('anonymous');
         return;
       }
+
+      // Race Magic's isLoggedIn against a timeout — if the SDK hangs
+      // (e.g. CSP blocks the iframe), fall back to anonymous after 8s.
       try {
-        const loggedIn = await isLoggedIn();
+        const loggedIn = await Promise.race([
+          isLoggedIn(),
+          new Promise<boolean>((_, reject) =>
+            setTimeout(() => reject(new Error('Magic SDK timed out')), TIMEOUT_MS),
+          ),
+        ]);
+
         if (!loggedIn) {
           if (!cancelled) setStatus('anonymous');
           return;
