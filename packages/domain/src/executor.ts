@@ -2,6 +2,7 @@ import { err, isOk, ok, type Result } from '@pouch/shared';
 
 import type { DomainError } from './errors';
 import { OffRampRouter } from './router';
+import { SecurityChecker } from './security';
 import { TraceRecorder } from './trace';
 import type {
   AccountProvider,
@@ -12,6 +13,7 @@ import type {
   OffRampProvider,
   Order,
   OrderRepository,
+  SecurityResult,
   UserId,
 } from './types';
 
@@ -23,6 +25,7 @@ export class CashOutExecutor {
     private readonly orders: OrderRepository,
     private readonly logger: LoggerPort,
     private readonly agentWallet?: AgentWalletPort,
+    private readonly securityChecker?: SecurityChecker,
   ) {}
 
   async execute(intent: CashOutIntent, userId: UserId): Promise<Result<CashOutResult, DomainError>> {
@@ -46,6 +49,32 @@ export class CashOutExecutor {
         available: balance.value.total,
         required: intent.amount.value,
       });
+    }
+
+    // ── Security check (deterministic, runs before any on-chain action) ──
+    let securityResult: SecurityResult | undefined;
+    if (this.securityChecker) {
+      const securityStep = trace.start('Security check', { badge: 'SHIELD' });
+      const check = await this.securityChecker.check(intent, userId);
+
+      if (isOk(check)) {
+        securityResult = check.value;
+        if (securityResult.verdict === 'BLOCK') {
+          const blockedCheck = securityResult.checks.find((c) => c.verdict === 'BLOCK');
+          trace.fail(securityStep.id, blockedCheck?.detail ?? 'Blocked by security policy');
+          return err({
+            type: 'SECURITY_BLOCKED',
+            check: blockedCheck?.name ?? 'policy',
+            detail: blockedCheck?.detail ?? 'Transaction blocked by security policy',
+            riskScore: securityResult.riskScore,
+          });
+        }
+        trace.complete(securityStep.id, { badge: SecurityChecker.badge(securityResult) });
+      } else {
+        // Security check errored — don't block, but log the failure
+        this.logger.error({ userId, error: check.error }, 'Security check failed, allowing by default');
+        trace.complete(securityStep.id, { badge: 'SAFE ✓' });
+      }
     }
 
     const routingStep = trace.start('Finding best provider');
@@ -181,6 +210,7 @@ export class CashOutExecutor {
         orderId: order.value.id,
         status: 'payment_pending',
         trace: trace.steps,
+        ...(securityResult !== undefined ? { securityVerdict: securityResult } : {}),
       });
     }
 
@@ -219,6 +249,7 @@ export class CashOutExecutor {
       orderId: order.value.id,
       status: 'payment_pending',
       trace: trace.steps,
+      ...(securityResult !== undefined ? { securityVerdict: securityResult } : {}),
     });
   }
 

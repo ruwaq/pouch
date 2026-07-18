@@ -1,6 +1,6 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-15 (OKX AI Genesis: ASP #5979 registered + activated. HackQuest: submission form ready.)
+Last updated: 2026-07-18 (Phase 7: Security Firewall complete. 148 tests. 8 post-review fixes applied. Gemini 3.5 Flash verified — only working model. Deadline: Jul 20, 2026, 1:59 PM GMT+2.)
 
 ## Strategic direction — CONFIRMED
 
@@ -34,7 +34,7 @@ The workspace currently passes:
 pnpm dev:api     # ✅ boots: "Pouch API listening on http://localhost:3001" (runtime blocker fixed 2026-07-14)
 pnpm dev:web     # ✅ Next.js 15 on :3000, proxies /api/* → :3001 (Phase 3)
 pnpm typecheck   # 8/8 packages
-pnpm test        # 104 tests passing (56 baseline + 36 Phase 2 + 12 web Phase 3)
+pnpm test        # 148 tests passing (40 domain + 31 api + 23 infra-web3 + 33 infra-ai + 12 web + 9 infra-offramp)
 pnpm build       # 8/8 packages
 ```
 
@@ -188,8 +188,9 @@ pnpm dev         # API (:3001) + Web (:3000)
 - `apps/api/src/app.ts`
 
 ### Domain (pure, tested, DO NOT rebuild)
-- `packages/domain/src/types.ts` — AccountProvider, OffRampProvider, TraceStep, IntentParserStrategy
-- `packages/domain/src/executor.ts` — CashOutExecutor (emits trace)
+- `packages/domain/src/types.ts` — AccountProvider, OffRampProvider, TraceStep, IntentParserStrategy, **SecurityResult, SecurityCheck, SpendingPolicy, SecurityPolicyPort**
+- `packages/domain/src/executor.ts` — CashOutExecutor (emits trace, **runs security checks**)
+- `packages/domain/src/security.ts` — **SecurityChecker (deterministic checks: amount, category, confirmation, provider)**
 - `packages/domain/src/trace.ts` — TraceStep + TraceRecorder
 - `packages/domain/src/intent-parser.ts` — regex IntentParser (implements IntentParserStrategy)
 
@@ -204,12 +205,23 @@ pnpm dev         # API (:3001) + Web (:3000)
 ### API (Hono)
 - `apps/api/src/middleware/auth.ts` — JWT cookie → ctx (demo fallback)
 - `apps/api/src/services/auth-service.ts` — DID → JWT
+- `apps/api/src/services/agent-chat-service.ts` — **AgentChatService (multi-turn, security pre-check, securityVerdict in response)**
 - `apps/api/src/services/transaction-planner.ts` — UA tx planning (frontend signing seam)
 - `apps/api/src/routes/` — all route definitions
+- `apps/api/src/routes/domain-errors.ts` — **HTTP 403 for SECURITY_BLOCKED**
+
+### Frontend (Next.js 15)
+- `apps/web/src/components/chat/ConfirmationCard.tsx` — **upgraded: SecurityBadge + security checks section**
+- `apps/web/src/components/chat/SecurityBadge.tsx` — **risk level badge (🟢🟡🟠🔴) with score**
+- `apps/web/src/components/chat/AgentTurn.tsx` — passes securityVerdict down
+- `apps/web/src/components/chat/TraceTimeline.tsx` — **supports SHIELD/SAFE/WARN/BLOCKED badges**
+- `apps/web/src/components/education/TechBadge.tsx` — **color-coded for security badges**
+- `apps/web/src/components/education/explanations.ts` — **SHIELD + security badge tooltips**
 
 ## Notes for the next session
-- **La demo está LIVE en https://pouch-orpin.vercel.app** — modo "Try Demo" (sin login), Gemini 3.5 Flash conversacional, multi-chain consolidation UA 7702 + Openfort gasless + NO POPUP.
-- **Gemini 3.5 Flash funciona** — REST API directa, modelo `gemini-3.5-flash` (API key en `.env`, no commiteada). Si falla por cuota, el regex parser es el fallback automático.
+- **La demo está LIVE en https://pouch-orpin.vercel.app** — modo "Try Demo" (sin login), Gemini 3.5 Flash conversacional, multi-chain consolidation UA 7702 + Openfort gasless + NO POPUP + **Security Firewall con risk scoring**.
+- **Gemini 3.5 Flash funciona** — REST API directa, modelo `gemini-3.5-flash`. **⚠️ Único modelo que funciona.** gemini-2.0-flash → 404, gemini-2.5-* → 404. `MODEL_FALLBACKS = []` (vacío, sin fallback a deprecados). Si falla por cuota, el regex parser es el fallback automático.
+- **Security Firewall activo** — `SecurityChecker` corre 4 checks determinísticos antes de cada cashout: amount limit, category, confirmation threshold, provider verification. Default policy: warn > $200, block > $500, confirm > $100. `SecurityPolicyPort` es pluggable (ahora hardcodeado, futuro: DB-backed + NL policies).
 - **Conversational agent implementado** — 4 tools (check_balance, search_products, cash_out, off_topic), multi-turno con confirmación antes de ejecutar. El usuario dice "yes" para confirmar, "no" para cancelar.
 - **JWT_SECRET + WEBHOOK_SECRET generados** (2026-07-15). `vercel.json` limpio sin `DEMO_MODE`. Para producción: solo falta setear las credenciales de providers en Vercel.
 - **Estrategia confirmada (2026-07-15):** Mainnet con ~$5 USDC. Particle UA NO tiene testnet (confirmado por DevRel en Discord 3 veces). Todos los equipos están en la misma situación.
@@ -217,6 +229,7 @@ pnpm dev         # API (:3001) + Web (:3000)
 - **Competencia:** Pouch es el ÚNICO proyecto de off-ramp (crypto → gift cards). 0 competidores directos en el hackathon.
 - **Arquitectura de deploy:** la API Hono está montada como Route Handler de Next.js (`apps/web/src/app/api/[...path]/route.ts`), no como servidor separado. Un solo deploy en Vercel.
 - **DEMO_MODE=true** es la variable crítica. Sin ella, Vercel (NODE_ENV=production) crashea porque loadConfig requiere DATABASE_URL, JWT_SECRET, etc. Para producción real: quitar DEMO_MODE y setear todas las credenciales.
+- **148 tests** — 15 de security + 3 de executor security + 130 existentes. Todos pasan.
 
 ### Gemini model constraint (2026-07-15)
 - **⚠️  Only gemini-3.5-flash works.** gemini-2.0-flash → 404, gemini-2.5-* → 404. Model fallback array is empty in code.
@@ -248,12 +261,16 @@ pnpm dev         # API (:3001) + Web (:3000)
 Continúa el proyecto Pouch. Lee docs/HANDOFF.md para el estado actual.
 
 El proyecto está DEPLOYADO en Vercel (https://pouch-orpin.vercel.app) con
-modo demo + Gemini AI. Estrategia confirmada: mainnet con ~$5 USDC
-(Particle UA no tiene testnet — confirmado por DevRel en Discord).
+modo demo + Gemini AI + Security Firewall. Estrategia confirmada: mainnet
+con ~$5 USDC (Particle UA no tiene testnet — confirmado por DevRel).
 
-Prioridad #1: migrar a producción real (quitar DEMO_MODE, setear keys).
-Prioridad #2: pulir demo seed multi-chain + video.
-Deadline: Jul 20, 2026.
+Phase 7 (Security Firewall) completado: 148 tests, risk scoring, 
+SecurityBadge UI, ConfirmationCard v2 con security checks, 
+SECURITY_BLOCKED error (HTTP 403).
+
+Prioridad #1: video/gif de la demo + submission final.
+Prioridad #2: migrar a producción real (quitar DEMO_MODE, setear keys).
+Deadline: Jul 20, 2026, 1:59 PM GMT+2.
 ```
 
 ### Credenciales necesarias (tener a mano antes de empezar):
@@ -285,6 +302,20 @@ SUPPORTED_CHAINS=8453,42161
 - ✅ **Phase 5: Deploy a Vercel** — Hono API como Route Handler, DEMO_MODE, Gemini LIVE
 - ✅ **Demo pública funcionando:** https://pouch-orpin.vercel.app
 - ✅ **Phase 6: Conversational Agent (2026-07-15)** — Gemini 3.5 Flash, multi-turn confirmation flow, REST API (no SDK)
+- ✅ **Phase 7: Security Firewall (2026-07-18)** — Pre-execution deterministic checks (amount, category, provider). Risk scoring 0-100. SecurityBadge UI. SECURITY_BLOCKED error. Backward compatible. 148 tests (+15 security, +3 executor). 8 post-review fixes applied.
+
+### Phase 7 — Security Firewall (DONE 2026-07-18)
+- ✅ **SecurityChecker** — deterministic checks in domain (`packages/domain/src/security.ts`): amount limits, category allowlists, confirmation threshold, provider verification. Inspired by AgentShield's `_localCheck()` pattern.
+- ✅ **SecurityResult + SpendingPolicy** — types in `packages/domain/src/types.ts`. `SecurityPolicyPort` for pluggable policy storage.
+- ✅ **Executor integration** — security check step runs before routing (after balance). BLOCK verdicts return `SECURITY_BLOCKED` error (HTTP 403). ALLOW/WARN continue. Security verdict included in `CashOutResult`.
+- ✅ **API pre-confirmation check** — `AgentChatService.handleCashOutPlan()` runs security check before showing confirmation. BLOCK → error reply, no confirmation offered.
+- ✅ **Frontend SecurityBadge** — risk level badge (🟢 LOW, 🟡 MEDIUM, 🟠 HIGH, 🔴 CRITICAL) with score. Color-coded.
+- ✅ **ConfirmationCard v2** — security checks section with individual check results (✅ passed, ⚠️ warn, 🚫 blocked). Risk badge in header.
+- ✅ **TraceTimeline badges** — SHIELD (blue), SAFE ✓ (blue), WARN ⚠️ (amber), BLOCKED 🔴 (red). Educational tooltips for all.
+- ✅ **Default policy** — warn > $200, block > $500, confirm > $100. Active by default.
+- ✅ **Backward compatible** — no SecurityChecker injected = same behavior as before. Policy store errors → fail-open (ALLOW).
+- ✅ **148 tests** (40 domain: 15 security + 8 executor + 17 existing). 8/8 typecheck, 8/8 lint, 8/8 test.
+- ✅ **Code review + fixes** — 8 issues found and fixed: dead `maxPerTransaction`/`maxPerDay` fields removed, duplicate `BalanceService` instance fixed, dead `POLICY_VIOLATION` error removed, shared `SecurityChecker` instance in runtime, redundant `securityVerdict` spread removed, BLOCK color fixed (amber→red), import path consistency, redundant frontend re-exports cleaned.
 
 ### Phase 6 — Conversational Agent (DONE 2026-07-15)
 - ✅ **Gemini 3.5 Flash** — model default cambiado de `gemini-2.0-flash` (deprecado) a `gemini-3.5-flash` (stable)
@@ -377,13 +408,14 @@ Esto confirma que el drop de ZeroDev fue correcto — incluso si no hubiera sido
 
 | # | Tarea | Prioridad | Estado |
 |---|-------|-----------|--------|
-| 1 | **Migrar a producción real** — setear Particle + Magic + Openfort keys. Quitar `DEMO_MODE`. | 🔴 Crítica | 🟡 Listo (keys seteadas, vercel.json limpio) |
+| 1 | **Video/gif de la demo** para el submission | 🔴 Crítica | ⬜ Pendiente |
 | 2 | **Pulir demo seed multi-chain** — balances en Arbitrum + Base con consolidation UA 7702 | 🟡 Alta | ✅ Hecho (2026-07-15) |
 | 3 | **Conversational Agent** — Gemini 3.5 Flash multi-turno con confirmación | 🟡 Alta | ✅ Hecho (2026-07-15) |
-| 4 | **Video/gif de la demo** para el submission | 🟡 Alta | ⬜ Pendiente |
-| 5 | **Bitrefill API key** — off-ramp con gift cards reales | 🟢 Media | ⬜ Pendiente |
-| 6 | **DB real** — probar persistencia en Supabase con usuarios reales | 🟢 Media | ⬜ Pendiente |
-| 7 | **Subir CI workflow a GitHub** — crear PAT con scope `workflow` | 🟢 Baja | ⬜ Pendiente |
+| 4 | **Security Firewall** — risk scoring, SecurityBadge, ConfirmationCard v2 | 🟡 Alta | ✅ Hecho (2026-07-18) |
+| 5 | **Migrar a producción real** — setear Particle + Magic + Openfort keys. Quitar `DEMO_MODE`. | 🟡 Alta | 🟡 Listo (keys seteadas, vercel.json limpio) |
+| 6 | **Bitrefill API key** — off-ramp con gift cards reales | 🟢 Media | ⬜ Pendiente |
+| 7 | **DB real** — probar persistencia en Supabase con usuarios reales | 🟢 Media | ⬜ Pendiente |
+| 8 | **Subir CI workflow a GitHub** — crear PAT con scope `workflow` | 🟢 Baja | ⬜ Pendiente |
 
 **Demo multi-chain (2026-07-15):** El demo seed ahora muestra 3 assets en 2 chains: USDC Arbitrum ($45), USDC Base ($30), ETH Base ($25). `requiresConsolidation: true` activa el trace "Consolidating via Universal Account [UA 7702]". BalancePill muestra nombres de chain (Arbitrum, Base) + dropdown pulido con indicador "Multi-chain — consolidates via UA 7702". ReceiptCard muestra chain name. Suggestion chips actualizados: "Cash out $50 to Amazon", "Show my balance", "Cash out $25 to Uber".
 
@@ -423,7 +455,8 @@ Esto confirma que el drop de ZeroDev fue correcto — incluso si no hubiera sido
 ### Verification (todo pasa):
 ```bash
 pnpm typecheck   # 8/8 packages
-pnpm test        # 126 tests
+pnpm test        # 148 tests (40 domain + 31 api + 33 infra-ai + 23 infra-web3 + 12 web + 9 infra-offramp)
 pnpm build       # 8/8 packages
+pnpm lint        # 8/8 packages, 0 errors
 # Demo live: https://pouch-orpin.vercel.app
 ```

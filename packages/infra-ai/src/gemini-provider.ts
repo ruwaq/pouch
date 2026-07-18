@@ -47,9 +47,12 @@ interface GeminiResponse {
  * reliably in Vercel serverless.
  *
  * Resilience features:
- * - Model fallback: tries gemini-2.0-flash → gemini-3.5-flash
- * - Retry on 429/503 with exponential backoff
- * - generateText avoids systemInstruction field (free tier workaround)
+ * - Retry on 429/503 with exponential backoff (2 attempts per model)
+ * - generateText inlines systemInstruction (free tier workaround for 503)
+ * - No model fallback — only gemini-3.5-flash works on this API key.
+ *   gemini-2.0-flash and gemini-2.5-* return 404.
+ * - API key sent via x-goog-api-key header (not URL query param) to avoid
+ *   leaking the key in server/network logs.
  */
 export class GeminiProvider implements LLMProvider {
   constructor(
@@ -126,10 +129,13 @@ export class GeminiProvider implements LLMProvider {
     for (const model of models) {
       for (let attempt = 0; attempt < MAX_RETRIES_PER_MODEL; attempt++) {
         try {
-          const url = `${GEMINI_BASE}/models/${pathFn(model)}?key=${this.apiKey}`;
+          const url = `${GEMINI_BASE}/models/${pathFn(model)}`;
           const res = await fetch(url, {
             method: 'POST',
-            headers: { 'content-type': 'application/json' },
+            headers: {
+              'content-type': 'application/json',
+              'x-goog-api-key': this.apiKey,
+            },
             body: JSON.stringify(body),
           });
 

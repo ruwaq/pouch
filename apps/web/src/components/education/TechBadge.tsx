@@ -18,11 +18,25 @@ interface TechBadgeProps {
 export function TechBadge({ badge, className = '' }: TechBadgeProps) {
   const explanation = BADGE_EXPLANATIONS[badge];
 
-  // Special styling for NO POPUP badge (emerald) vs others (accent)
+  // Special styling for different badge types
   const isNoPopup = badge === 'NO POPUP';
-  const baseClasses = isNoPopup
-    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-    : 'bg-[var(--accent)]/10 text-[var(--muted)] border border-[var(--border)]';
+  const isShield = badge === 'SHIELD';
+  const isSafe = badge.startsWith('SAFE');
+  const isWarn = badge.startsWith('WARN');
+  const isBlocked = badge.startsWith('BLOCKED');
+
+  let baseClasses: string;
+  if (isNoPopup) {
+    baseClasses = 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+  } else if (isShield || isSafe) {
+    baseClasses = 'bg-blue-500/10 text-blue-400 border border-blue-500/20';
+  } else if (isWarn) {
+    baseClasses = 'bg-amber-500/10 text-amber-400 border border-amber-500/20';
+  } else if (isBlocked) {
+    baseClasses = 'bg-red-500/10 text-red-400 border border-red-500/20';
+  } else {
+    baseClasses = 'bg-[var(--accent)]/10 text-[var(--muted)] border border-[var(--border)]';
+  }
 
   if (!explanation) {
     // No explanation → render a plain badge

@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import {
   CashOutExecutor,
   OffRampRouter,
+  SecurityChecker,
+  DEFAULT_POLICY,
   type AccountProvider,
   type AgentWalletPort,
   type LoggerPort,
@@ -11,6 +13,8 @@ import {
   type OrderRepository,
   type OrderRequest,
   type Product,
+  type SecurityPolicyPort,
+  type SpendingPolicy,
 } from '@pouch/domain';
 import { err, ok } from '@pouch/shared';
 
@@ -321,5 +325,146 @@ describe('CashOutExecutor', () => {
     if (result.ok) return;
     expect(result.error.type).toBe('AGENT_WALLET_NOT_CONFIGURED');
     expect(repository.statuses.some((s) => s.status === 'failed')).toBe(true);
+  });
+
+  it('runs security check when SecurityChecker is injected and includes verdict in result', async () => {
+    const providers = [new StubProvider()];
+    const repository = new CapturingRepository();
+    const account: AccountProvider = {
+      async getUnifiedBalance() {
+        return ok({
+          total: 200,
+          assets: [{ chainId: 42161, symbol: 'USDC', amount: 200, usdValue: 200 }],
+          requiresConsolidation: false,
+        });
+      },
+      async consolidate() {
+        return ok({ txHash: '0xconsolidate' });
+      },
+      async sendPayment() {
+        return ok({ txHash: '0xpay' });
+      },
+    };
+
+    const policyStore: SecurityPolicyPort = {
+      async getPolicy() {
+        return ok<SpendingPolicy>({ ...DEFAULT_POLICY });
+      },
+    };
+
+    const executor = new CashOutExecutor(
+      new OffRampRouter(providers),
+      providers,
+      account,
+      repository,
+      logger,
+      undefined,
+      new SecurityChecker(policyStore),
+    );
+
+    const result = await executor.execute(
+      { action: 'cash_out', category: 'giftcard', brand: 'amazon', amount: { value: 50, currency: 'USD' } },
+      'user-42',
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // Security step should be in the trace
+    const labels = result.value.trace.map((step) => step.label);
+    expect(labels.some((label) => /security/i.test(label))).toBe(true);
+
+    // Security verdict should be in the result
+    expect(result.value.securityVerdict).toBeDefined();
+    expect(result.value.securityVerdict?.verdict).toBe('ALLOW');
+    expect(result.value.securityVerdict?.riskLevel).toBe('LOW');
+  });
+
+  it('returns SECURITY_BLOCKED when security check blocks the transaction', async () => {
+    const providers = [new StubProvider()];
+    const repository = new CapturingRepository();
+    const account: AccountProvider = {
+      async getUnifiedBalance() {
+        return ok({
+          total: 200,
+          assets: [{ chainId: 42161, symbol: 'USDC', amount: 200, usdValue: 200 }],
+          requiresConsolidation: false,
+        });
+      },
+      async consolidate() {
+        return ok({ txHash: '0xconsolidate' });
+      },
+      async sendPayment() {
+        return ok({ txHash: '0xpay' });
+      },
+    };
+
+    // Policy that blocks anything above $100
+    const policyStore: SecurityPolicyPort = {
+      async getPolicy() {
+        return ok<SpendingPolicy>({ ...DEFAULT_POLICY, blockAboveAmount: 100 });
+      },
+    };
+
+    const executor = new CashOutExecutor(
+      new OffRampRouter(providers),
+      providers,
+      account,
+      repository,
+      logger,
+      undefined,
+      new SecurityChecker(policyStore),
+    );
+
+    const result = await executor.execute(
+      { action: 'cash_out', category: 'giftcard', brand: 'amazon', amount: { value: 150, currency: 'USD' } },
+      'user-42',
+    );
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.type).toBe('SECURITY_BLOCKED');
+    if (result.error.type === 'SECURITY_BLOCKED') {
+      expect(result.error.riskScore).toBe(100);
+    }
+  });
+
+  it('does not block when no SecurityChecker is injected (backward compatible)', async () => {
+    const providers = [new StubProvider()];
+    const repository = new CapturingRepository();
+    const account: AccountProvider = {
+      async getUnifiedBalance() {
+        return ok({
+          total: 200,
+          assets: [{ chainId: 42161, symbol: 'USDC', amount: 200, usdValue: 200 }],
+          requiresConsolidation: false,
+        });
+      },
+      async consolidate() {
+        return ok({ txHash: '0xconsolidate' });
+      },
+      async sendPayment() {
+        return ok({ txHash: '0xpay' });
+      },
+    };
+
+    // No SecurityChecker injected — should work exactly as before
+    const executor = new CashOutExecutor(
+      new OffRampRouter(providers),
+      providers,
+      account,
+      repository,
+      logger,
+    );
+
+    const result = await executor.execute(
+      { action: 'cash_out', category: 'giftcard', brand: 'amazon', amount: { value: 50, currency: 'USD' } },
+      'user-42',
+    );
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // No security verdict when no checker is injected
+    expect(result.value.securityVerdict).toBeUndefined();
   });
 });

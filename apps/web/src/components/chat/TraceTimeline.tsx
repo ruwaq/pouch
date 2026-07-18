@@ -1,5 +1,5 @@
 'use client';
-import type { TraceStep } from '@pouch/domain';
+import type { TraceStep } from '../../lib/types';
 import { TechBadge } from '../education/TechBadge';
 import { TraceExplanation } from '../education/TraceExplanation';
 

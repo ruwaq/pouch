@@ -52,6 +52,10 @@ export const STEP_EXPLANATIONS: Record<string, StepExplanation> = {
     title: 'Blind Signature',
     body: 'Your wallet signs the transaction using blind signatures via Magic Link. No popup, no confirmation dialog, no gas estimation. The signature happens invisibly in the background.',
   },
+  'Security check': {
+    title: 'Security Firewall',
+    body: 'Pouch runs deterministic security checks before executing any transaction. This includes amount limits (warn above $200, block above $500), category allowlists, and provider verification. These checks are instant and free — they run before any on-chain action. Inspired by AgentShield\'s pre-execution security pattern.',
+  },
 };
 
 // ── Badge tooltip explanations ───────────────────────────────────────
@@ -63,6 +67,14 @@ export const BADGE_EXPLANATIONS: Record<string, string> = {
     'Zero wallet popups. Blind signatures via Magic Link + gas sponsorship via Openfort. The user experience is identical to Web2 — no confirmations, no gas estimates, no chain switching.',
   cheapest:
     'Provider routing: Pouch compares multiple off-ramp providers in real-time to find the lowest price. Competition drives better rates for you.',
+  SHIELD:
+    'Security Firewall: Pouch runs deterministic security checks before every transaction. Amount limits, category allowlists, and provider verification happen instantly — before any on-chain action.',
+  'SAFE ✓':
+    'All security checks passed. This transaction is within your spending limits, uses a verified provider, and shows no suspicious patterns.',
+  'WARN ⚠️':
+    'Some security checks triggered warnings. The transaction can proceed, but review the details carefully. Warnings may indicate amounts above your comfort threshold or categories outside your usual pattern.',
+  'BLOCKED 🔴':
+    'Transaction blocked by security policy. The amount exceeds your maximum allowed, or the category is restricted. Adjust your request or update your policy to proceed.',
 };
 
 // ── How It Works flow steps ──────────────────────────────────────────

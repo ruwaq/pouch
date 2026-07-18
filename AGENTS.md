@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-15. Project status: **Phase 0-6 complete (136 tests). Conversational agent with Gemini 3.5 Flash + multi-turn confirmation + Try Demo. Deployed on Vercel. Dual-hackathon: UXmaxx (Encode Club) + OKX AI Genesis (A2A track). Resilience: Gemini → regex fallback + template replies. GitHub: https://github.com/ruwaq/pouch**.
+> Last updated: 2026-07-18. Project status: **Phase 0-7 complete (148 tests). Conversational agent with Gemini 3.5 Flash + multi-turn confirmation + Security Firewall + Try Demo. Deployed on Vercel. Dual-hackathon: UXmaxx (Encode Club) + OKX AI Genesis (A2A track). Resilience: Gemini → regex fallback + template replies. GitHub: https://github.com/ruwaq/pouch**.
 
 ---
 
@@ -183,6 +183,8 @@ pnpm build                  # Build all packages
 | Add a new off-ramp provider | `packages/infra-offramp/src/<provider>/` — implement `OffRampProvider` interface from `domain/src/types.ts` |
 | Change routing logic | `packages/domain/src/router.ts` |
 | Change cash-out orchestration | `packages/domain/src/executor.ts` |
+| Change security checks | `packages/domain/src/security.ts` — `SecurityChecker` class |
+| Change spending policies | `packages/domain/src/types.ts` — `SpendingPolicy` + `SecurityPolicyPort` |
 | Add an API endpoint | `apps/api/src/routes/` |
 | Add a frontend page | `apps/web/src/app/` |
 | Change env config | `packages/shared/src/config.ts` + `.env.example` |
@@ -217,6 +219,8 @@ pnpm build                  # Build all packages
 - [x] **Phase 4 (2026-07-14):** Openfort gas sponsorship — `AgentWalletPort` (domain) + `OpenfortAgentWallet` (infra-web3, deferred ESM via lazy `clientFactory`) + `NoopAgentWallet` + `createAgentWallet` factory (prod fail-fast, synchronous). `CashOutExecutor` two-step settlement trace (`Funding agent wallet [UA 7702]` → `Paid via Openfort gasless [NO POPUP]`). Runtime wiring (sync, no boot change). CI lint+build step (eslint flat config). Frontend hardening (error bubbles, balance skeleton, mobile responsive). README + SUBMISSION.md. See `docs/superpowers/plans/2026-07-14-pouch-phase4-openfort-gas-sponsorship.md`.
 - [x] CI lint step (`.github/workflows/ci.yml` runs typecheck + lint + test + build; eslint flat config added)
 - [x] **Phase 5 (2026-07-15):** Deploy a Vercel — Hono API montada como Next.js Route Handler (`apps/web/src/app/api/[...path]/route.ts`). `DEMO_MODE=true` override para producción sin DB. Gemini AI LIVE (`GEMINI_API_KEY` + `LLM_PROVIDER=gemini` en Vercel env). LLM integrado en `createDemoAppServices()`. Demo pública: https://pouch-orpin.vercel.app. GitHub: https://github.com/ruwaq/pouch.
+- [x] **Phase 6 (2026-07-15):** Conversational Agent — Gemini 3.5 Flash multi-turno con confirmación. 4 tools (check_balance, search_products, cash_out, off_topic). REST API directa (no SDK). Multi-turn confirmation flow (yes/no). 136 tests.
+- [x] **Phase 7 — Security Firewall (2026-07-18):** Pre-execution security checks inspired by AgentShield. `SecurityChecker` class in domain (deterministic checks: amount limits, category allowlists, confirmation threshold, provider verification). `SecurityPolicyPort` + `SpendingPolicy` types. `SecurityBadge` frontend component (🟢🟡🟠🔴 risk levels). `ConfirmationCard` upgraded with security checks section. `TraceTimeline` supports SHIELD/SAFE/WARN/BLOCKED badges. `SECURITY_BLOCKED` error type (HTTP 403). Backward compatible — no SecurityChecker injected = same behavior as before. 148 tests (+15 security, +3 executor). Default policy: warn > $200, block > $500, confirm > $100. Code review: 8 issues found and fixed (dead fields, duplicate instances, stale comments, color inconsistencies).
 
 See [`docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md`](./docs/superpowers/plans/2026-07-13-pouch-implementation-roadmap.md) for the phase index.
 See [`docs/HANDOFF.md`](./docs/HANDOFF.md) for the current snapshot and next steps.
@@ -231,3 +235,5 @@ See [`docs/HANDOFF.md`](./docs/HANDOFF.md) for the current snapshot and next ste
 4. **Domain layer stays pure.** If you need to import an SDK, it goes in `infra-*`, not `domain/`.
 5. **All webhooks must be idempotent.** Deduplicate by event ID.
 6. **English-only UI** (judges are international). Comments and docs can be bilingual.
+7. **Security first — fail-open on policy errors.** The SecurityChecker never blocks users when the policy store is unavailable. Deterministic checks (free) run before any on-chain action. Only `gemini-3.5-flash` works on this API key — other models return 404.
+8. **Backward compatible.** All new features (SecurityChecker, AgentWalletPort) are optional constructor params. When absent, behavior is identical to the previous version.

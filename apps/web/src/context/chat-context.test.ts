@@ -16,6 +16,7 @@ const fakeAgentResponse: AgentChatResponse = {
   },
   reply: 'Done.',
   phase: 'reply',
+  llmReply: false,
 } as AgentChatResponse;
 
 describe('chat-context helpers', () => {

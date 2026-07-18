@@ -17,6 +17,32 @@ import type { AuthService } from './services/auth-service';
 import type { OrderServiceLike } from './services/order-service';
 import type { TransactionPlanner } from './services/transaction-planner';
 
+// ── Rate limiter (in-memory, per-IP) ──────────────────────────────────
+
+const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
+const RATE_LIMIT_WINDOW_MS = 60_000; // 1 minute
+const RATE_LIMIT_MAX = 30; // max requests per window
+
+function rateLimit(ip: string): boolean {
+  const now = Date.now();
+  const entry = rateLimitStore.get(ip);
+  if (!entry || now > entry.resetAt) {
+    rateLimitStore.set(ip, { count: 1, resetAt: now + RATE_LIMIT_WINDOW_MS });
+    return true;
+  }
+  if (entry.count >= RATE_LIMIT_MAX) return false;
+  entry.count++;
+  return true;
+}
+
+// Cleanup stale entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, entry] of rateLimitStore) {
+    if (now > entry.resetAt) rateLimitStore.delete(ip);
+  }
+}, 300_000);
+
 export function createApp(options: { agentService?: AgentChatServiceLike; balanceService?: BalanceServiceLike; orderService?: OrderServiceLike; bitrefillWebhookService?: BitrefillWebhookService; authService?: AuthService; transactionPlanner?: TransactionPlanner } = {}): Hono<AuthEnv> {
   const app = new Hono<AuthEnv>();
   const runtimeServices = createRuntimeAppServices();
@@ -25,13 +51,38 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
   const orderService = options.orderService ?? runtimeServices.orderService;
   const bitrefillWebhookService = options.bitrefillWebhookService ?? runtimeServices.bitrefillWebhookService;
 
+  // ── Rate limiter middleware ───────────────────────────────────────
+  app.use('*', async (context, next) => {
+    const ip = context.req.header('x-forwarded-for')?.split(',')[0]?.trim()
+      ?? context.req.header('x-real-ip')
+      ?? '127.0.0.1';
+    if (!rateLimit(ip)) {
+      return context.json({ error: 'Too many requests. Please try again later.' }, 429);
+    }
+    await next();
+  });
+
   // Auth middleware — demo mode falls back to 'demo-user' when no cookie is present
   // (keeps existing tests + local dev working without a real Magic login).
-  const jwtSecret = process.env.JWT_SECRET ?? 'dev-insecure-secret-change-me';
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isDemo = runtimeServices.mode === 'demo';
+  const jwtSecret = process.env.JWT_SECRET;
+
+  // Crash on missing JWT_SECRET in production (non-demo mode)
+  if (!jwtSecret || jwtSecret === 'dev-insecure-secret-change-me') {
+    if (isProduction && !isDemo) {
+      throw new Error(
+        'FATAL: JWT_SECRET is not set or is the insecure default. ' +
+        'Set JWT_SECRET in environment or enable DEMO_MODE=true.',
+      );
+    }
+  }
+  const effectiveSecret = jwtSecret ?? 'dev-insecure-secret-change-me';
+
   app.use('*', createAuthMiddleware({
-    jwtSecret,
+    jwtSecret: effectiveSecret,
     publicPaths: new Set(['/', '/health']),
-    allowDemoFallback: runtimeServices.mode === 'demo',
+    allowDemoFallback: isDemo,
   }));
 
   app.get('/', (context) => {
@@ -42,29 +93,33 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
     });
   });
 
+  // Health endpoint — sanitized: no LLM response or internal details exposed
   app.get('/health', async (context) => {
     const llmProvider = (process.env.LLM_PROVIDER ?? '').trim();
     const hasGeminiKey = Boolean((process.env.GEMINI_API_KEY ?? '').trim());
-    
-    // Test Gemini API directly
-    let geminiStatus = 'not_tested';
-    let geminiReply = '';
+
+    let geminiStatus: string = 'not_tested';
     if (hasGeminiKey) {
       try {
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${process.env.GEMINI_API_KEY!.trim()}`,
-          { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: 'System: You are a helpful assistant.\n\nUser: Say hi in one sentence' }] }] }) }
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent`,
+          {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-goog-api-key': process.env.GEMINI_API_KEY!.trim(),
+            },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: 'Say "ok"' }] }],
+            }),
+          },
         );
         geminiStatus = res.ok ? 'ok' : `error_${res.status}`;
-        if (res.ok) {
-          const data = await res.json() as any;
-          geminiReply = String(data?.candidates?.[0]?.content?.parts?.[0]?.text ?? '').slice(0, 100);
-        }
-      } catch (e) {
-        geminiStatus = `fetch_error: ${String(e).slice(0, 100)}`;
+      } catch {
+        geminiStatus = 'fetch_error';
       }
     }
-    
+
     return context.json({
       ok: true,
       service: 'api',
@@ -72,7 +127,6 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
       llm: llmProvider || 'none',
       geminiConfigured: hasGeminiKey,
       geminiStatus,
-      geminiReply,
     });
   });
 
@@ -83,7 +137,7 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
   // Demo login — creates a session for judges who don't want to sign up.
   // Issues a valid JWT for 'demo-user' so the app works without Magic.
   app.post('/auth/demo', async (context) => {
-    const secret = new TextEncoder().encode(jwtSecret);
+    const secret = new TextEncoder().encode(effectiveSecret);
     const jwt = await new SignJWT({ sub: 'demo-user', evmAddress: '0xdemo' })
       .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
       .setIssuedAt()
@@ -92,8 +146,8 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
 
     setCookie(context, 'pouch_session', jwt, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'Lax',
+      secure: isProduction,
+      sameSite: 'Strict',
       path: '/',
       maxAge: 7 * 24 * 60 * 60,
     });

@@ -2,6 +2,7 @@
 
 import { useChat } from '../../context/chat-context';
 import type { AgentChatResponse } from '../../lib/types';
+import { SecurityBadge } from './SecurityBadge';
 
 const CHAIN_NAMES: Record<number, string> = {
   42161: 'Arbitrum',
@@ -26,7 +27,7 @@ interface ConfirmationCardProps {
 
 export function ConfirmationCard({ response }: ConfirmationCardProps) {
   const { sendMessage, isSending } = useChat();
-  const { intent, balanceSnapshot, planSummary } = response;
+  const { intent, balanceSnapshot, planSummary, securityVerdict } = response;
   const brand = intent.brand
     ? intent.brand.charAt(0).toUpperCase() + intent.brand.slice(1)
     : 'your selection';
@@ -40,13 +41,47 @@ export function ConfirmationCard({ response }: ConfirmationCardProps) {
     <div className="mt-2 rounded-xl border border-[var(--accent)]/30 bg-[var(--card)] overflow-hidden">
       {/* Header */}
       <div className="bg-[var(--accent)]/10 px-4 py-3 border-b border-[var(--accent)]/20">
-        <p className="text-sm font-semibold text-[var(--fg)]">
-          Confirm Transaction
-        </p>
-        <p className="text-xs text-[var(--muted)] mt-0.5">
-          Review the details before approving
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm font-semibold text-[var(--fg)]">
+              🔒 Confirm Transaction
+            </p>
+            <p className="text-xs text-[var(--muted)] mt-0.5">
+              Review the details before approving
+            </p>
+          </div>
+          {securityVerdict ? (
+            <SecurityBadge verdict={securityVerdict} compact />
+          ) : null}
+        </div>
       </div>
+
+      {/* Security checks */}
+      {securityVerdict && securityVerdict.checks.length > 0 ? (
+        <div className="px-4 py-2.5 border-b border-[var(--border)] bg-white/[0.02]">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] mb-2">
+            Security Checks
+          </p>
+          <div className="space-y-1">
+            {securityVerdict.checks.map((check, i) => (
+              <div key={i} className="flex items-center gap-2 text-xs">
+                <span className="flex-shrink-0 w-4 text-center">
+                  {check.passed ? '✅' : check.verdict === 'BLOCK' ? '🚫' : '⚠️'}
+                </span>
+                <span className={
+                    check.passed
+                      ? 'text-[var(--muted)]'
+                      : check.verdict === 'BLOCK'
+                        ? 'text-red-400'
+                        : 'text-amber-300'
+                  }>
+                  {check.detail}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       {/* Transaction details */}
       <div className="px-4 py-3 space-y-3">

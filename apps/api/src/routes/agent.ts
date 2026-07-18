@@ -24,6 +24,10 @@ export function createAgentRoutes(agentService: AgentChatServiceLike): Hono {
       return context.json({ error: 'message must be a non-empty string' }, 400);
     }
 
+    if (payload.message.length > 2000) {
+      return context.json({ error: 'message is too long (max 2000 characters)' }, 400);
+    }
+
     const userId = typeof payload.userId === 'string' && payload.userId.trim() ? payload.userId : 'demo-user';
 
     try {

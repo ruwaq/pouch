@@ -1,4 +1,4 @@
-import { CashOutExecutor, OffRampRouter, type AccountProvider, type AgentWalletPort, type LoggerPort, type OffRampProvider, type OrderRepository } from '@pouch/domain';
+import { CashOutExecutor, OffRampRouter, SecurityChecker, DEFAULT_POLICY, type AccountProvider, type AgentWalletPort, type LoggerPort, type OffRampProvider, type OrderRepository, type SecurityPolicyPort, type SpendingPolicy } from '@pouch/domain';
 import { createAgentLlm } from '@pouch/infra-ai';
 import { buildOffRampProviders } from '@pouch/infra-offramp';
 import {
@@ -292,6 +292,15 @@ export function createRuntimeAppServices(options: {
         }
       : undefined;
 
+    // ── Security policy store ──────────────────────────────────────
+    // In production this would read from the database. For now, use defaults.
+    const runtimePolicyStore: SecurityPolicyPort = {
+      async getPolicy() {
+        return ok<SpendingPolicy>({ ...DEFAULT_POLICY });
+      },
+    };
+    const runtimeSecurityChecker = new SecurityChecker(runtimePolicyStore);
+
     const executor = new CashOutExecutor(
       new OffRampRouter(allProviders),
       allProviders,
@@ -299,13 +308,14 @@ export function createRuntimeAppServices(options: {
       hybridOrderRepo,
       runtimeLogger,
       hybridAgentWallet,
+      runtimeSecurityChecker,
     );
 
     const { intentParser, replyStrategy } = createAgentLlm(config);
     const balanceService = new BalanceService(hybridAccountProvider);
     const agentService = replyStrategy
-      ? new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, replyStrategy)
-      : new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders);
+      ? new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, replyStrategy, runtimeSecurityChecker)
+      : new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, undefined, runtimeSecurityChecker);
 
     return {
       mode: 'configured',

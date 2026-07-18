@@ -70,20 +70,23 @@ export class OpenfortAgentWallet implements AgentWalletPort {
    * Resolves the SDK client lazily and memoizes the promise so the deferred
    * import only happens once (even if getAddress + settlePayment race).
    */
+  /**
+   * Resolves the SDK client lazily and memoizes the promise so the deferred
+   * import only happens once. Uses a promise-chain pattern to prevent
+   * concurrent `getClient()` calls from racing on `clientFactory()`.
+   */
   private async getClient(): Promise<Result<OpenfortClientLike, DomainError>> {
-    if (this.clientPromise) {
-      try {
-        return ok(await this.clientPromise);
-      } catch (error) {
-        return err(mapOpenfortError(error, 'load Openfort SDK'));
-      }
+    if (!this.clientPromise) {
+      this.clientPromise = this.clientFactory().catch((error) => {
+        // Allow retry on a later call by clearing the cached promise on failure
+        this.clientPromise = null;
+        throw error;
+      });
     }
 
-    this.clientPromise = this.clientFactory();
     try {
       return ok(await this.clientPromise);
     } catch (error) {
-      this.clientPromise = null; // allow retry on a later call
       this.logger.error({ error }, 'Openfort SDK client load failed.');
       return err(mapOpenfortError(error, 'load Openfort SDK'));
     }

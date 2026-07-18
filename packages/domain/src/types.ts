@@ -180,4 +180,57 @@ export interface CashOutResult {
   orderId: string;
   status: Extract<OrderStatus, 'payment_pending' | 'delivered'>;
   trace: TraceStep[];
+  securityVerdict?: SecurityResult | undefined;
+}
+
+// ── Security types ─────────────────────────────────────────────────────
+
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type Verdict = 'ALLOW' | 'WARN' | 'BLOCK';
+
+export interface SecurityCheck {
+  /** Human-readable name of the check, e.g. "Amount limit" */
+  name: string;
+  /** Whether the check passed (true = safe, false = triggered) */
+  passed: boolean;
+  /** The verdict for this individual check */
+  verdict: Verdict;
+  /** Human-readable explanation of the result */
+  detail: string;
+  /** 0-100 contribution to the total risk score */
+  riskContribution: number;
+}
+
+export interface SecurityResult {
+  /** Aggregate risk score 0-100 */
+  riskScore: number;
+  /** Aggregate risk level */
+  riskLevel: RiskLevel;
+  /** Aggregate verdict (worst of all checks) */
+  verdict: Verdict;
+  /** Individual check results */
+  checks: SecurityCheck[];
+  /** Unix timestamp of when the check was performed */
+  timestamp: number;
+}
+
+export interface SpendingPolicy {
+  /** Amounts above this trigger a WARN (default: $200) */
+  warnAboveAmount: number;
+  /** Amounts above this trigger a BLOCK (default: $500) */
+  blockAboveAmount: number;
+  /** If set, only these categories are allowed */
+  allowedCategories?: string[];
+  /** If set, these categories are always blocked */
+  blockedCategories?: string[];
+  /** Amounts above this always require explicit confirmation (default: $100) */
+  requireConfirmationAbove: number;
+  /** Whether the policy is active */
+  active: boolean;
+}
+
+export interface SecurityPolicyPort {
+  getPolicy(userId: UserId): Promise<Result<SpendingPolicy, DomainError>>;
+  /** Optional: for natural-language policy updates */
+  setPolicy?(userId: UserId, policy: Partial<SpendingPolicy>): Promise<Result<SpendingPolicy, DomainError>>;
 }
