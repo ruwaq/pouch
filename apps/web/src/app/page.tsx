@@ -1,7 +1,7 @@
 'use client';
 
 import { Landing } from '../components/landing/Landing';
-import { ChatView } from '../components/chat/ChatView';
+import { DashboardLayout } from '../components/dashboard/DashboardLayout';
 import { useSession } from '../context/session-context';
 import { Spinner } from '../components/ui/Spinner';
 
@@ -23,5 +23,6 @@ export default function Home() {
     return <Landing />;
   }
 
-  return <ChatView />;
+  // Authenticated or demo mode → show the full dashboard with live panels
+  return <DashboardLayout />;
 }

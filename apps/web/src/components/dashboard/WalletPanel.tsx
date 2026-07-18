@@ -1,0 +1,131 @@
+'use client';
+
+import { useEffect, useState } from 'react';
+import { apiGet } from '../../lib/api-client';
+
+interface BalanceAsset {
+  chainId: number;
+  symbol: string;
+  amount: number;
+  usdValue: number;
+}
+
+interface BalanceData {
+  total: number;
+  assets: BalanceAsset[];
+  requiresConsolidation: boolean;
+}
+
+const CHAIN_NAMES: Record<number, string> = {
+  42161: 'Arbitrum',
+  8453: 'Base',
+  1: 'Ethereum',
+  137: 'Polygon',
+};
+
+export function WalletPanel() {
+  const [balance, setBalance] = useState<BalanceData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchBalance() {
+      try {
+        const data = await apiGet<BalanceData>('/balance?userId=demo-user');
+        if (!cancelled) setBalance(data);
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchBalance();
+    const interval = setInterval(fetchBalance, 15_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <PanelCard title="💰 Wallets">
+        <div className="space-y-2">
+          <div className="h-4 w-3/4 animate-pulse rounded bg-[var(--border)]" />
+          <div className="h-4 w-1/2 animate-pulse rounded bg-[var(--border)]" />
+        </div>
+      </PanelCard>
+    );
+  }
+
+  if (!balance || balance.assets.length === 0) {
+    return (
+      <PanelCard title="💰 Wallets">
+        <p className="text-xs text-[var(--muted)]">No funds detected on any chain.</p>
+      </PanelCard>
+    );
+  }
+
+  // Group assets by chain
+  const byChain = new Map<number, BalanceAsset[]>();
+  for (const a of balance.assets) {
+    const list = byChain.get(a.chainId) ?? [];
+    list.push(a);
+    byChain.set(a.chainId, list);
+  }
+
+  return (
+    <PanelCard title="💰 Wallets & Balances">
+      <div className="space-y-3">
+        {/* Total */}
+        <div className="flex items-center justify-between rounded-lg bg-[var(--accent)]/10 px-3 py-2">
+          <span className="text-xs font-medium text-[var(--fg)]">Total Balance</span>
+          <span className="text-sm font-bold text-[var(--accent)]">${balance.total.toFixed(2)}</span>
+        </div>
+
+        {/* Per-chain breakdown */}
+        {Array.from(byChain.entries()).map(([chainId, assets]) => (
+          <div key={chainId} className="space-y-1">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
+                {CHAIN_NAMES[chainId] ?? `Chain ${chainId}`}
+              </span>
+              <span className="h-px flex-1 bg-[var(--border)]" />
+            </div>
+            {assets.map((a, i) => (
+              <div key={i} className="flex items-center justify-between rounded bg-[var(--bg)] px-3 py-1.5 border border-[var(--border)]/50">
+                <span className="text-xs text-[var(--fg)]">
+                  {a.symbol} <span className="text-[var(--muted)]">{a.amount}</span>
+                </span>
+                <span className="text-xs font-medium text-[var(--fg)]">${a.usdValue.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        ))}
+
+        {/* Consolidation status */}
+        <div className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs ${
+          balance.requiresConsolidation
+            ? 'bg-amber-400/10 text-amber-300'
+            : 'bg-emerald-400/10 text-emerald-300'
+        }`}>
+          <span>{balance.requiresConsolidation ? '⚠️' : '✅'}</span>
+          <span>
+            {balance.requiresConsolidation
+              ? 'Multi-chain detected — Particle UA EIP-7702 consolidation ready'
+              : 'Single chain — no consolidation needed'}
+          </span>
+        </div>
+      </div>
+    </PanelCard>
+  );
+}
+
+function PanelCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)]/50 p-4">
+      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">{title}</h3>
+      {children}
+    </div>
+  );
+}
