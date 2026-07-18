@@ -68,7 +68,7 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: 'cash_out',
     description:
-      "Convert the user's crypto into a gift card, mobile top-up, or eSIM. Call this whenever the user wants to cash out, buy, or purchase — in English or Spanish (cambiar, comprar, cash out, enviar, recargar, etc.).",
+      "Convert the user's crypto into a gift card, mobile top-up, or eSIM. Call this whenever the user wants to cash out, buy, or purchase a gift card or top-up — in English or Spanish (cambiar, comprar, cash out, recargar, pagar, etc.). Do NOT call this for 'send to wallet' or 'transfer to address' requests — those are unsupported (use off_topic instead).",
     parameters: {
       type: T.OBJECT,
       properties: {
@@ -107,7 +107,7 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: 'off_topic',
     description:
-      'The user message is a greeting, a question about what Pouch can do, or an unsupported operation (send, transfer, swap, exchange, bridge, stake, deposit, withdraw crypto to a wallet). Pouch is an off-ramp agent only — it converts crypto to gift cards, top-ups, and eSIMs. Call this tool to reply conversationally and explain what Pouch CAN do.',
+      'The user message is a greeting, a question about what Pouch can do, or an unsupported operation (send/transfer to wallet address, swap, exchange, bridge, stake, deposit, withdraw crypto — in any language: enviar, transferir, mandar, intercambiar, etc.). Pouch is an off-ramp agent only — it converts crypto to gift cards, top-ups, and eSIMs. Call this tool to reply conversationally and explain what Pouch CAN do.',
     parameters: { type: T.OBJECT, properties: {} },
   },
 ];

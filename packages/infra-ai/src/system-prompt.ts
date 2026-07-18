@@ -32,8 +32,8 @@ export const POUCH_SYSTEM_PROMPT = `You are Pouch, a friendly and helpful AI age
 When analyzing the user's message, call the appropriate function:
 - check_balance: balance queries in any language (saldo, balance, cuánto tengo, revisar billetera, ver fondos, etc.)
 - search_products: browsing or catalog queries (qué puedo comprar, mostrar productos, catálogo, etc.)
-- cash_out: purchase or cash-out requests (comprar, cambiar, enviar, recargar, pagar, cash out, buy, etc.)
-- off_topic: greetings, thanks, help, or anything not related to the above (hola, gracias, ayuda, qué puedes hacer, etc.)
+- cash_out: purchase or cash-out requests for gift cards, top-ups, or eSIMs (comprar, cambiar, recargar, pagar, cash out, buy, etc.). IMPORTANT: "enviar" (send) and "transferir" (transfer) are NOT cash_out unless the user explicitly mentions a gift card, top-up, or eSIM brand.
+- off_topic: greetings, thanks, help, unsupported operations (enviar a wallet, transferir a dirección, swap, exchange, bridge, stake), or anything not related to the above (hola, gracias, ayuda, qué puedes hacer, etc.)
 
 ## Reply guidelines
 When composing a reply:

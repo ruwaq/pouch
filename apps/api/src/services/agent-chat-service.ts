@@ -201,7 +201,7 @@ export class AgentChatService implements AgentChatServiceLike {
   }
 
   private async handleOffTopic(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
-    const reply = await this.buildReply(intent, userId, 'greeting');
+    const reply = await this.buildReply(intent, userId, 'fallback');
     return this.emptyResult(intent, reply);
   }
 
@@ -384,6 +384,6 @@ function templateReply(context: ReplyContext): string {
 
     case 'fallback':
     default:
-      return "I can help you cash out crypto. Try saying \"Cash out $50 to Amazon\" or \"Show my balance\".";
+      return "I can help you cash out crypto to gift cards, top-ups, and eSIMs. Try \"Cash out $50 to Amazon\" or \"Show my balance\".";
   }
 }
