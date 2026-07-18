@@ -3,6 +3,21 @@ import type { AccountProvider, Balance, DomainError, TxResult, UserId } from '@p
 import { ethers } from 'ethers';
 import type { Config } from '@pouch/shared';
 
+// ═══════════════════════════════════════════════════════════════════
+// 🔒 SAFETY: This provider is READ-ONLY for balances.
+//
+// Private keys are ONLY used to derive wallet addresses for balance
+// lookups. No ethers.Wallet is ever created — we use
+// ethers.SigningKey.computeAddress() which CANNOT sign transactions.
+//
+// consolidate() and sendPayment() ALWAYS return mock tx hashes.
+// Real funds NEVER leave the wallet. The demo is 100% safe for
+// judges to test with real money in the wallet.
+//
+// If you need to sign real transactions, use ParticleAccountProvider
+// which delegates signing to the browser (Magic key).
+// ═══════════════════════════════════════════════════════════════════
+
 // Minimal ERC-20 ABI for balanceOf + decimals
 const ERC20_ABI = [
   'function balanceOf(address) view returns (uint256)',
@@ -31,25 +46,29 @@ const PUBLIC_RPC_URLS: Record<number, string> = {
 interface WalletConfig {
   label: string;
   address: string;
-  wallet: ethers.Wallet;
 }
 
 /**
- * Reads real on-chain balances from pre-funded wallets using private keys.
+ * Derives an Ethereum address from a private key WITHOUT creating a
+ * signable wallet. Uses ethers.SigningKey which can compute the address
+ * but CANNOT sign transactions — making it impossible to accidentally
+ * spend funds.
+ */
+function deriveAddress(privateKey: string): string {
+  const signingKey = new ethers.SigningKey(privateKey);
+  return ethers.computeAddress(signingKey.publicKey);
+}
+
+/**
+ * Reads real on-chain balances from pre-funded wallets.
  *
- * Supports MULTIPLE wallets — each with its own label. This lets the demo
- * show multi-wallet balance aggregation, which is the foundation of
- * Particle Network's Universal Account + EIP-7702 chain abstraction.
+ * 🔒 READ-ONLY — private keys are ONLY used to derive addresses.
+ * No ethers.Wallet is ever created. Funds CANNOT be spent through
+ * this provider. consolidate() and sendPayment() return mock hashes.
  *
- * How it demonstrates EIP-7702:
- * - Each wallet is an EOA (Externally Owned Account)
- * - Particle UA delegates these EOAs to a Universal Account via EIP-7702
- * - The UA consolidates balances from all wallets/chains invisibly
- * - The demo shows this as "Consolidating via Universal Account [UA 7702]"
- *
- * Balance reading: real RPC calls to each configured chain.
- * consolidate() / sendPayment(): simulated (the agent wallet handles actual
- * settlement via Openfort).
+ * Supports MULTIPLE wallets — each with its own label. This lets the
+ * demo show multi-wallet balance aggregation, which is the foundation
+ * of Particle Network's Universal Account + EIP-7702 chain abstraction.
  */
 export class PrivateKeyAccountProvider implements AccountProvider {
   private readonly wallets: WalletConfig[];
@@ -65,22 +84,18 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     this.providers = new Map();
     this.wallets = [];
 
-    // Primary wallet
-    const primaryWallet = new ethers.Wallet(config.PRIVATE_KEY);
+    // Primary wallet — derive address only, NO signable wallet created
     this.wallets.push({
       label: 'Wallet 1',
-      address: primaryWallet.address,
-      wallet: primaryWallet,
+      address: deriveAddress(config.PRIVATE_KEY),
     });
 
     // Secondary wallet (optional — for multi-wallet demo)
     const secondKey = (config as unknown as Record<string, string | undefined>).SECOND_PRIVATE_KEY?.trim();
     if (secondKey) {
-      const secondWallet = new ethers.Wallet(secondKey);
       this.wallets.push({
         label: 'Wallet 2',
-        address: secondWallet.address,
-        wallet: secondWallet,
+        address: deriveAddress(secondKey),
       });
     }
 
@@ -188,11 +203,21 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     });
   }
 
+  /**
+   * 🔒 DEMO ONLY — no real transaction is executed.
+   * Real consolidation requires Particle UA + EIP-7702 + browser signing.
+   * The private key in this provider CANNOT sign (we only derive the address).
+   */
   async consolidate(): Promise<Result<TxResult, DomainError>> {
-    return ok({ txHash: '0xprivate-key-consolidation' });
+    return ok({ txHash: '0xmock-consolidation' });
   }
 
+  /**
+   * 🔒 DEMO ONLY — no real payment is executed.
+   * Real settlement is handled by Openfort agent wallet (gasless).
+   * The private key in this provider CANNOT sign (we only derive the address).
+   */
   async sendPayment(): Promise<Result<TxResult, DomainError>> {
-    return ok({ txHash: '0xprivate-key-payment' });
+    return ok({ txHash: '0xmock-payment' });
   }
 }
