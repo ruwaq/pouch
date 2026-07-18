@@ -14,6 +14,9 @@ const BALANCE_PATTERN = /\b((?:show|check|my|what'?s\s+my)?\s*balance|how\s+much
 /** Product search / catalog — maps to search_products. Bilingual (EN + ES). */
 const SEARCH_PATTERN = /\b(search|what\s+(?:gift\s*)?cards?|what\s+can\s+(?:i|you)\s+buy|what\s+do\s+you\s+have|show\s+products?|list|catalog|available|qu[eé]\s+(?:puedo|puedes)\s+comprar|qu[eé]\s+(?:tienes?|hay)|mu[eé]strame|productos|cat[aá]logo|disponible|buscar)\b/i;
 
+/** Help / educational queries — how does it work, what is chain abstraction, etc. Bilingual. */
+const HELP_PATTERN = /\b(how\s+(does\s+it|do\s+you)\s+work|what\s+is\s+(chain\s+abstraction|eip.?7702|a\s+universal\s+account)|how\s+(is\s+it|are\s+you)\s+(safe|secure)|what\s+are\s+the\s+fees|what\s+chains?\s+(do\s+you\s+)?support|why\s+no\s+popups?|c[oó]mo\s+funciona|qu[eé]\s+es\s+(chain\s+abstraction|eip.?7702|universal\s+account)|es\s+seguro|c[oó]mo\s+(es\s+que|se\s+hace)\s+sin\s+popups?|qu[eé]\s+comisiones?\s+(tiene|cobras?))\b/i;
+
 /** Cash-out actions — buy, purchase, cash out, top up. Bilingual (EN + ES).
  *  NOTE: "enviar" is NOT here — it's ambiguous (send to wallet vs send gift card).
  *  Send-to-wallet is unsupported; it's caught by UNSUPPORTED_ACTION_PATTERN above. */
@@ -107,7 +110,12 @@ export class IntentParser implements IntentParserStrategy {
       return ok({ action: 'search_products', category: 'giftcard', amount: { value: 50, currency: 'USD' } });
     }
 
-    // ── 5. Cash-out ───────────────────────────────────────────────────
+    // ── 5. Help / educational ────────────────────────────────────────
+    if (HELP_PATTERN.test(normalized)) {
+      return ok({ action: 'help', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
+    }
+
+    // ── 6. Cash-out ───────────────────────────────────────────────────
     if (!SUPPORTED_ACTION_PATTERN.test(normalized)) {
       return err({
         type: 'UNSUPPORTED_INTENT',
