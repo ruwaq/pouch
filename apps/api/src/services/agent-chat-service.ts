@@ -294,10 +294,9 @@ export class AgentChatService implements AgentChatServiceLike {
     }
 
     if (walletLabels.length < 2) {
-      const reply = await this.buildReply(intent, userId, 'error', {
-        error: `You need at least 2 wallets to send between them. Currently: ${walletLabels.length} wallet(s) imported.`,
-      });
-      return this.emptyResult(intent, reply);
+      const errorMsg = `You need at least 2 wallets to send between them. Currently: ${walletLabels.length} wallet(s) imported. Available: ${walletLabels.join(', ') || 'none'}`;
+      const reply = await this.buildReply(intent, userId, 'error', { error: errorMsg });
+      return this.emptyResult(intent, reply, { phase: 'reply' });
     }
 
     // ── Parse destination wallet ──
