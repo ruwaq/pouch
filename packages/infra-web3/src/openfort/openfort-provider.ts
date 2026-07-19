@@ -187,9 +187,10 @@ export class OpenfortAgentWallet implements AgentWalletPort {
       const result = await clientResult.value.accounts.evm.backend.sendTransaction({
         account: { id: this.cachedAccount!.id },
         chainId: params.chainId,
-        interactions: [{ to: params.to, value: amountWei }],
+        interactions: [{ to: params.to, data: '0x' }],
         policy: this.feeSponsorshipId,
-      });
+        value: amountWei,
+      } as unknown as Parameters<OpenfortClientLike['accounts']['evm']['backend']['sendTransaction']>[0]);
 
       this.logger.info(
         { txHash: result.response.transactionHash, to: params.to, amountEth: params.amountEth },

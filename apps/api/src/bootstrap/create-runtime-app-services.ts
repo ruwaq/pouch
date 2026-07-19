@@ -316,6 +316,10 @@ export function createRuntimeAppServices(options: {
             }
             return agentWallet.settlePayment(params);
           },
+          // Expose sendEth for gas funding
+          ...(typeof (agentWallet as unknown as { sendEth?: unknown }).sendEth === 'function'
+            ? { sendEth: (agentWallet as unknown as { sendEth: Function }).sendEth.bind(agentWallet) }
+            : {}),
         }
       : undefined;
 
