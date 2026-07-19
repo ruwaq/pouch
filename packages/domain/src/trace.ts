@@ -7,6 +7,8 @@ export interface TraceStep {
   durationMs?: number;
   badge?: string;
   detail?: string;
+  /** Optional block explorer URL for this step (e.g. tx link). */
+  explorerUrl?: string;
 }
 
 export interface TraceRecorderPort {

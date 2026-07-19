@@ -204,6 +204,29 @@ export interface SwapResult {
   explorerUrl?: string;
   /** Source wallet label */
   walletLabel: string;
+  /** Whether gas was sponsored by Openfort (true for agent-backed swaps) */
+  gasSponsored?: boolean;
+}
+
+/** Receipt for a gas funding operation (Openfort sendEth). */
+export interface FundGasReceipt {
+  txHash: string;
+  chainId: number;
+  blockNumber?: number;
+  /** Amount of ETH sent for gas */
+  amountEth: number;
+  /** Source wallet label (e.g. "Openfort Backend") */
+  fromLabel: string;
+  /** Source wallet address */
+  fromAddress: string;
+  /** Destination wallet label */
+  toLabel: string;
+  /** Destination wallet address */
+  toAddress: string;
+  /** Whether gas was sponsored by Openfort */
+  gasSponsored: boolean;
+  /** Block explorer URL for the transaction */
+  explorerUrl?: string;
 }
 
 export interface AccountProvider {
