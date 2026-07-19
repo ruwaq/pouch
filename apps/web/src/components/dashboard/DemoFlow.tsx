@@ -11,6 +11,7 @@ const DEMO_STEPS = [
     description: 'Reads real on-chain balances from Arbitrum via RPC — 4 wallets, $11.37',
     bounty: 'Arbitrum Bounty',
     tech: 'Live RPC',
+    autoConfirm: false,
   },
   {
     label: 'Chain Abstraction',
@@ -19,6 +20,7 @@ const DEMO_STEPS = [
     description: 'Particle Network UA + EIP-7702: one balance, any chain, zero new addresses',
     bounty: 'UA Track',
     tech: 'EIP-7702',
+    autoConfirm: false,
   },
   {
     label: 'Fund Gas (Openfort)',
@@ -27,6 +29,8 @@ const DEMO_STEPS = [
     description: 'Openfort sends 0.0005 ETH to your wallet — gas is FREE (sponsored)',
     bounty: 'Openfort + Arbitrum',
     tech: 'GASLESS',
+    autoConfirm: true,
+    confirmMessage: 'yes',
   },
   {
     label: 'Swap ARB → ETH',
@@ -35,6 +39,8 @@ const DEMO_STEPS = [
     description: 'Uniswap V3 on Arbitrum: converts ARB to ETH for gas — real on-chain swap',
     bounty: 'Arbitrum Bounty',
     tech: 'Uniswap V3',
+    autoConfirm: true,
+    confirmMessage: 'yes',
   },
   {
     label: 'Send to Wallet',
@@ -43,6 +49,8 @@ const DEMO_STEPS = [
     description: 'Real Arbitrum transfer between your wallets — verifiable on Arbiscan',
     bounty: 'Arbitrum Bounty',
     tech: 'Real TX',
+    autoConfirm: true,
+    confirmMessage: 'yes',
   },
   {
     label: 'Cash Out',
@@ -51,6 +59,8 @@ const DEMO_STEPS = [
     description: 'Full flow: balance → security → routing → order → payment [NO POPUP]',
     bounty: 'UA Track',
     tech: 'UA 7702',
+    autoConfirm: true,
+    confirmMessage: 'yes',
   },
 ];
 
@@ -72,7 +82,16 @@ export function DemoFlow() {
       const step = DEMO_STEPS[i]!;
       sendMessage(step.message);
       setCompleted((prev) => (prev.includes(i) ? prev : [...prev, i]));
-      await new Promise((r) => setTimeout(r, 3000));
+      
+      // Wait for the response to render
+      if (step.autoConfirm) {
+        await new Promise((r) => setTimeout(r, 3500));
+        // Auto-confirm: send "yes" to execute the transaction
+        sendMessage(step.confirmMessage ?? 'yes');
+        await new Promise((r) => setTimeout(r, 3000));
+      } else {
+        await new Promise((r) => setTimeout(r, 2500));
+      }
     }
     setActiveStep(null);
   };

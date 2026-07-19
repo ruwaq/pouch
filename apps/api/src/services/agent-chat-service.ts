@@ -388,7 +388,30 @@ export class AgentChatService implements AgentChatServiceLike {
       );
       const ethBalance = ethAssets.reduce((sum, a) => sum + a.amount, 0);
       if (ethBalance < 0.0001) {
-        // Offer to fund gas via Openfort
+        // Auto-fund gas via Openfort if available
+        if (this.agentWallet) {
+          const fundResult = await this.fundGasForWallet(userId, {
+            ...intent,
+            token: 'ETH',
+            brand: 'ETH',
+            fromLabel: matchedFrom,
+            amount: { value: 0.0005, currency: 'USD' },
+          });
+          if (isOk(fundResult)) {
+            // Gas funded! Continue with the send confirmation
+            const reply = await this.buildReply(resolvedIntent, userId, 'send_confirmation', {
+              balance: b,
+              planSummary,
+              error: `⛽ Gas auto-funded by Openfort! 0.0005 ETH sent to ${matchedFrom}. Ready to send.`,
+            });
+            return this.emptyResult(resolvedIntent, reply, {
+              phase: 'send_confirmation',
+              balanceSnapshot: b,
+              planSummary: `${planSummary} (⛽ gas auto-funded by Openfort)`,
+            });
+          }
+        }
+        // Fallback: show warning
         const reply = await this.buildReply(intent, userId, 'send_confirmation', {
           balance: b,
           planSummary,
