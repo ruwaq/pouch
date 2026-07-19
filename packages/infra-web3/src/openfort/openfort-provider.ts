@@ -24,7 +24,7 @@ export interface OpenfortClientLike {
         sendTransaction(args: {
           account: { id: string };
           chainId: number;
-          interactions: Array<{ to: string; data: string }>;
+          interactions: Array<{ to: string; data?: string; value?: string }>;
           policy: string;
         }): Promise<{ response: { transactionHash: string } }>;
       };
@@ -154,6 +154,55 @@ export class OpenfortAgentWallet implements AgentWalletPort {
     } catch (error) {
       this.logger.error({ error, chainId: params.chainId }, 'Openfort settlement failed.');
       return err(mapOpenfortError(error, 'settle payment gasless'));
+    }
+  }
+
+  /**
+   * Sends native ETH from the Openfort backend wallet to any address.
+   * Gas is sponsored by Openfort's policy. Used to send gas ETH to
+   * user wallets that need ETH for transaction fees.
+   *
+   * @param to - Destination address
+   * @param amountEth - Amount of ETH to send (e.g. 0.0005)
+   * @param chainId - Chain ID (e.g. 42161 for Arbitrum)
+   */
+  async sendEth(params: {
+    to: string;
+    amountEth: number;
+    chainId: number;
+  }): Promise<Result<TxResult, DomainError>> {
+    const addressResult = await this.getAddress();
+    if (!addressResult.ok) {
+      return addressResult;
+    }
+
+    const clientResult = await this.getClient();
+    if (!clientResult.ok) {
+      return clientResult;
+    }
+
+    try {
+      const amountWei = ethers.parseEther(params.amountEth.toString()).toString();
+
+      const result = await clientResult.value.accounts.evm.backend.sendTransaction({
+        account: { id: this.cachedAccount!.id },
+        chainId: params.chainId,
+        interactions: [{ to: params.to, value: amountWei }],
+        policy: this.feeSponsorshipId,
+      });
+
+      this.logger.info(
+        { txHash: result.response.transactionHash, to: params.to, amountEth: params.amountEth },
+        'Openfort gasless ETH send submitted.',
+      );
+
+      return ok({
+        txHash: result.response.transactionHash,
+        chainId: params.chainId,
+      });
+    } catch (error) {
+      this.logger.error({ error, to: params.to }, 'Openfort ETH send failed.');
+      return err(mapOpenfortError(error, 'send ETH gasless'));
     }
   }
 }

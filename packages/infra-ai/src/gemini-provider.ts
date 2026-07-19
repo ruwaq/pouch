@@ -96,7 +96,6 @@ export class GeminiProvider implements LLMProvider {
       contents: [{ parts: [{ text: request.message }] }],
     };
 
-    // Use systemInstruction when available (Gemini free tier handles this fine)
     if (request.systemInstruction) {
       body.systemInstruction = {
         parts: [{ text: request.systemInstruction }],

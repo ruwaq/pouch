@@ -97,7 +97,7 @@ function buildAgentApp() {
   const repository = new MemoryOrderRepository();
   const router = new OffRampRouter(providers);
   const executor = new CashOutExecutor(router, providers, demoAccountProvider, repository, logger);
-  const service = new AgentChatService(new IntentParser(), executor, repository, new BalanceService(demoAccountProvider), providers);
+  const service = new AgentChatService(new IntentParser(), executor, repository, new BalanceService(demoAccountProvider), providers, demoAccountProvider);
   const balanceService = new BalanceService(demoAccountProvider);
   const orderService = new OrderService(repository);
 

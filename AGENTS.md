@@ -1,7 +1,7 @@
 # AGENTS.md — Pouch
 
 > **Read this FIRST.** This is the single source of truth for any agent (human or AI, local or remote) working on Pouch.
-> Last updated: 2026-07-18. Project status: **Phase 0-7 complete (148 tests). Conversational agent with Gemini 3.5 Flash + multi-turn confirmation + Security Firewall + Try Demo. Deployed on Vercel. Dual-hackathon: UXmaxx (Encode Club) + OKX AI Genesis (A2A track). Resilience: Gemini → regex fallback + template replies. GitHub: https://github.com/ruwaq/pouch**.
+> Last updated: 2026-07-19. Project status: **Phase 0-8 complete (150+ tests). Arbitrum Full Stack: send, swap (Uniswap V3), fund gas (Openfort). Magic on Arbitrum. Deployed on Vercel. Dual-hackathon: UXmaxx (Encode Club) + OKX AI Genesis. Deadline: Jul 20, 2026, 1:59 PM GMT+2. GitHub: https://github.com/ruwaq/pouch**.
 
 ---
 

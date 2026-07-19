@@ -8,41 +8,41 @@ const DEMO_STEPS = [
     label: 'Check Balance',
     message: 'Show my balance',
     icon: '💰',
-    description: 'Reads real on-chain balances from Arbitrum + Avalanche via RPC',
+    description: 'Reads real on-chain balances from Arbitrum via RPC — 4 wallets, $11.37',
     bounty: 'Arbitrum Bounty',
-    tech: 'Real Balance',
+    tech: 'Live RPC',
   },
   {
     label: 'Chain Abstraction',
     message: 'What is chain abstraction?',
     icon: '🔮',
-    description: 'Explains Particle Network Universal Accounts + EIP-7702',
+    description: 'Particle Network UA + EIP-7702: one balance, any chain, zero new addresses',
     bounty: 'UA Track',
     tech: 'EIP-7702',
   },
   {
-    label: 'Zero Popups',
-    message: 'How do blind signatures work?',
-    icon: '🪄',
-    description: 'Magic Labs embedded wallet — sign in once, never see a popup again',
-    bounty: 'Magic Labs Bonus',
-    tech: 'NO POPUP',
-  },
-  {
-    label: 'Gas Sponsorship',
-    message: 'What are the fees?',
+    label: 'Fund Gas (Openfort)',
+    message: 'fund gas',
     icon: '⛽',
-    description: 'Openfort pays all gas fees. User never pays gas.',
-    bounty: 'Openfort Subtrack',
-    tech: 'Gasless',
+    description: 'Openfort sends 0.0005 ETH to your wallet — gas is FREE (sponsored)',
+    bounty: 'Openfort + Arbitrum',
+    tech: 'GASLESS',
   },
   {
-    label: 'Security Firewall',
-    message: 'Is it safe?',
-    icon: '🛡️',
-    description: 'Pre-execution checks: amount limits, category allowlists, risk scoring',
-    bounty: 'All Bounties',
-    tech: 'SHIELD',
+    label: 'Swap ARB → ETH',
+    message: 'swap 1 ARB for ETH',
+    icon: '🔄',
+    description: 'Uniswap V3 on Arbitrum: converts ARB to ETH for gas — real on-chain swap',
+    bounty: 'Arbitrum Bounty',
+    tech: 'Uniswap V3',
+  },
+  {
+    label: 'Send to Wallet',
+    message: 'send 5 ARB to Wallet 3',
+    icon: '💸',
+    description: 'Real Arbitrum transfer between your wallets — verifiable on Arbiscan',
+    bounty: 'Arbitrum Bounty',
+    tech: 'Real TX',
   },
   {
     label: 'Cash Out',
@@ -72,15 +72,14 @@ export function DemoFlow() {
       const step = DEMO_STEPS[i]!;
       sendMessage(step.message);
       setCompleted((prev) => (prev.includes(i) ? prev : [...prev, i]));
-      await new Promise((r) => setTimeout(r, 2500));
+      await new Promise((r) => setTimeout(r, 3000));
     }
     setActiveStep(null);
   };
 
   return (
-    <PanelCard title="🎯 Quick Demo — Click to try each technology">
+    <PanelCard title="🎯 Live Demo — 6 Real Steps (click each or Run All)">
       <div className="space-y-2">
-        {/* Steps */}
         {DEMO_STEPS.map((step, i) => (
           <button
             key={i}
@@ -110,7 +109,6 @@ export function DemoFlow() {
           </button>
         ))}
 
-        {/* Run All */}
         <button
           onClick={handleRunAll}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[var(--accent)]/90 active:scale-[0.98]"
@@ -118,6 +116,10 @@ export function DemoFlow() {
           <span>▶️</span>
           <span>Run All 6 Steps</span>
         </button>
+
+        <p className="text-[10px] text-[var(--muted)] text-center">
+          Steps 3-5 require ETH for gas. Run &ldquo;Fund Gas&rdquo; first to get free ETH from Openfort.
+        </p>
       </div>
     </PanelCard>
   );

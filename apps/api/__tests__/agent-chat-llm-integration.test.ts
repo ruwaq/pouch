@@ -162,9 +162,9 @@ function buildService(parser: IntentParserStrategy, replyStrategy?: ReplyStrateg
   const router = new OffRampRouter(providers);
   const executor = new CashOutExecutor(router, providers, stubAccountProvider, repository, logger);
   const balanceService = new BalanceService(stubAccountProvider);
-  return replyStrategy
-    ? new AgentChatService(parser, executor, repository, balanceService, providers, replyStrategy)
-    : new AgentChatService(parser, executor, repository, balanceService, providers);
+return replyStrategy
+	    ? new AgentChatService(parser, executor, repository, balanceService, providers, stubAccountProvider, replyStrategy)
+	    : new AgentChatService(parser, executor, repository, balanceService, providers, stubAccountProvider);
 }
 
 describe('AgentChatService + LLM integration', () => {

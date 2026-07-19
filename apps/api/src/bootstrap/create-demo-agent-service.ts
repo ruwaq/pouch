@@ -1,4 +1,4 @@
-import { CashOutExecutor, OffRampRouter, SecurityChecker, DEFAULT_POLICY, type AccountProvider, type LoggerPort, type OffRampProvider, type OrderRequest, type Product, type SecurityPolicyPort, type SpendingPolicy } from '@pouch/domain';
+import { CashOutExecutor, OffRampRouter, SecurityChecker, DEFAULT_POLICY, type AccountProvider, type AgentWalletPort, type LoggerPort, type OffRampProvider, type OrderRequest, type Product, type SecurityPolicyPort, type SpendingPolicy } from '@pouch/domain';
 import { createAgentLlm } from '@pouch/infra-ai';
 import { ok } from '@pouch/shared';
 
@@ -123,7 +123,7 @@ export function createDemoOrderService(): OrderService {
   return createDemoAppServices().orderService;
 }
 
-export function createDemoAppServices(accountProvider?: AccountProvider): {
+export function createDemoAppServices(accountProvider?: AccountProvider, agentWallet?: AgentWalletPort): {
   agentService: AgentChatService;
   balanceService: BalanceService;
   orderService: OrderService;
@@ -132,7 +132,7 @@ export function createDemoAppServices(accountProvider?: AccountProvider): {
   const repository = new MemoryOrderRepository();
   const router = new OffRampRouter(providers);
   const realAccountProvider = accountProvider ?? demoAccountProvider;
-  const executor = new CashOutExecutor(router, providers, realAccountProvider, repository, logger, undefined, demoSecurityChecker);
+  const executor = new CashOutExecutor(router, providers, realAccountProvider, repository, logger, agentWallet, demoSecurityChecker);
 
   // Use Gemini LLM when configured, fall back to regex parser + template reply.
   // This lets the demo run with conversational AI when GEMINI_API_KEY is set.
@@ -153,8 +153,8 @@ export function createDemoAppServices(accountProvider?: AccountProvider): {
   console.error('[demo] replyStrategy configured:', Boolean(replyStrategy));
   const balanceService = new BalanceService(realAccountProvider);
   const agentService = replyStrategy
-    ? new AgentChatService(intentParser, executor, repository, balanceService, providers, replyStrategy, demoSecurityChecker)
-    : new AgentChatService(intentParser, executor, repository, balanceService, providers, undefined, demoSecurityChecker);
+    ? new AgentChatService(intentParser, executor, repository, balanceService, providers, realAccountProvider, replyStrategy, demoSecurityChecker, agentWallet)
+    : new AgentChatService(intentParser, executor, repository, balanceService, providers, realAccountProvider, undefined, demoSecurityChecker, agentWallet);
 
   return {
     agentService,

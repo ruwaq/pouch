@@ -68,7 +68,7 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
   {
     name: 'cash_out',
     description:
-      "Convert the user's crypto into a gift card, mobile top-up, or eSIM. Call this whenever the user wants to cash out, buy, or purchase a gift card or top-up — in English or Spanish (cambiar, comprar, cash out, recargar, pagar, etc.). Do NOT call this for 'send to wallet' or 'transfer to address' requests — those are unsupported (use off_topic instead).",
+      "Convert the user's crypto into a gift card, mobile top-up, or eSIM. Call this whenever the user wants to cash out, buy, or purchase a gift card or top-up — in English or Spanish (cambiar, comprar, cash out, recargar, pagar, etc.). Do NOT call this for 'send to wallet' or 'transfer to address' requests — use the send tool instead.",
     parameters: {
       type: T.OBJECT,
       properties: {
@@ -135,9 +135,23 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
     },
   },
   {
+    name: 'swap',
+    description:
+      'The user wants to swap/convert one token for another. Use for: "swap 1 ARB for ETH", "convert ARB to ETH", "cambiar ARB por ETH", "swap tokens". Currently supports ARB → ETH on Arbitrum via Uniswap V3. This is how users get ETH for gas.',
+    parameters: {
+      type: T.OBJECT,
+      properties: {
+        amount: { type: T.NUMBER, description: 'Amount of token to swap (e.g. 1 for 1 ARB).' },
+        token: { type: T.STRING, description: 'Token to sell (e.g. "ARB").' },
+        targetToken: { type: T.STRING, description: 'Token to receive (e.g. "ETH").' },
+      },
+      required: ['amount'],
+    },
+  },
+  {
     name: 'off_topic',
     description:
-      'The user is greeting, saying thanks, or asking for something Pouch CANNOT do (send crypto to a wallet, swap tokens, bridge, stake, deposit, withdraw — in any language: enviar, transferir, mandar, intercambiar). IMPORTANT: if the user is asking HOW something works or WHAT something is (e.g. "how does this work", "what is chain abstraction", "is it safe"), use the help tool instead. This tool is for truly off-topic or unsupported requests.',
+      'The user is greeting, saying thanks, or asking for something Pouch CANNOT do (swap tokens, bridge, stake, deposit, withdraw — in any language: intercambiar, puentear, stakear). IMPORTANT: if the user is asking HOW something works or WHAT something is (e.g. "how does this work", "what is chain abstraction", "is it safe"), use the help tool instead. If the user wants to send crypto between their own wallets, use the send tool. This tool is for truly off-topic or unsupported requests.',
     parameters: { type: T.OBJECT, properties: {} },
   },
 ];

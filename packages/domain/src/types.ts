@@ -88,7 +88,7 @@ export interface WebhookEvent {
 }
 
 export interface CashOutIntent {
-  action: 'cash_out' | 'check_balance' | 'search_products' | 'off_topic' | 'help' | 'send';
+  action: 'cash_out' | 'check_balance' | 'search_products' | 'off_topic' | 'help' | 'send' | 'swap';
   category: OffRampCategory;
   brand?: string;
   amount: Amount;
@@ -96,6 +96,16 @@ export interface CashOutIntent {
     name?: string;
     email?: string;
   };
+  /** For send/swap action: token symbol (e.g. "ARB", "ETH", "USDC") */
+  token?: string;
+  /** For send action: destination wallet label (e.g. "Wallet 3") */
+  toLabel?: string;
+  /** For send action: source wallet label (e.g. "Wallet 1") */
+  fromLabel?: string;
+  /** For send/swap action: target chain ID (default: settlement chain) */
+  chainId?: number;
+  /** For swap action: token to receive (e.g. "ETH") */
+  targetToken?: string;
 }
 
 export interface RoutingDecision {
@@ -133,6 +143,10 @@ export interface Balance {
 export interface TxResult {
   txHash: string;
   chainId?: number;
+  blockNumber?: number;
+  gasUsed?: string;
+  gasCostUsd?: number;
+  explorerUrl?: string;
 }
 
 export interface SendPaymentParams {
@@ -141,6 +155,55 @@ export interface SendPaymentParams {
   amount: Amount;
   chainId: number;
   token: string;
+}
+
+/** Detailed receipt for a wallet-to-wallet transfer shown in the chat UI. */
+export interface SendReceipt {
+  txHash: string;
+  blockNumber?: number;
+  gasUsed?: string;
+  gasCostUsd?: number;
+  fromAddress: string;
+  fromLabel: string;
+  toAddress: string;
+  toLabel: string;
+  amount: Amount;
+  token: string;
+  chainId: number;
+  explorerUrl?: string;
+  /** Whether gas was sponsored by Openfort */
+  gasSponsored: boolean;
+}
+
+/** Parsed intent for wallet-to-wallet send operations. */
+export interface SendIntent {
+  action: 'send';
+  fromLabel?: string;
+  toLabel: string;
+  amount: Amount;
+  token: string;
+  chainId: number;
+}
+
+/** Result of a token swap (e.g. ARB → ETH via Uniswap). */
+export interface SwapResult {
+  txHash: string;
+  chainId: number;
+  blockNumber?: number;
+  /** Token sold (e.g. "ARB") */
+  tokenIn: string;
+  /** Amount sold */
+  amountIn: number;
+  /** Token received (e.g. "ETH") */
+  tokenOut: string;
+  /** Amount received */
+  amountOut: number;
+  /** Gas used for the swap */
+  gasUsed?: string;
+  gasCostUsd?: number;
+  explorerUrl?: string;
+  /** Source wallet label */
+  walletLabel: string;
 }
 
 export interface AccountProvider {

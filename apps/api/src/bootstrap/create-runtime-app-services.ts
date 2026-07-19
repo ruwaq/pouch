@@ -7,7 +7,7 @@ import {
   DrizzleWebhookEventStore,
   type WebhookEventStore,
 } from '@pouch/infra-db';
-import { createAccountProvider, createAgentWallet, PrivateKeyAccountProvider } from '@pouch/infra-web3';
+import { createAccountProvider, createAgentWallet, PrivateKeyAccountProvider, OpenfortAgentWallet, createRealOpenfortClientFactory } from '@pouch/infra-web3';
 import { loadConfig, ok, type Config } from '@pouch/shared';
 
 import { BitrefillWebhookService } from '../services/bitrefill-webhook-service';
@@ -161,6 +161,16 @@ function createHybridAccountProvider(realProvider: AccountProvider): AccountProv
   const demoProvider = createDemoAccountProvider();
   const isDemo = (userId: string) => userId === 'demo-user' || userId === '0xdemo';
 
+  // Expose wallet info methods from the real provider (if available)
+  // so the send flow can discover available wallets.
+  const realExtra = realProvider as unknown as Record<string, unknown>;
+  const extraMethods: Record<string, unknown> = {};
+  for (const key of ['getWalletLabels', 'getWalletInfo', 'findWallet', 'swap', 'sendEth']) {
+    if (typeof realExtra[key] === 'function') {
+      extraMethods[key] = realExtra[key];
+    }
+  }
+
   return {
     async getUnifiedBalance(userId) {
       if (isDemo(userId)) return demoProvider.getUnifiedBalance(userId);
@@ -174,6 +184,7 @@ function createHybridAccountProvider(realProvider: AccountProvider): AccountProv
       if (isDemo(params.from)) return demoProvider.sendPayment(params);
       return realProvider.sendPayment(params);
     },
+    ...extraMethods,
   };
 }
 
@@ -218,7 +229,18 @@ export function createRuntimeAppServices(options: {
       } as unknown as Config;
 
       const realAccountProvider = new PrivateKeyAccountProvider(pkConfig);
-      const demoServices = createDemoAppServices(realAccountProvider);
+      const openfortKey = (env.OPENFORT_SECRET_KEY ?? process.env.OPENFORT_SECRET_KEY ?? '').trim();
+      const openfortWalletSecret = (env.OPENFORT_WALLET_SECRET ?? process.env.OPENFORT_WALLET_SECRET ?? '').trim();
+      const openfortFeeSponsorship = (env.OPENFORT_FEE_SPONSORSHIP_ID ?? process.env.OPENFORT_FEE_SPONSORSHIP_ID ?? '').trim();
+      let agentWallet: AgentWalletPort | undefined;
+      if (openfortKey && openfortWalletSecret && openfortFeeSponsorship) {
+        const clientFactory = createRealOpenfortClientFactory({
+          secretKey: openfortKey,
+          walletSecret: openfortWalletSecret,
+        });
+        agentWallet = new OpenfortAgentWallet(clientFactory, openfortFeeSponsorship, runtimeLogger);
+      }
+      const demoServices = createDemoAppServices(realAccountProvider, agentWallet);
 
       return {
         mode: 'demo',
@@ -319,8 +341,8 @@ export function createRuntimeAppServices(options: {
     const { intentParser, replyStrategy } = createAgentLlm(config);
     const balanceService = new BalanceService(hybridAccountProvider);
     const agentService = replyStrategy
-      ? new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, replyStrategy, runtimeSecurityChecker)
-      : new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, undefined, runtimeSecurityChecker);
+      ? new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, hybridAccountProvider, replyStrategy, runtimeSecurityChecker, hybridAgentWallet)
+      : new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, hybridAccountProvider, undefined, runtimeSecurityChecker, hybridAgentWallet);
 
     return {
       mode: 'configured',

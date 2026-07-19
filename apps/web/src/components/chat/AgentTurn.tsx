@@ -3,19 +3,44 @@ import type { AgentChatResponse } from '../../lib/types';
 import { TraceTimeline } from './TraceTimeline';
 import { ReceiptCard } from './ReceiptCard';
 import { ConfirmationCard } from './ConfirmationCard';
+import { SendConfirmationCard } from './SendConfirmationCard';
+import { SendReceiptCard } from './SendReceiptCard';
+import { SwapConfirmationCard } from './SwapConfirmationCard';
+import { SwapReceiptCard } from './SwapReceiptCard';
 
 export function AgentTurn({ response }: { response: AgentChatResponse }) {
   const isConfirmation = response.phase === 'confirmation';
+  const isSendConfirmation = response.phase === 'send_confirmation';
+  const isSwapConfirmation = response.phase === 'swap_confirmation';
+  const isExecuted = response.phase === 'executed';
+  const isSend = response.intent.action === 'send';
+  const isSwap = response.intent.action === 'swap';
 
   return (
     <div className="mt-2 space-y-2">
       {/* Reply text — hidden when confirmation card is shown */}
-      {!isConfirmation ? (
+      {!isConfirmation && !isSendConfirmation && !isSwapConfirmation ? (
         <p className="whitespace-pre-wrap text-sm text-[var(--fg)]">{response.reply}</p>
       ) : null}
 
-      {/* Confirmation card with transaction details + Confirm/Cancel buttons */}
+      {/* Send confirmation card */}
+      {isSendConfirmation ? <SendConfirmationCard response={response} /> : null}
+
+      {/* Swap confirmation card */}
+      {isSwapConfirmation ? <SwapConfirmationCard response={response} /> : null}
+
+      {/* Cash-out confirmation card */}
       {isConfirmation ? <ConfirmationCard response={response} /> : null}
+
+      {/* Send receipt card */}
+      {isExecuted && isSend && response.sendReceipt ? (
+        <SendReceiptCard receipt={response.sendReceipt} />
+      ) : null}
+
+      {/* Swap receipt card */}
+      {isExecuted && isSwap && response.swapReceipt ? (
+        <SwapReceiptCard receipt={response.swapReceipt} />
+      ) : null}
 
       {response.trace.length > 0 ? (
         <>
@@ -29,7 +54,7 @@ export function AgentTurn({ response }: { response: AgentChatResponse }) {
           <TraceTimeline trace={response.trace} />
         </>
       ) : null}
-      {response.status === 'delivered' ? <ReceiptCard orderId={response.orderId} /> : null}
+      {response.status === 'delivered' && !isSend ? <ReceiptCard orderId={response.orderId} /> : null}
     </div>
   );
 }

@@ -24,10 +24,23 @@ const HELP_PATTERN = /\b(how\s+(does\s+(it|this|that)\s+work|do\s+you\s+work|is\
  *  Send-to-wallet is unsupported; it's caught by UNSUPPORTED_ACTION_PATTERN above. */
 const SUPPORTED_ACTION_PATTERN = /\b(cash\s*out|cashout|buy|purchase|top\s*up|topup|refill|comprar|cambiar|recargar|recarga|pagar|retirar|sacar|gastar)\b/i;
 
-/** Actions the user might try that Pouch doesn't support — send, swap, transfer, etc.
+/** Actions the user might try that Pouch doesn't support — swap, bridge, stake, etc.
  *  When matched, we give a helpful message explaining what Pouch CAN do.
- *  Bilingual: English + Spanish (enviar, mandar, transferir, intercambiar). */
-const UNSUPPORTED_ACTION_PATTERN = /\b(send|transfer|withdraw|swap|exchange|convert|bridge|stake|lend|borrow|deposit|unwrap|wrap|env[ií]a[r]?|mandar|transferir|intercambiar|cambiar\s+a|mover\s+a)\b/i;
+ *  Bilingual: English + Spanish.
+ *  NOTE: "send", "transfer", "enviar", "mandar" are NOT here — they're handled
+ *  by the wallet-to-wallet send flow. */
+const UNSUPPORTED_ACTION_PATTERN = /\b(bridge|stake|lend|borrow|deposit|unwrap|wrap|puentear)\b/i;
+
+/** Wallet-to-wallet send — maps to the 'send' action. Bilingual (EN + ES).
+ *  Matches: "send 5 ARB to Wallet 3", "transfer 0.01 ETH to wallet 2",
+ *  "enviar 10 tokens a Wallet 3", "mandar ARB a wallet 2" */
+const SEND_PATTERN = /\b(send|transfer|env[ií]a[r]?|mandar|transferir|mover)\s+.+?\b(to|a|para)\b/i;
+
+/** Fund gas — "fund gas for Wallet 1", "send gas to my wallet", "get ETH for gas" */
+const FUND_GAS_PATTERN = /\b(fund\s*gas|gas\s*fund|get\s*(eth|gas)|send\s*(eth|gas)\s*(to|for)\s*(my\s*)?wallet|need\s*(eth|gas)|dame\s*(eth|gas)|necesito\s*(eth|gas))\b/i;
+
+/** Token swap — "swap 1 ARB for ETH", "convert ARB to ETH", "cambiar ARB por ETH" */
+const SWAP_PATTERN = /\b(swap|convert|exchange|cambiar|intercambiar)\s+.+?\b(for|to|por|a|para)\b/i;
 
 const DOLLAR_AMOUNT_PATTERN = /\$(\d+(?:\.\d{1,2})?)/i;
 const USD_AMOUNT_PATTERN = /(\d+(?:\.\d{1,2})?)\s*(?:usd|dollars?)\b/i;
@@ -99,27 +112,52 @@ export class IntentParser implements IntentParserStrategy {
       return ok({ action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
     }
 
-    // ── 3. Unsupported actions (send, swap, transfer, etc.) ─────────
-    //     Check BEFORE balance/search so "send to my wallet" doesn't match
+    // ── 3. Token swap (ARB → ETH) ────────────────────────────────────
+    //     Check BEFORE send so "swap ARB to ETH" isn't caught as "send".
+    if (SWAP_PATTERN.test(normalized)) {
+      return this.parseSwapIntent(message, normalized);
+    }
+
+    // ── 3.5 Fund gas (get ETH from Openfort) ──────────────────────
+    if (FUND_GAS_PATTERN.test(normalized)) {
+      return ok({
+        action: 'send',
+        category: 'giftcard',
+        token: 'ETH',
+        brand: 'ETH',
+        amount: { value: 0.0005, currency: 'USD' },
+        chainId: 42161,
+      });
+    }
+
+    // ── 4. Wallet-to-wallet send ─────────────────────────────────────
+    //     Check BEFORE unsupported actions so "send 5 ARB to Wallet 3"
+    //     is routed to the send handler, not blocked.
+    if (SEND_PATTERN.test(normalized)) {
+      return this.parseSendIntent(message, normalized);
+    }
+
+    // ── 5. Unsupported actions (bridge, stake, etc.) ─────────────
+    //     Check BEFORE balance/search so "swap to my wallet" doesn't match
     //     the balance pattern just because it contains "wallet".
     if (UNSUPPORTED_ACTION_PATTERN.test(normalized)) {
       return err({
         type: 'UNSUPPORTED_INTENT',
-        message: "Pouch is a crypto off-ramp agent — I convert crypto to gift cards, mobile top-ups, and eSIMs. I don't support sending crypto to wallets, swapping tokens, or transferring between chains. Try 'Cash out $50 to Amazon' or 'Show my balance'.",
+        message: "Pouch is a crypto off-ramp agent — I convert crypto to gift cards, mobile top-ups, and eSIMs. I don't support swapping tokens, bridging, or staking. Try 'Cash out $50 to Amazon' or 'Show my balance'.",
       });
     }
 
-    // ── 4. Balance check ──────────────────────────────────────────────
+    // ── 5. Balance check ──────────────────────────────────────────────
     if (BALANCE_PATTERN.test(normalized)) {
       return ok({ action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
     }
 
-    // ── 5. Product search ─────────────────────────────────────────────
+    // ── 6. Product search ─────────────────────────────────────────────
     if (SEARCH_PATTERN.test(normalized)) {
       return ok({ action: 'search_products', category: 'giftcard', amount: { value: 50, currency: 'USD' } });
     }
 
-    // ── 6. Cash-out ───────────────────────────────────────────────────
+    // ── 7. Cash-out ───────────────────────────────────────────────────
     if (!SUPPORTED_ACTION_PATTERN.test(normalized)) {
       return err({
         type: 'UNSUPPORTED_INTENT',
@@ -147,6 +185,81 @@ export class IntentParser implements IntentParserStrategy {
         value: amount,
         currency: 'USD',
       },
+    });
+  }
+
+  /**
+   * Parses wallet-to-wallet send intents: "send 5 ARB to Wallet 3"
+   * Extracts: token (ARB, ETH, USDC, etc.), amount, and destination wallet label.
+   */
+  private parseSendIntent(message: string, normalized: string): Result<CashOutIntent, DomainError> {
+    // Extract token: "send 5 ARB", "send 0.01 ETH", "send USDC"
+    const tokenMatch = normalized.match(/\b(ARB|ETH|USDC|USDT|AVAX|MATIC|SOL)\b/i);
+    const token = tokenMatch?.[1]?.toUpperCase() ?? 'ETH';
+
+    // Extract amount: "send 5 ARB", "send 0.01 ETH", "send 100 USDC"
+    const amountMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(?:ARB|ETH|USDC|USDT|AVAX|MATIC|SOL|tokens?)?/i);
+    const amount = amountMatch?.[1] ? Number(amountMatch[1]) : null;
+
+    if (amount === null || amount <= 0) {
+      return err({
+        type: 'INVALID_INTENT_AMOUNT',
+        message: 'How much would you like to send? Try "send 5 ARB to Wallet 3".',
+      });
+    }
+
+    // Extract destination wallet: "to Wallet 3", "a Wallet 3", "para Wallet 3"
+    const toMatch = normalized.match(/(?:to|a|para)\s+(wallet\s*\d+|0x[a-fA-F0-9]+|\S+)/i);
+    const toLabel = toMatch?.[1]?.trim();
+
+    // Extract source wallet (optional): "from Wallet 1"
+    const fromMatch = normalized.match(/(?:from|de|desde)\s+(wallet\s*\d+|0x[a-fA-F0-9]+|\S+)/i);
+    const fromLabel = fromMatch?.[1]?.trim();
+
+    return ok({
+      action: 'send',
+      category: 'giftcard',
+      brand: token,
+      token,
+      amount: { value: amount, currency: 'USD' },
+      ...(toLabel ? { toLabel } : {}),
+      ...(fromLabel ? { fromLabel } : {}),
+      chainId: 42161, // Default: Arbitrum
+    });
+  }
+
+  /**
+   * Parses token swap intents: "swap 1 ARB for ETH", "convert 5 ARB to ETH"
+   * Extracts: tokenIn (ARB), tokenOut (ETH), amount.
+   */
+  private parseSwapIntent(message: string, normalized: string): Result<CashOutIntent, DomainError> {
+    // Extract token to sell: "swap 1 ARB", "convert ARB"
+    const tokenInMatch = normalized.match(/\b(ARB|ETH|USDC|USDT|AVAX)\b/i);
+    const tokenIn = tokenInMatch?.[1]?.toUpperCase() ?? 'ARB';
+
+    // Extract token to receive: "for ETH", "to ETH", "por ETH"
+    const tokenOutMatch = normalized.match(/(?:for|to|por|a|para)\s+(ARB|ETH|USDC|USDT|AVAX)\b/i);
+    const tokenOut = tokenOutMatch?.[1]?.toUpperCase() ?? 'ETH';
+
+    // Extract amount: "swap 1 ARB", "convert 5 ARB"
+    const amountMatch = normalized.match(/(\d+(?:\.\d+)?)\s*(?:ARB|ETH|USDC|USDT|AVAX)?/i);
+    const amount = amountMatch?.[1] ? Number(amountMatch[1]) : null;
+
+    if (amount === null || amount <= 0) {
+      return err({
+        type: 'INVALID_INTENT_AMOUNT',
+        message: 'How much would you like to swap? Try "swap 1 ARB for ETH".',
+      });
+    }
+
+    return ok({
+      action: 'swap',
+      category: 'giftcard',
+      token: tokenIn,
+      brand: tokenIn,
+      targetToken: tokenOut,
+      amount: { value: amount, currency: 'USD' },
+      chainId: 42161,
     });
   }
 }

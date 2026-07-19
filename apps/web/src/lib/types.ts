@@ -4,6 +4,8 @@ import type {
   CashOutResult,
   Order,
   SecurityResult,
+  SendReceipt,
+  SwapResult,
   TraceStep,
 } from '@pouch/domain';
 
@@ -14,6 +16,8 @@ export type {
   Balance,
   Order,
   SecurityResult,
+  SendReceipt,
+  SwapResult,
   TraceStep,
 };
 
@@ -46,7 +50,7 @@ export interface AgentChatResponse extends CashOutResult {
   reply: string;
   trace: CashOutResult['trace'];
   /** Conversation phase — tells the frontend what UI to show. */
-  phase: 'reply' | 'confirmation' | 'executed';
+  phase: 'reply' | 'confirmation' | 'executed' | 'send_confirmation' | 'swap_confirmation';
   /** Balance snapshot at confirmation time. */
   balanceSnapshot?: Balance;
   /** Summary of what the user is about to confirm. */
@@ -55,4 +59,8 @@ export interface AgentChatResponse extends CashOutResult {
   llmReply: boolean;
   /** Security verdict from the pre-execution firewall. */
   securityVerdict?: SecurityResult;
+  /** Receipt for wallet-to-wallet transfers. */
+  sendReceipt?: SendReceipt;
+  /** Receipt for token swaps. */
+  swapReceipt?: SwapResult;
 }

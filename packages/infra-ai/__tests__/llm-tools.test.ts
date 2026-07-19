@@ -62,8 +62,8 @@ describe('mapCashOutArgs', () => {
 });
 
 describe('POUCH_TOOL_DECLARATIONS', () => {
-  it('declares the five Pouch functions', () => {
+  it('declares the seven Pouch functions', () => {
     const names = POUCH_TOOL_DECLARATIONS.map((t) => t.name);
-    expect(names).toEqual(['cash_out', 'check_balance', 'search_products', 'help', 'off_topic']);
+    expect(names).toEqual(['cash_out', 'check_balance', 'search_products', 'help', 'send', 'swap', 'off_topic']);
   });
 });

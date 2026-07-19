@@ -10,10 +10,10 @@ type MagicInstance = InstanceWithExtensions<SDKBase, EVMExtension[]>;
 
 // EVM config for the @magic-ext/evm extension.
 // Chain ID and RPC URL are configurable via env vars.
-// Default: Ethereum mainnet (chainId 1) with public Alchemy demo RPC.
+// Default: Arbitrum One (chainId 42161) — Pouch's settlement chain.
 const EVM_CONFIG = {
-  rpcUrl: process.env.NEXT_PUBLIC_ETH_RPC_URL || 'https://eth-mainnet.g.alchemy.com/v2/demo',
-  chainId: Number(process.env.NEXT_PUBLIC_MAGIC_CHAIN_ID) || 1,
+  rpcUrl: process.env.NEXT_PUBLIC_ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc',
+  chainId: Number(process.env.NEXT_PUBLIC_MAGIC_CHAIN_ID) || 42161, // Arbitrum One
   default: true,
 };
 

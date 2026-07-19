@@ -17,14 +17,15 @@
 import 'dotenv/config';
 
 import { Wallet, getBytes, hashAuthorization } from 'ethers';
-import {
+
+// Deferred import — the SDK has ESM resolution issues under pnpm + tsx.
+// Same pattern used in ParticleAccountProvider (universal-account.ts).
+const {
   CHAIN_ID,
   UNIVERSAL_ACCOUNT_VERSION,
   UniversalAccount,
-  type EIP7702Authorization,
-  type ITransaction,
-  type IUserOpWithChain,
-} from '@particle-network/universal-account-sdk';
+} = await import('@particle-network/universal-account-sdk');
+import type { EIP7702Authorization, ITransaction, IUserOpWithChain } from '@particle-network/universal-account-sdk';
 
 // --- Spike config (all from env; never hardcode) ---
 const PRIVATE_KEY = process.env.SPIKE_PRIVATE_KEY;

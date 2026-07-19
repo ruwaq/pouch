@@ -82,6 +82,17 @@ function buildPrompt(context: ReplyContext): string {
       return `The user wants to send ${amount} ${token} between their wallets. Available wallets:\n${walletList}\n\nWrite a short, friendly response listing the available wallets and asking which ones to send from and to. Mention that this transfer uses Particle UA EIP-7702 consolidation. Keep it under 3 lines.${historyBlock}`;
     }
 
+    case 'send_confirmation': {
+      const planSummary = context.planSummary ?? 'transfer';
+      const gasEstimate = context.error ?? '~$0.03';
+      return `The user is about to confirm a wallet-to-wallet transfer: ${planSummary}. Estimated gas: ${gasEstimate}. Write a short, friendly confirmation message showing the details (from, to, amount, token, network Arbitrum, gas sponsored by Openfort). End with asking the user to reply "yes" to confirm or "no" to cancel. Keep it under 4 lines.${historyBlock}`;
+    }
+
+    case 'swap_confirmation': {
+      const planSummary = context.planSummary ?? 'swap';
+      return `The user is about to confirm a token swap: ${planSummary}. This uses Uniswap V3 on Arbitrum to swap ARB → ETH (so they can pay for gas). Write a short, friendly confirmation message showing the details (amount, token in, token out, network Arbitrum). End with asking the user to reply "yes" to confirm or "no" to cancel. Keep it under 4 lines.${historyBlock}`;
+    }
+
     case 'fallback':
     default:
       return `The user said something Pouch doesn't understand. Write a single short, friendly sentence gently steering them back to what Pouch can do: cash out crypto to gift cards, mobile top-ups, or eSIM. Suggest they try "Cash out $50 to Amazon" or "Show my balance".${historyBlock}`;
@@ -222,6 +233,15 @@ case 'help': {
       const amount = context.intent.amount.value.toFixed(2);
       const token = context.intent.brand ?? 'tokens';
       return `Available wallets:\n${wallets}\n\nTo send ${amount} ${token}, specify the wallet: "send ${amount} ${token} from Wallet 1 to Wallet 3".`;
+    }
+
+    case 'send_confirmation': {
+      const gasInfo = context.error ?? '~$0.03';
+      return `💸 **${context.planSummary ?? 'Confirm transfer'}**\n\n⛽ Estimated gas: ${gasInfo}\n\nReady to send? Reply "yes" to confirm or "no" to cancel.`;
+    }
+
+    case 'swap_confirmation': {
+      return `🔄 **${context.planSummary ?? 'Confirm swap'}**\n\nThis will use Uniswap V3 on Arbitrum.\n\nReady to swap? Reply "yes" to confirm or "no" to cancel.`;
     }
 
     case 'fallback':

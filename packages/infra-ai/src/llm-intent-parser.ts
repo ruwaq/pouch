@@ -61,7 +61,24 @@ export class LlmIntentParser implements IntentParserStrategy {
       case 'help':
         return ok({ action: 'help', category: 'giftcard', amount: { value: 0, currency: 'USD' }, ...(typeof fc.args.topic === 'string' ? { brand: fc.args.topic } : {}) });
       case 'send':
-        return ok({ action: 'send', category: 'giftcard', amount: { value: typeof fc.args.amount === 'number' ? fc.args.amount : 0, currency: 'USD' }, ...(typeof fc.args.token === 'string' ? { brand: fc.args.token } : {}) });
+        return ok({
+          action: 'send',
+          category: 'giftcard',
+          amount: { value: typeof fc.args.amount === 'number' ? fc.args.amount : 0, currency: 'USD' },
+          ...(typeof fc.args.token === 'string' ? { token: fc.args.token, brand: fc.args.token } : {}),
+          ...(typeof fc.args.toWallet === 'string' ? { toLabel: fc.args.toWallet } : {}),
+          ...(typeof fc.args.fromWallet === 'string' ? { fromLabel: fc.args.fromWallet } : {}),
+          chainId: 42161,
+        });
+      case 'swap':
+        return ok({
+          action: 'swap',
+          category: 'giftcard',
+          amount: { value: typeof fc.args.amount === 'number' ? fc.args.amount : 0, currency: 'USD' },
+          ...(typeof fc.args.token === 'string' ? { token: fc.args.token, brand: fc.args.token } : {}),
+          ...(typeof fc.args.targetToken === 'string' ? { targetToken: fc.args.targetToken } : {}),
+          chainId: 42161,
+        });
       case 'off_topic':
         return ok({ action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
       default:

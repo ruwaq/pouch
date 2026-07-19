@@ -1,31 +1,34 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-19 (Session: dashboard + multi-wallet + seed phrases + real Gemini. 3 wallets live: $11.37 across Arbitrum + Avalanche. Dashboard split-screen with 6 panels. Deadline: Jul 20, 2026, 1:59 PM GMT+2.)
+Last updated: 2026-07-19 (Session: Arbitrum Full Stack — send, swap, fund gas via Openfort. 4 wallets live: $11.37 across Arbitrum + Avalanche. Magic on Arbitrum. Openfort gas sponsorship. Uniswap V3 swap. Deadline: Jul 20, 2026, 1:59 PM GMT+2.)
 
 ## 🚨 NEXT SESSION: START HERE
 
-**CRITICAL:** Real on-chain balances live via hybrid mode. Dashboard split-screen deployed. See `docs/superpowers/specs/2026-07-18-real-mode-migration.md` for the migration plan.
+**CRITICAL:** Real on-chain functionality live. Send, swap, and fund gas all implemented. See `docs/superpowers/specs/2026-07-19-pouch-arbitrum-fullstack-design.md` for the full spec.
 
 ### Quick start for next session:
 ```
 Continúa el proyecto Pouch. Lee docs/HANDOFF.md para el estado actual.
 
-Hybrid mode activo: DEMO_MODE=true + PRIVATE_KEY + WEB3_PROVIDER_MODE=private-key.
-3 wallets importadas:
+3 funcionalidades nuevas:
+  "send 5 ARB to Wallet 3" — transferencia real Arbitrum wallet-a-wallet
+  "swap 1 ARB for ETH" — Uniswap V3 en Arbitrum
+  "fund gas" — Openfort envía ETH gratis a tu wallet
+
+4 wallets importadas:
   Wallet 1: 0xA5fA06... — 119.48 ARB en Arbitrum ($10.51)
+  Wallet 2: 0xCa1DCc... — 0 ARB (backup)
   Wallet 3: 0x4c7eB0... — 0.0315 AVAX en Avalanche ($0.57)
   Wallet 4: 0x4DC637... — 0.0160 AVAX en Avalanche ($0.29)
   Total: $11.37
 
-Para probar local (RECOMENDADO para demo):
-pnpm dev:api → GET /balance?userId=demo-user → 3 wallets, $11.37
-pnpm dev:web → http://localhost:3000 → dashboard split-screen
+⚠️ Wallet 1 necesita ETH para gas. Usa "fund gas" (Openfort) o "swap 1 ARB for ETH" (Uniswap V3).
 
-Vercel: https://pouch-orpin.vercel.app (Gemini replies usan templates con datos reales —
-Vercel Hobby plan tiene timeout de 10s, Gemini tarda más. Local funciona perfecto.)
+Para probar local:
+pnpm dev:api → GET /balance?userId=demo-user → 4 wallets, $11.37
+pnpm dev:web → http://localhost:3000 → dashboard con Demo Flow actualizado
 
-IMPORTANTE: NO quitar DEMO_MODE. El modo híbrido es el correcto.
-🔒 Fondos SEGUROS: private key solo deriva direcciones, NO puede firmar.
+Vercel: https://pouch-orpin.vercel.app
 Deadline: Jul 20, 2026, 1:59 PM GMT+2.
 ```
 
