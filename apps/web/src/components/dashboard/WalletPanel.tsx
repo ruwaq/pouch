@@ -22,6 +22,7 @@ const CHAIN_NAMES: Record<number, string> = {
   8453: 'Base',
   1: 'Ethereum',
   137: 'Polygon',
+  43114: 'Avalanche',
 };
 
 export function WalletPanel() {

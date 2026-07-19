@@ -26,19 +26,34 @@ const ERC20_ABI = [
 const USDC_ADDRESSES: Record<number, string> = {
   42161: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // USDC Arbitrum
   8453: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',  // USDC Base
+  43114: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E', // USDC Avalanche C-Chain
 };
 
 // Additional ERC-20 tokens to check (symbol, address, USD price)
+// Native tokens (ETH, AVAX) are handled automatically via getBalance().
 const EXTRA_TOKENS: Array<{ symbol: string; chainId: number; address: string; price: number }> = [
   { symbol: 'ARB', chainId: 42161, address: '0x912CE59144191C1204E64559FE8253a0e49E6548', price: 0.088 },
   { symbol: 'USDT', chainId: 42161, address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9', price: 1.0 },
   { symbol: 'USDT', chainId: 8453, address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2', price: 1.0 },
+  { symbol: 'USDT', chainId: 43114, address: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7', price: 1.0 },
 ];
 
-// Public RPC URLs (fallback if no env var set)
+// Native token price estimates (USD)
+const NATIVE_PRICES: Record<number, number> = {
+  42161: 2500, // ETH
+  8453: 2500,  // ETH
+  43114: 18,   // AVAX
+};
+
+const NATIVE_SYMBOLS: Record<number, string> = {
+  42161: 'ETH',
+  8453: 'ETH',
+  43114: 'AVAX',
+};
 const PUBLIC_RPC_URLS: Record<number, string> = {
   42161: 'https://arb1.arbitrum.io/rpc',
   8453: 'https://mainnet.base.org',
+  43114: 'https://api.avax.network/ext/bc/C/rpc',
 };
 
 interface WalletConfig {
@@ -136,6 +151,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     switch (chainId) {
       case 42161: return config.RPC_URL_42161 || PUBLIC_RPC_URLS[42161]!;
       case 8453: return config.RPC_URL_8453 || PUBLIC_RPC_URLS[8453]!;
+      case 43114: return (config as unknown as Record<string, string | undefined>).RPC_URL_43114 || PUBLIC_RPC_URLS[43114]!;
       default: return PUBLIC_RPC_URLS[chainId] ?? `https://chain-${chainId}.example.com`;
     }
   }
@@ -150,15 +166,17 @@ export class PrivateKeyAccountProvider implements AccountProvider {
         if (!provider) continue;
 
         try {
-          // Native token balance (ETH)
+// Native token balance
           const nativeBalance = await provider.getBalance(walletConfig.address);
           const nativeEth = Number(ethers.formatEther(nativeBalance));
+          const nativePrice = NATIVE_PRICES[chainId] ?? 2500;
+          const nativeSymbol = NATIVE_SYMBOLS[chainId] ?? 'ETH';
 
           if (nativeEth > 0.0001) {
-            const usdValue = nativeEth * 2500;
+            const usdValue = nativeEth * nativePrice;
             assets.push({
               chainId,
-              symbol: 'ETH',
+              symbol: nativeSymbol,
               amount: Number(nativeEth.toFixed(6)),
               usdValue: Number(usdValue.toFixed(2)),
               walletLabel: walletConfig.label,

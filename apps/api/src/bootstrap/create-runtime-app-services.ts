@@ -206,10 +206,14 @@ export function createRuntimeAppServices(options: {
       const pkConfig = {
         PRIVATE_KEY: privateKey,
         SECOND_PRIVATE_KEY: (env.SECOND_PRIVATE_KEY ?? process.env.SECOND_PRIVATE_KEY ?? '').trim() || undefined,
+        SEED_PHRASE_1: (env.SEED_PHRASE_1 ?? process.env.SEED_PHRASE_1 ?? '').trim() || undefined,
+        SEED_PHRASE_2: (env.SEED_PHRASE_2 ?? process.env.SEED_PHRASE_2 ?? '').trim() || undefined,
+        SEED_PHRASE_3: (env.SEED_PHRASE_3 ?? process.env.SEED_PHRASE_3 ?? '').trim() || undefined,
         SETTLEMENT_CHAIN_ID: settlementChainId,
         SUPPORTED_CHAINS: supportedChains,
         RPC_URL_42161: (env.RPC_URL_42161 ?? process.env.RPC_URL_42161 ?? '').trim() || undefined,
         RPC_URL_8453: (env.RPC_URL_8453 ?? process.env.RPC_URL_8453 ?? '').trim() || undefined,
+        RPC_URL_43114: (env.RPC_URL_43114 ?? process.env.RPC_URL_43114 ?? '').trim() || undefined,
         NODE_ENV: (env.NODE_ENV ?? process.env.NODE_ENV ?? 'development') as 'development' | 'production',
       } as unknown as Config;
 
