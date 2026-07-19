@@ -167,6 +167,10 @@ export class AgentChatService implements AgentChatServiceLike {
       return this.handleHelp(userId, i);
     }
 
+    if (i.action === 'send') {
+      return this.handleSend(userId, i);
+    }
+
     if (i.action === 'cash_out') {
       return this.handleCashOutPlan(userId, i);
     }
@@ -214,6 +218,43 @@ export class AgentChatService implements AgentChatServiceLike {
     if (intent.brand) extras.topic = intent.brand;
     const reply = await this.buildReply(intent, userId, 'help', extras);
     return this.emptyResult(intent, reply);
+  }
+
+  private async handleSend(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
+    // Get current balance to show available wallets
+    const balance = await this.balanceService.getBalance(userId);
+    if (!isOk(balance)) {
+      const reply = await this.buildReply(intent, userId, 'error', { error: 'Could not read balance' });
+      return this.emptyResult(intent, reply);
+    }
+
+    const amount = intent.amount.value;
+    const token = intent.brand ?? 'tokens';
+
+    // Group assets by wallet to show available wallets
+    const walletAssets = new Map<string, { symbol: string; amount: number; usdValue: number }[]>();
+    for (const a of balance.value.assets) {
+      const key = a.walletLabel ?? 'Wallet';
+      const list = walletAssets.get(key) ?? [];
+      list.push({ symbol: a.symbol, amount: a.amount, usdValue: a.usdValue });
+      walletAssets.set(key, list);
+    }
+
+    const walletList = Array.from(walletAssets.entries())
+      .map(([label, assets]) => `  ${label}: ${assets.map(a => `${a.amount} ${a.symbol}`).join(', ')}`)
+      .join('\n');
+
+    const reply = await this.buildReply(intent, userId, 'send', {
+      balance: balance.value,
+      planSummary: `send ${amount} ${token} between your wallets`,
+      error: walletList,
+    });
+
+    return this.emptyResult(intent, reply, {
+      phase: 'confirmation',
+      balanceSnapshot: balance.value,
+      planSummary: `send ${amount} ${token} between wallets`,
+    });
   }
 
   private async handleCashOutPlan(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
@@ -408,6 +449,11 @@ function templateReply(context: ReplyContext): string {
         'general': "I'm Pouch, your AI cash-out agent! I convert crypto into gift cards, mobile top-ups, and eSIMs using Particle Network's EIP-7702 chain abstraction. Try 'Cash out $50 to Amazon', 'Show my balance', or ask me 'How does it work?'",
       };
       return helpReplies[topic] ?? helpReplies['general']!;
+    }
+
+    case 'send': {
+      const wallets = context.error ?? '(no wallets found)';
+      return `Available wallets:\n${wallets}\n\nWhich wallet would you like to send from and to? Try "send 0.01 ARB from Wallet 1 to Wallet 3".`;
     }
 
     case 'fallback':

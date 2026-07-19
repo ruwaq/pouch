@@ -74,6 +74,14 @@ function buildPrompt(context: ReplyContext): string {
       return `The user asked about: "${topic}". They want to learn how Pouch works. Use your educational knowledge (from the system prompt) to explain clearly in plain language. Use analogies. Keep it under 3 sentences. Never use technical jargon. Be encouraging — offer to help them cash out after.${historyBlock}`;
     }
 
+    case 'send': {
+      const balance = context.balance;
+      const amount = context.intent.amount.value.toFixed(2);
+      const token = context.intent.brand ?? 'tokens';
+      const walletList = context.error ?? '';
+      return `The user wants to send ${amount} ${token} between their wallets. Available wallets:\n${walletList}\n\nWrite a short, friendly response listing the available wallets and asking which ones to send from and to. Mention that this transfer uses Particle UA EIP-7702 consolidation. Keep it under 3 lines.${historyBlock}`;
+    }
+
     case 'fallback':
     default:
       return `The user said something Pouch doesn't understand. Write a single short, friendly sentence gently steering them back to what Pouch can do: cash out crypto to gift cards, mobile top-ups, or eSIM. Suggest they try "Cash out $50 to Amazon" or "Show my balance".${historyBlock}`;
@@ -189,7 +197,7 @@ function templateReply(context: ReplyContext): string {
     case 'error':
       return `⚠ Something went wrong. Please try again or ask for help.`;
 
-    case 'help': {
+case 'help': {
       const topic = context.topic ?? 'general';
       const helpReplies: Record<string, string> = {
         'how-it-works': "Pouch is an AI agent that converts your crypto into gift cards, mobile top-ups, and eSIMs — all through a simple chat. Under the hood, it uses Particle Network's Universal Accounts with EIP-7702 to find your money across any blockchain and consolidate it invisibly.",
@@ -198,10 +206,17 @@ function templateReply(context: ReplyContext): string {
         'no-popups': "Zero popups — you sign in once with your email, and every transaction after that happens without a single wallet confirmation screen. This is possible because of EIP-7702: your wallet delegates authority to Particle's Universal Account.",
         'security': "Every transaction goes through a security firewall: amounts over $100 require confirmation, over $200 get a warning, and over $500 are blocked. Your private keys never leave your wallet.",
         'fees': "Pouch charges zero fees. You pay exactly what the gift card costs. Blockchain gas is sponsored by Openfort — you never pay gas.",
-        'chains': "Pouch supports Arbitrum, Base, Ethereum, and more. Your crypto is automatically found and consolidated across all chains using Particle Network's Universal Accounts.",
+        'chains': "Pouch supports Arbitrum, Base, Ethereum, and more. Your crypto is automatically found and consolidated across all chains using Particle Network's Universal Account.",
         'general': "I'm Pouch, your AI cash-out agent! I convert crypto into gift cards, mobile top-ups, and eSIMs using Particle Network's EIP-7702 chain abstraction. Try 'Cash out $50 to Amazon', 'Show my balance', or ask me 'How does it work?'",
       };
       return helpReplies[topic] ?? helpReplies['general']!;
+    }
+
+    case 'send': {
+      const wallets = context.error ?? '(no wallets found)';
+      const amount = context.intent.amount.value.toFixed(2);
+      const token = context.intent.brand ?? 'tokens';
+      return `Available wallets:\n${wallets}\n\nTo send ${amount} ${token}, specify the wallet: "send ${amount} ${token} from Wallet 1 to Wallet 3".`;
     }
 
     case 'fallback':

@@ -60,6 +60,8 @@ export class LlmIntentParser implements IntentParserStrategy {
       }
       case 'help':
         return ok({ action: 'help', category: 'giftcard', amount: { value: 0, currency: 'USD' }, ...(typeof fc.args.topic === 'string' ? { brand: fc.args.topic } : {}) });
+      case 'send':
+        return ok({ action: 'send', category: 'giftcard', amount: { value: typeof fc.args.amount === 'number' ? fc.args.amount : 0, currency: 'USD' }, ...(typeof fc.args.token === 'string' ? { brand: fc.args.token } : {}) });
       case 'off_topic':
         return ok({ action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } });
       default:

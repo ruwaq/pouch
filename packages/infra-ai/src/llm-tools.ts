@@ -120,6 +120,21 @@ export const POUCH_TOOL_DECLARATIONS: ToolDeclaration[] = [
     },
   },
   {
+    name: 'send',
+    description:
+      'The user wants to send/transfer crypto from one of their wallets to another wallet. Use for: "send 0.01 to my other wallet", "transfer ARB to Wallet 2", "envia 0.01 a mi otra cuenta", "move funds between my wallets", etc. Pouch can transfer between the user\'s own wallets. This is NOT the same as sending to an external address — this is internal wallet-to-wallet transfer.',
+    parameters: {
+      type: T.OBJECT,
+      properties: {
+        amount: { type: T.NUMBER, description: 'Amount to send.' },
+        token: { type: T.STRING, description: 'Token symbol, e.g. "ARB", "AVAX", "ETH".' },
+        fromWallet: { type: T.STRING, description: 'Source wallet label, e.g. "Wallet 1".' },
+        toWallet: { type: T.STRING, description: 'Destination wallet label, e.g. "Wallet 2".' },
+      },
+      required: ['amount'],
+    },
+  },
+  {
     name: 'off_topic',
     description:
       'The user is greeting, saying thanks, or asking for something Pouch CANNOT do (send crypto to a wallet, swap tokens, bridge, stake, deposit, withdraw — in any language: enviar, transferir, mandar, intercambiar). IMPORTANT: if the user is asking HOW something works or WHAT something is (e.g. "how does this work", "what is chain abstraction", "is it safe"), use the help tool instead. This tool is for truly off-topic or unsupported requests.',

@@ -92,17 +92,16 @@ export class GeminiProvider implements LLMProvider {
   }
 
   async generateText(request: LlmTextRequest): Promise<Result<string, DomainError>> {
-    // Inline system instruction into contents to avoid intermittent 503
-    // on the Gemini free tier when using the systemInstruction field.
-    const body = {
-      contents: [{
-        parts: [{
-          text: request.systemInstruction
-            ? `System: ${request.systemInstruction}\n\nUser: ${request.message}`
-            : request.message,
-        }],
-      }],
+    const body: Record<string, unknown> = {
+      contents: [{ parts: [{ text: request.message }] }],
     };
+
+    // Use systemInstruction when available (Gemini free tier handles this fine)
+    if (request.systemInstruction) {
+      body.systemInstruction = {
+        parts: [{ text: request.systemInstruction }],
+      };
+    }
 
     const data = await this.fetchWithFallback<GeminiResponse>(
       (model) => `${model}:generateContent`,

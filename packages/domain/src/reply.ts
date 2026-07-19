@@ -11,6 +11,7 @@ export type ReplyScenario =
   | 'insufficient'   // not enough balance for the requested amount
   | 'error'          // generic or provider error
   | 'help'           // educational: how it works, chain abstraction, security, fees
+  | 'send'           // wallet-to-wallet transfer between user's own wallets
   | 'fallback';      // unknown intent / unhandled action
 
 /**
