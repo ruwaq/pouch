@@ -3,57 +3,77 @@
 import { useState } from 'react';
 import { useChat } from '../../context/chat-context';
 
-interface Bounty {
+interface Tech {
   id: string;
   name: string;
-  prize: string;
   icon: string;
-  status: 'active' | 'configured' | 'pending';
+  status: 'active' | 'configured';
   description: string;
+  whatItDoes: string;
   tech: string[];
   demoMessage: string;
 }
 
-const BOUNTIES: Bounty[] = [
+const TECH_STACK: Tech[] = [
   {
     id: 'particle',
-    name: 'Universal Accounts Track',
-    prize: '$2,500',
+    name: 'Particle Network',
     icon: '🔮',
     status: 'active',
-    description: 'Particle Network EIP-7702 chain abstraction. Your wallet becomes a Universal Account — one balance, any chain, zero popups.',
+    description: 'Universal Accounts with EIP-7702 chain abstraction. Your EOA becomes a smart account — one balance, any chain, zero new addresses.',
+    whatItDoes: 'Scans all chains, consolidates balances, executes cross-chain transactions invisibly.',
     tech: ['EIP-7702', 'UniversalAccount', 'getPrimaryAssets()', 'createConvertTransaction()'],
-    demoMessage: 'Show my balance',
+    demoMessage: 'What is chain abstraction?',
   },
   {
     id: 'arbitrum',
-    name: 'Arbitrum Bounty',
-    prize: '$2,000',
+    name: 'Arbitrum One',
     icon: '🔷',
     status: 'active',
-    description: 'Arbitrum One as settlement chain. All transactions settle on Arbitrum. Real on-chain balance from Arbitrum mainnet.',
-    tech: ['Settlement Chain', 'Real Balance', 'Arbitrum RPC', 'USDC/ARB'],
-    demoMessage: 'What chains do you support?',
+    description: 'Settlement chain. All transactions settle on Arbitrum. Real on-chain balance from Arbitrum mainnet.',
+    whatItDoes: 'Powers the backend settlement. Balance shown is live from Arbitrum RPC.',
+    tech: ['Settlement Chain', 'Live Balance', 'RPC', 'ARB Token'],
+    demoMessage: 'Show my balance',
   },
   {
     id: 'magic',
-    name: 'Magic Labs Bonus',
-    prize: '$500',
+    name: 'Magic Labs',
     icon: '🪄',
     status: 'configured',
-    description: 'Blind signatures for zero-popup UX. Email login, embedded wallet, no MetaMask needed.',
+    description: 'Embedded wallets with blind signatures. Email login, zero popups, no MetaMask needed.',
+    whatItDoes: 'User signs in once with email. Every transaction after that happens without a single wallet confirmation.',
     tech: ['Blind Signatures', 'Embedded Wallet', 'Email Login', 'NO POPUP'],
     demoMessage: 'How do blind signatures work?',
   },
   {
     id: 'openfort',
-    name: 'Openfort Subtrack',
-    prize: '$100',
+    name: 'Openfort',
     icon: '⛽',
     status: 'configured',
-    description: 'Agent backend wallet + gas sponsorship. User never pays gas. All fees sponsored by Openfort.',
+    description: 'Agent backend wallet + gas sponsorship. User never pays gas fees.',
+    whatItDoes: 'All blockchain gas fees are sponsored. The agent wallet handles settlement behind the scenes.',
     tech: ['Gas Sponsorship', 'Agent Wallet', 'pay_for_user', 'Backend Signing'],
     demoMessage: 'What are the fees?',
+  },
+  {
+    id: 'gemini',
+    name: 'Gemini 3.5 Flash',
+    icon: '🤖',
+    status: 'active',
+    description: 'Conversational AI for natural language understanding. Multi-turn confirmation flow.',
+    whatItDoes: 'Understands what you want in plain English or Spanish. Asks for confirmation before executing.',
+    tech: ['Function Calling', 'Multi-turn', 'Bilingual', 'REST API'],
+    demoMessage: 'How does this work?',
+  },
+  {
+    id: 'security',
+    name: 'Security Firewall',
+    icon: '🛡️',
+    status: 'active',
+    description: 'Pre-execution deterministic checks. Amount limits, category allowlists, risk scoring 0-100.',
+    whatItDoes: 'Blocks transactions over $500, warns over $200, confirms over $100. All checks run before any on-chain action.',
+    tech: ['Risk Scoring', 'Amount Limits', 'Category Allowlist', 'SHIELD'],
+    demoMessage: 'Is it safe?',
   },
 ];
 
@@ -66,46 +86,42 @@ export function BountyPanel() {
   };
 
   return (
-    <PanelCard title="🏆 Bounties & Tech Stack">
+    <PanelCard title="⚡ Tech Stack — What Powers Pouch">
       <div className="space-y-3">
-        {/* Bounty cards */}
-        {BOUNTIES.map((bounty) => (
+        {TECH_STACK.map((tech) => (
           <div
-            key={bounty.id}
+            key={tech.id}
             className={`rounded-lg border transition-all ${
-              expanded === bounty.id
+              expanded === tech.id
                 ? 'border-[var(--accent)]/30 bg-[var(--accent)]/5'
                 : 'border-[var(--border)]/50 bg-[var(--bg)] hover:border-[var(--border)]'
             }`}
           >
-            {/* Header */}
             <button
               className="flex w-full items-center gap-3 px-3 py-2.5 text-left"
-              onClick={() => setExpanded(expanded === bounty.id ? null : bounty.id)}
+              onClick={() => setExpanded(expanded === tech.id ? null : tech.id)}
             >
-              <span className="text-base">{bounty.icon}</span>
+              <span className="text-base">{tech.icon}</span>
               <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-[var(--fg)]">{bounty.name}</span>
-                  <span className="rounded bg-[var(--accent)]/15 px-1.5 py-0.5 text-[10px] font-bold text-[var(--accent)]">
-                    {bounty.prize}
-                  </span>
-                </div>
+                <span className="text-xs font-semibold text-[var(--fg)]">{tech.name}</span>
               </div>
-              <StatusDot status={bounty.status} />
+              <StatusDot status={tech.status} />
               <span className="text-[10px] text-[var(--muted)]">
-                {expanded === bounty.id ? '▾' : '▸'}
+                {expanded === tech.id ? '▾' : '▸'}
               </span>
             </button>
 
-            {/* Expanded content */}
-            {expanded === bounty.id && (
+            {expanded === tech.id && (
               <div className="border-t border-[var(--border)]/50 px-3 py-3 space-y-3">
-                <p className="text-[11px] leading-relaxed text-[var(--muted)]">{bounty.description}</p>
+                <p className="text-[11px] leading-relaxed text-[var(--muted)]">{tech.description}</p>
 
-                {/* Tech badges */}
+                <div className="rounded-lg bg-[var(--accent)]/5 px-3 py-2">
+                  <span className="text-[10px] font-semibold text-[var(--accent)]">What it does in Pouch:</span>
+                  <p className="mt-1 text-[11px] text-[var(--fg)]">{tech.whatItDoes}</p>
+                </div>
+
                 <div className="flex flex-wrap gap-1.5">
-                  {bounty.tech.map((t) => (
+                  {tech.tech.map((t) => (
                     <span
                       key={t}
                       className="rounded-full border border-[var(--border)]/50 bg-[var(--bg)] px-2 py-0.5 text-[10px] font-medium text-[var(--fg)]"
@@ -115,50 +131,30 @@ export function BountyPanel() {
                   ))}
                 </div>
 
-                {/* Demo button */}
                 <button
-                  onClick={() => handleDemo(bounty.demoMessage)}
+                  onClick={() => handleDemo(tech.demoMessage)}
                   className="flex w-full items-center justify-center gap-2 rounded-lg border border-[var(--accent)]/30 bg-[var(--accent)]/10 px-3 py-2 text-xs font-medium text-[var(--accent)] transition-all hover:bg-[var(--accent)]/20 active:scale-[0.98]"
                 >
                   <span>💬</span>
-                  <span>Demo: &ldquo;{bounty.demoMessage}&rdquo;</span>
+                  <span>Try it: &ldquo;{tech.demoMessage}&rdquo;</span>
                 </button>
               </div>
             )}
           </div>
         ))}
-
-        {/* Total potential */}
-        <div className="rounded-lg border border-emerald-400/20 bg-emerald-400/5 px-3 py-2.5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-emerald-300">Total Potential</span>
-            <span className="text-sm font-bold text-emerald-300">$5,100</span>
-          </div>
-          <div className="mt-1 flex flex-wrap gap-1">
-            <span className="text-[10px] text-emerald-400/70">UA Track $2,500</span>
-            <span className="text-[10px] text-emerald-400/50">+</span>
-            <span className="text-[10px] text-emerald-400/70">Arbitrum $2,000</span>
-            <span className="text-[10px] text-emerald-400/50">+</span>
-            <span className="text-[10px] text-emerald-400/70">Magic $500</span>
-            <span className="text-[10px] text-emerald-400/50">+</span>
-            <span className="text-[10px] text-emerald-400/70">Openfort $100</span>
-          </div>
-        </div>
       </div>
     </PanelCard>
   );
 }
 
-function StatusDot({ status }: { status: Bounty['status'] }) {
+function StatusDot({ status }: { status: Tech['status'] }) {
   const colors: Record<string, string> = {
     active: 'bg-emerald-400',
     configured: 'bg-amber-400',
-    pending: 'bg-[var(--border)]',
   };
   const labels: Record<string, string> = {
     active: 'Live',
     configured: 'Ready',
-    pending: 'Pending',
   };
   return (
     <span className="flex items-center gap-1.5 text-[10px] text-[var(--muted)]">
