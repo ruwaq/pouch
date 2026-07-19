@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { apiGet } from '../../lib/api-client';
 import type { Order } from '../../lib/types';
+import { getExplorerUrl } from '@pouch/shared';
 
 const CHAIN_NAMES: Record<number, string> = {
   42161: 'Arbitrum',
@@ -9,14 +10,6 @@ const CHAIN_NAMES: Record<number, string> = {
   137: 'Polygon',
   1: 'Ethereum',
   10: 'Optimism',
-};
-
-const BLOCK_EXPLORERS: Record<number, string> = {
-  42161: 'https://arbiscan.io/tx',
-  8453: 'https://basescan.org/tx',
-  137: 'https://polygonscan.com/tx',
-  1: 'https://etherscan.io/tx',
-  10: 'https://optimistic.etherscan.io/tx',
 };
 
 export function ReceiptCard({ orderId }: { orderId: string }) {
@@ -50,7 +43,7 @@ export function ReceiptCard({ orderId }: { orderId: string }) {
     ? (CHAIN_NAMES[order.payment.chainId] ?? `Chain ${order.payment.chainId}`)
     : null;
   const explorerUrl = order.payment?.chainId && order.payment?.txHash
-    ? `${BLOCK_EXPLORERS[order.payment.chainId] ?? '#'}/${order.payment.txHash}`
+    ? getExplorerUrl(order.payment.chainId, 'tx', order.payment.txHash)
     : null;
 
   return (

@@ -19,8 +19,27 @@ export function TraceTimeline({ trace }: { trace: TraceStep[] }) {
             className={`absolute -left-[1.4rem] top-1 h-2.5 w-2.5 rounded-full ${STATUS_DOT[step.status]}`}
           />
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm text-[var(--muted-2)]">{step.label}</span>
-            {step.badge ? <TechBadge badge={step.badge} /> : null}
+            {step.explorerUrl ? (
+              <a
+                href={step.explorerUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-sm text-[var(--accent)] underline hover:text-[var(--accent)]/80 transition-colors"
+              >
+                {step.label}
+              </a>
+            ) : (
+              <span className="text-sm text-[var(--muted-2)]">{step.label}</span>
+            )}
+            {step.badge ? (
+              step.explorerUrl ? (
+                <a href={step.explorerUrl} target="_blank" rel="noreferrer">
+                  <TechBadge badge={step.badge} />
+                </a>
+              ) : (
+                <TechBadge badge={step.badge} />
+              )
+            ) : null}
             {typeof step.durationMs === 'number' ? (
               <span className="text-[10px] text-[var(--muted)]">{step.durationMs}ms</span>
             ) : null}

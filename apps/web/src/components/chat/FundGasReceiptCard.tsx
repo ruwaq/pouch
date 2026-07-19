@@ -1,5 +1,5 @@
 'use client';
-import type { SendReceipt } from '../../lib/types';
+import type { FundGasReceipt } from '../../lib/types';
 import { getExplorerName, getExplorerUrl } from '@pouch/shared';
 
 const CHAIN_NAMES: Record<number, string> = {
@@ -11,11 +11,11 @@ const CHAIN_NAMES: Record<number, string> = {
 };
 
 /**
- * Receipt card for wallet-to-wallet transfers.
- * Shows tx hash, block number, gas cost, from/to addresses,
- * and links to Arbiscan/block explorer.
+ * Receipt card for gas funding operations (Openfort sendEth).
+ * Shows the ETH sent, from/to with clickable addresses,
+ * gas sponsorship info, and explorer links.
  */
-export function SendReceiptCard({ receipt }: { receipt: SendReceipt }) {
+export function FundGasReceiptCard({ receipt }: { receipt: FundGasReceipt }) {
   const chainName = CHAIN_NAMES[receipt.chainId] ?? `Chain ${receipt.chainId}`;
   const explorerUrl = receipt.explorerUrl ?? getExplorerUrl(receipt.chainId, 'tx', receipt.txHash);
   const explorerName = getExplorerName(receipt.chainId);
@@ -26,60 +26,82 @@ export function SendReceiptCard({ receipt }: { receipt: SendReceipt }) {
   const shortTo = receipt.toAddress.length > 12
     ? `${receipt.toAddress.slice(0, 6)}...${receipt.toAddress.slice(-4)}`
     : receipt.toAddress;
-  const fromExplorerUrl = getExplorerUrl(receipt.chainId, 'address', receipt.fromAddress);
-  const toExplorerUrl = getExplorerUrl(receipt.chainId, 'address', receipt.toAddress);
+  const fromExplorerUrl = receipt.fromAddress
+    ? getExplorerUrl(receipt.chainId, 'address', receipt.fromAddress)
+    : null;
+  const toExplorerUrl = receipt.toAddress
+    ? getExplorerUrl(receipt.chainId, 'address', receipt.toAddress)
+    : null;
 
   return (
-    <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+    <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-lg">✅</span>
-          <span className="text-sm font-semibold text-[var(--fg)]">Transfer Complete</span>
+          <span className="text-lg">⛽</span>
+          <span className="text-sm font-semibold text-[var(--fg)]">Gas Funded</span>
         </div>
         {receipt.blockNumber ? (
-          <span className="text-[10px] font-medium text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full">
+          <span className="text-[10px] font-medium text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full">
             Block #{receipt.blockNumber}
           </span>
         ) : null}
       </div>
 
-      {/* Transfer details */}
+      {/* Details */}
       <div className="space-y-1.5 text-sm">
         <div className="flex justify-between">
           <span className="text-[var(--muted)]">📤 From</span>
           <span className="text-[var(--fg)]">
-            {receipt.fromLabel}{' '}
-            <a href={fromExplorerUrl} target="_blank" rel="noreferrer" className="text-xs text-[var(--accent)] underline">
-              ({shortFrom})
-            </a>
+            {receipt.fromLabel}
+            {receipt.fromAddress && fromExplorerUrl ? (
+              <>
+                {' '}
+                <a
+                  href={fromExplorerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-[var(--accent)] underline"
+                >
+                  ({shortFrom})
+                </a>
+              </>
+            ) : (
+              <span className="text-xs text-[var(--muted)]">({shortFrom})</span>
+            )}
           </span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--muted)]">📥 To</span>
           <span className="text-[var(--fg)]">
-            {receipt.toLabel}{' '}
-            <a href={toExplorerUrl} target="_blank" rel="noreferrer" className="text-xs text-[var(--accent)] underline">
-              ({shortTo})
-            </a>
+            {receipt.toLabel}
+            {toExplorerUrl ? (
+              <>
+                {' '}
+                <a
+                  href={toExplorerUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-[var(--accent)] underline"
+                >
+                  ({shortTo})
+                </a>
+              </>
+            ) : (
+              <span className="text-xs text-[var(--muted)]">({shortTo})</span>
+            )}
           </span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--muted)]">💰 Amount</span>
           <span className="font-semibold text-[var(--fg)]">
-            {receipt.amount.value} {receipt.token}
+            {receipt.amountEth} ETH
           </span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--muted)]">⛽ Gas</span>
-          <span className={receipt.gasSponsored ? 'text-emerald-400' : 'text-[var(--muted-2)]'}>
-            {receipt.gasSponsored
-              ? 'Sponsored by Openfort ($0.00)'
-              : receipt.gasCostUsd
-                ? `$${receipt.gasCostUsd.toFixed(4)}`
-                : receipt.gasUsed
-                  ? receipt.gasUsed
-                  : 'N/A'}
+          <span className="text-emerald-400">
+            Sponsored by Openfort 🛡️ $0.00
           </span>
         </div>
         <div className="flex justify-between">
@@ -106,25 +128,20 @@ export function SendReceiptCard({ receipt }: { receipt: SendReceipt }) {
         >
           🔗 View on {explorerName}
         </a>
-        {receipt.gasSponsored && (
-          <a
-            href="https://dashboard.openfort.io"
-            target="_blank"
-            rel="noreferrer"
-            className="flex-1 rounded-lg bg-purple-400/10 px-3 py-2 text-center text-xs font-medium text-purple-400 hover:bg-purple-400/20 transition-colors"
-          >
-            ⛽ Openfort Dashboard
-          </a>
-        )}
+        <a
+          href="https://dashboard.openfort.io"
+          target="_blank"
+          rel="noreferrer"
+          className="flex-1 rounded-lg bg-purple-400/10 px-3 py-2 text-center text-xs font-medium text-purple-400 hover:bg-purple-400/20 transition-colors"
+        >
+          🛡️ Openfort Dashboard
+        </a>
       </div>
 
       {/* Educational footer */}
       <p className="mt-3 border-t border-[var(--border)] pt-2 text-[10px] leading-relaxed text-[var(--muted)]">
-        💡 This transfer was executed on <strong>{chainName}</strong> using a blind signature
-        (Magic) — no wallet popup was needed.
-        {receipt.gasSponsored
-          ? ' Gas fees were sponsored by Openfort.'
-          : ` Gas cost: ${receipt.gasCostUsd ? `$${receipt.gasCostUsd.toFixed(4)}` : 'minimal'}.`}
+        💡 Openfort sent {receipt.amountEth} ETH to {receipt.toLabel} for gas — <strong>free for you</strong>.
+        This covers ~{Math.floor(receipt.amountEth / 0.000002)} transactions on {chainName}.
         {' '}The transaction is verifiable on-chain via the explorer link above.
       </p>
     </div>

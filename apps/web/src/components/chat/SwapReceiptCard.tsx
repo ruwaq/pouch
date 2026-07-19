@@ -1,5 +1,6 @@
 'use client';
 import type { SwapResult } from '../../lib/types';
+import { getExplorerName, getExplorerUrl } from '@pouch/shared';
 
 const CHAIN_NAMES: Record<number, string> = {
   42161: 'Arbitrum One',
@@ -12,7 +13,8 @@ const CHAIN_NAMES: Record<number, string> = {
  */
 export function SwapReceiptCard({ receipt }: { receipt: SwapResult }) {
   const chainName = CHAIN_NAMES[receipt.chainId] ?? `Chain ${receipt.chainId}`;
-  const explorerUrl = receipt.explorerUrl ?? `https://arbiscan.io/tx/${receipt.txHash}`;
+  const explorerUrl = receipt.explorerUrl ?? getExplorerUrl(receipt.chainId, 'tx', receipt.txHash);
+  const explorerName = getExplorerName(receipt.chainId);
   const shortTxHash = `${receipt.txHash.slice(0, 10)}...${receipt.txHash.slice(-8)}`;
 
   return (
@@ -54,8 +56,12 @@ export function SwapReceiptCard({ receipt }: { receipt: SwapResult }) {
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--muted)]">⛽ Gas</span>
-          <span className="text-[var(--muted-2)]">
-            {receipt.gasCostUsd ? `$${receipt.gasCostUsd.toFixed(4)}` : receipt.gasUsed ?? 'N/A'}
+          <span className={receipt.gasSponsored ? 'text-emerald-400' : 'text-[var(--muted-2)]'}>
+            {receipt.gasSponsored
+              ? 'Sponsored by Openfort 🛡️ $0.00'
+              : receipt.gasCostUsd
+                ? `$${receipt.gasCostUsd.toFixed(4)}`
+                : receipt.gasUsed ?? 'N/A'}
           </span>
         </div>
         <div className="flex justify-between">
@@ -80,7 +86,7 @@ export function SwapReceiptCard({ receipt }: { receipt: SwapResult }) {
           rel="noreferrer"
           className="block w-full rounded-lg bg-[var(--accent)]/10 px-3 py-2 text-center text-xs font-medium text-[var(--accent)] hover:bg-[var(--accent)]/20 transition-colors"
         >
-          🔗 View on Arbiscan
+          🔗 View on {explorerName}
         </a>
       </div>
 

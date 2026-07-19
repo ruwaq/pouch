@@ -7,6 +7,7 @@ import { SendConfirmationCard } from './SendConfirmationCard';
 import { SendReceiptCard } from './SendReceiptCard';
 import { SwapConfirmationCard } from './SwapConfirmationCard';
 import { SwapReceiptCard } from './SwapReceiptCard';
+import { FundGasReceiptCard } from './FundGasReceiptCard';
 
 export function AgentTurn({ response }: { response: AgentChatResponse }) {
   const isConfirmation = response.phase === 'confirmation';
@@ -40,6 +41,11 @@ export function AgentTurn({ response }: { response: AgentChatResponse }) {
       {/* Swap receipt card */}
       {isExecuted && isSwap && response.swapReceipt ? (
         <SwapReceiptCard receipt={response.swapReceipt} />
+      ) : null}
+
+      {/* Fund gas receipt card */}
+      {isExecuted && response.fundGasReceipt ? (
+        <FundGasReceiptCard receipt={response.fundGasReceipt} />
       ) : null}
 
       {response.trace.length > 0 ? (

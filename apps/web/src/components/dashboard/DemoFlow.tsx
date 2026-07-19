@@ -26,7 +26,7 @@ const DEMO_STEPS = [
     label: 'Fund Gas (Openfort)',
     message: 'fund gas',
     icon: '⛽',
-    description: 'Openfort sends 0.0005 ETH to your wallet — gas is FREE (sponsored)',
+    description: 'Openfort sends 0.00005 ETH to your wallet — gas is FREE (sponsored)',
     bounty: 'Openfort + Arbitrum',
     tech: 'GASLESS',
     autoConfirm: true,
@@ -34,9 +34,9 @@ const DEMO_STEPS = [
   },
   {
     label: 'Swap ARB → ETH',
-    message: 'swap 1 ARB for ETH',
+    message: 'swap 0.05 ARB for ETH',
     icon: '🔄',
-    description: 'Uniswap V3 on Arbitrum: converts ARB to ETH for gas — real on-chain swap',
+    description: 'Uniswap V3 on Arbitrum: converts 0.05 ARB to ETH for gas — real on-chain swap',
     bounty: 'Arbitrum Bounty',
     tech: 'Uniswap V3',
     autoConfirm: true,
@@ -44,7 +44,7 @@ const DEMO_STEPS = [
   },
   {
     label: 'Send to Wallet',
-    message: 'send 5 ARB to Wallet 3',
+    message: 'send 0.1 ARB to Wallet 3',
     icon: '💸',
     description: 'Real Arbitrum transfer between your wallets — verifiable on Arbiscan',
     bounty: 'Arbitrum Bounty',
@@ -54,7 +54,7 @@ const DEMO_STEPS = [
   },
   {
     label: 'Cash Out',
-    message: 'Cash out $5 to Amazon',
+    message: 'Cash out $2 to Amazon',
     icon: '🎁',
     description: 'Full flow: balance → security → routing → order → payment [NO POPUP]',
     bounty: 'UA Track',
@@ -137,7 +137,7 @@ export function DemoFlow() {
         </button>
 
         <p className="text-[10px] text-[var(--muted)] text-center">
-          Steps 3-5 require ETH for gas. Run &ldquo;Fund Gas&rdquo; first to get free ETH from Openfort.
+          Steps 3-5 require ETH for gas (~$0.000002 each). Run &ldquo;Fund Gas&rdquo; first to get free ETH from Openfort.
         </p>
       </div>
     </PanelCard>
