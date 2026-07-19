@@ -161,8 +161,13 @@ function templateReply(context: ReplyContext): string {
   const brand = context.order?.product.brand ?? context.intent.brand;
 
   switch (context.scenario) {
-    case 'greeting':
+    case 'greeting': {
+      const b = context.balance;
+      if (b) {
+        return `Hey! 👋 I'm Pouch, your AI cash-out agent. You have $${b.total.toFixed(2)} across ${b.assets.length} asset${b.assets.length !== 1 ? 's' : ''}. Try "Cash out $10 to Amazon" or "Show my balance".`;
+      }
       return "Hey! 👋 I'm Pouch — your AI cash-out agent. I can convert your crypto into gift cards, mobile top-ups, and more. Try \"Cash out $50 to Amazon\" or \"Show my balance\".";
+    }
 
     case 'balance': {
       const b = context.balance;
@@ -220,7 +225,12 @@ case 'help': {
     }
 
     case 'fallback':
-    default:
+    default: {
+      const b = context.balance;
+      if (b) {
+        return `I can help you cash out crypto to gift cards, top-ups, and eSIMs. You have $${b.total.toFixed(2)} across ${b.assets.length} asset${b.assets.length !== 1 ? 's' : ''}. Try "Cash out $10 to Amazon" or "Show my balance".`;
+      }
       return "I can help you cash out crypto, check your balance, or search for gift cards. Try saying \"Cash out $50 to Amazon\" or \"Show my balance\".";
+    }
   }
 }
