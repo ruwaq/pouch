@@ -85,12 +85,15 @@ export function DemoFlow() {
       
       // Wait for the response to render
       if (step.autoConfirm) {
-        await new Promise((r) => setTimeout(r, 3500));
+        // Give the human time to read the confirmation card (8 seconds)
+        await new Promise((r) => setTimeout(r, 8000));
         // Auto-confirm: send "yes" to execute the transaction
         sendMessage(step.confirmMessage ?? 'yes');
-        await new Promise((r) => setTimeout(r, 3000));
+        // Give the human time to read the receipt (6 seconds)
+        await new Promise((r) => setTimeout(r, 6000));
       } else {
-        await new Promise((r) => setTimeout(r, 2500));
+        // Info steps: give time to read (4 seconds)
+        await new Promise((r) => setTimeout(r, 4000));
       }
     }
     setActiveStep(null);

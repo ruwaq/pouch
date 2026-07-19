@@ -1170,7 +1170,10 @@ function templateReply(context: ReplyContext): string {
     case 'balance': {
       const b = context.balance;
       if (!b) return "I couldn't retrieve your balance right now.";
-      const lines = b.assets.map((a) => `  ${a.symbol} on chain ${a.chainId}: $${a.usdValue.toFixed(2)}`);
+      const lines = b.assets.map((a) => {
+        const label = a.walletLabel ? `[${a.walletLabel}] ` : '';
+        return `  ${label}${a.amount.toFixed(4)} ${a.symbol} on chain ${a.chainId}: $${a.usdValue.toFixed(2)}`;
+      });
       return `You have $${b.total.toFixed(2)} across ${b.assets.length} asset${b.assets.length === 1 ? '' : 's'}:\n${lines.join('\n')}`;
     }
 

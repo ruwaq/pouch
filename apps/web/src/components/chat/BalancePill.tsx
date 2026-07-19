@@ -66,8 +66,11 @@ export function BalancePill() {
             {balance.assets.map((a) => {
               const chainName = CHAIN_NAMES[a.chainId] ?? `Chain ${a.chainId}`;
               return (
-                <div key={`${a.chainId}-${a.symbol}`} className="flex items-center justify-between py-1">
+                <div key={`${a.chainId}-${a.symbol}-${a.walletLabel ?? ''}-${a.amount}`} className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2">
+                    {a.walletLabel ? (
+                      <span className="text-[10px] font-medium text-[var(--accent)]">{a.walletLabel}</span>
+                    ) : null}
                     <span className="text-xs font-medium text-[var(--fg)]">
                       {a.amount.toFixed(a.symbol === 'ETH' ? 4 : 2)} {a.symbol}
                     </span>
