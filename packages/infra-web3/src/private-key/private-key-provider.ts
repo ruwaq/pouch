@@ -53,7 +53,7 @@ const NATIVE_SYMBOLS: Record<number, string> = {
 const PUBLIC_RPC_URLS: Record<number, string> = {
   42161: 'https://arb1.arbitrum.io/rpc',
   8453: 'https://mainnet.base.org',
-  43114: 'https://api.avax.network/ext/bc/C/rpc',
+  43114: 'https://avalanche-c-chain-rpc.publicnode.com',
 };
 
 interface WalletConfig {
