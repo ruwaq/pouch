@@ -281,15 +281,13 @@ export class AgentChatService implements AgentChatServiceLike {
       }
     }
 
-    // Fallback: build wallet list from balance assets
-    if (walletLabels.length === 0) {
-      const seen = new Set<string>();
-      for (const a of b.assets) {
-        const label = a.walletLabel ?? 'Wallet';
-        if (!seen.has(label)) {
-          seen.add(label);
-          walletLabels.push(label);
-        }
+    // Fallback: build wallet list from balance assets (always do this to catch all wallets)
+    const seen = new Set<string>(walletLabels.map(l => l.toLowerCase()));
+    for (const a of b.assets) {
+      const label = a.walletLabel;
+      if (label && !seen.has(label.toLowerCase())) {
+        seen.add(label.toLowerCase());
+        walletLabels.push(label);
       }
     }
 
