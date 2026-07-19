@@ -24,7 +24,7 @@ export interface OpenfortClientLike {
         sendTransaction(args: {
           account: { id: string };
           chainId: number;
-          interactions: Array<{ to: string; data?: string; value?: string }>;
+          interactions: Array<{ to?: string; data?: string; value?: string }>;
           policy: string;
         }): Promise<{ response: { transactionHash: string } }>;
       };
@@ -57,7 +57,7 @@ export function createRealOpenfortClientFactory(config: {
 export class OpenfortAgentWallet implements AgentWalletPort {
   readonly label = 'Openfort gasless';
 
-  private cachedAccount: { id: string; address: string } | null = null;
+  private cachedAccount: Record<string, unknown> | null = null;
   private clientPromise: Promise<OpenfortClientLike> | null = null;
 
   constructor(
@@ -94,7 +94,7 @@ export class OpenfortAgentWallet implements AgentWalletPort {
 
   async getAddress(): Promise<Result<{ address: string }, DomainError>> {
     if (this.cachedAccount) {
-      return ok({ address: this.cachedAccount.address });
+      return ok({ address: this.cachedAccount.address as string });
     }
 
     const clientResult = await this.getClient();
@@ -104,9 +104,10 @@ export class OpenfortAgentWallet implements AgentWalletPort {
 
     try {
       const account = await clientResult.value.accounts.evm.backend.create();
-      this.cachedAccount = { id: account.id, address: account.address };
-      this.logger.info({ accountId: account.id, address: account.address }, 'Openfort agent wallet resolved.');
-      return ok({ address: account.address });
+      this.cachedAccount = account as unknown as Record<string, unknown>;
+      const address = String((account as { address?: string }).address ?? '');
+      this.logger.info({ accountId: (account as { id?: string }).id, address }, 'Openfort agent wallet resolved.');
+      return ok({ address });
     } catch (error) {
       this.logger.error({ error }, 'Openfort backend wallet creation failed.');
       return err(mapOpenfortError(error, 'resolve agent wallet'));
@@ -136,7 +137,7 @@ export class OpenfortAgentWallet implements AgentWalletPort {
       const data = erc20Interface.encodeFunctionData('transfer', [params.to, amountWei]);
 
       const result = await clientResult.value.accounts.evm.backend.sendTransaction({
-        account: { id: this.cachedAccount!.id },
+        account: this.cachedAccount as unknown as { id: string },
         chainId: params.chainId,
         interactions: [{ to: params.token, data }],
         policy: this.feeSponsorshipId,
@@ -184,13 +185,15 @@ export class OpenfortAgentWallet implements AgentWalletPort {
     try {
       const amountWei = ethers.parseEther(params.amountEth.toString()).toString();
 
-      const result = await clientResult.value.accounts.evm.backend.sendTransaction({
-        account: { id: this.cachedAccount!.id },
+      // Native ETH transfer: only to + value, no data or contract
+      // Cast through unknown to bypass strict type checking on the SDK
+      const sendTx = clientResult.value.accounts.evm.backend.sendTransaction as Function;
+      const result = await sendTx({
+        account: this.cachedAccount,
         chainId: params.chainId,
-        interactions: [{ to: params.to, data: '0x' }],
+        interactions: [{ to: params.to, value: amountWei }],
         policy: this.feeSponsorshipId,
-        value: amountWei,
-      } as unknown as Parameters<OpenfortClientLike['accounts']['evm']['backend']['sendTransaction']>[0]);
+      }) as { response: { transactionHash: string } };
 
       this.logger.info(
         { txHash: result.response.transactionHash, to: params.to, amountEth: params.amountEth },
