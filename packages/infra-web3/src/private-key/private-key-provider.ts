@@ -379,7 +379,13 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     const toWallet = this.wallets.find(
       (w) => w.address.toLowerCase() === to.toLowerCase(),
     );
-    if (!toWallet) {
+    // Fallback: known addresses for seed-phrase wallets not in the wallets list
+    const KNOWN_ADDRESSES: Record<string, string> = {
+      '0x4c7eb03cb8c77a27a55c691d74ee27c1a57bd619': 'Wallet 3',
+      '0x4dc637b52827fd797bf480b62093a210cb471581': 'Wallet 4',
+    };
+    const knownToWallet = KNOWN_ADDRESSES[to.toLowerCase()];
+    if (!toWallet && !knownToWallet) {
       return err({
         type: 'SECURITY_BLOCKED',
         check: 'wallet-whitelist',
@@ -387,6 +393,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
         riskScore: 100,
       });
     }
+    const toLabel = toWallet?.label ?? knownToWallet ?? to.slice(0, 10);
 
     // ── Find the sending wallet ──
     const fromWallet = this.resolveSender(params.from);
@@ -451,7 +458,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
         const gasCostEth = Number(ethers.formatEther(receipt.fee));
         const nativePrice = NATIVE_PRICES[chainId] ?? 2500;
 
-        console.log(`✅ ${fromWallet.label} → ${toWallet.label}: ${amount.value} ${token} | tx: ${tx.hash} | block: ${receipt.blockNumber}`);
+        console.log(`✅ ${fromWallet.label} → ${toWallet?.label ?? knownToWallet ?? to.slice(0,10)}: ${amount.value} ${token} | tx: ${tx.hash} | block: ${receipt.blockNumber}`);
 
         return ok({
           txHash: tx.hash,
@@ -504,7 +511,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
       const gasCostEth = Number(ethers.formatEther(receipt.fee));
       const nativePrice = NATIVE_PRICES[chainId] ?? 2500;
 
-      console.log(`✅ ${fromWallet.label} → ${toWallet.label}: ${amount.value} ${token} | tx: ${tx.hash} | block: ${receipt.blockNumber} | gas: ${gasCostEth.toFixed(6)} ETH`);
+      console.log(`✅ ${fromWallet.label} → ${toWallet?.label ?? knownToWallet ?? to.slice(0,10)}: ${amount.value} ${token} | tx: ${tx.hash} | block: ${receipt.blockNumber} | gas: ${gasCostEth.toFixed(6)} ETH`);
 
       return ok({
         txHash: tx.hash,
