@@ -1111,7 +1111,8 @@ export class AgentChatService implements AgentChatServiceLike {
     if (extras?.planSummary) context.planSummary = extras.planSummary;
     if (extras?.topic) context.topic = extras.topic;
 
-    if (this.replyStrategy) {
+    // Skip LLM for error scenarios — show the actual error to the user
+    if (this.replyStrategy && scenario !== 'error') {
       try {
         const reply = await this.replyStrategy.buildReply(context);
         pushHistory(userId, 'agent', reply);
