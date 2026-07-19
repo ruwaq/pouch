@@ -10,6 +10,8 @@ import { ChatInput } from '../chat/ChatInput';
 import { WalletPanel } from './WalletPanel';
 import { LiveTracePanel } from './LiveTracePanel';
 import { ChainPanel } from './ChainPanel';
+import { BountyPanel } from './BountyPanel';
+import { DemoFlow } from './DemoFlow';
 import { useChat } from '../../context/chat-context';
 
 export function DashboardLayout() {
@@ -35,8 +37,10 @@ export function DashboardLayout() {
         {/* ── RIGHT: Live Dashboard ───────────────────────────────── */}
         <div className="hidden flex-1 flex-col gap-3 overflow-y-auto bg-[var(--bg)] p-4 md:flex">
           <DashboardTitle />
+          <DemoFlow />
           <WalletPanel />
           <LiveTracePanel />
+          <BountyPanel />
           <ChainPanel />
         </div>
       </div>
