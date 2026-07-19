@@ -14,6 +14,7 @@ export type ReplyScenario =
   | 'send'           // wallet-to-wallet transfer: list available wallets
   | 'send_confirmation' // wallet-to-wallet transfer confirmation
   | 'swap_confirmation' // token swap confirmation (ARB → ETH)
+  | 'fund_gas_confirmation' // gas funding confirmation (Openfort → wallet)
   | 'fallback';      // unknown intent / unhandled action
 
 /**

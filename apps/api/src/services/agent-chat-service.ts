@@ -3,7 +3,7 @@ import { isOk, ok, getExplorerUrl, type Result } from '@pouch/shared';
 import type { BalanceServiceLike } from './balance-service';
 import type { AccountProvider } from '@pouch/domain';
 
-export type ConversationPhase = 'reply' | 'confirmation' | 'executed' | 'send_confirmation' | 'swap_confirmation';
+export type ConversationPhase = 'reply' | 'confirmation' | 'executed' | 'send_confirmation' | 'swap_confirmation' | 'fund_gas_confirmation';
 
 export interface AgentChatResponse extends CashOutResult {
   intent: CashOutIntent;
@@ -41,8 +41,8 @@ interface ConversationMessage {
 interface PendingCashOut {
   intent: CashOutIntent;
   planSummary: string;
-  /** Distinguishes send/swap/cash_out pending confirmations. */
-  type: 'cash_out' | 'send' | 'swap';
+  /** Distinguishes send/swap/cash_out/fund_gas pending confirmations. */
+  type: 'cash_out' | 'send' | 'swap' | 'fund_gas';
 }
 
 const MAX_HISTORY = 10;
@@ -138,6 +138,9 @@ export class AgentChatService implements AgentChatServiceLike {
         if (pending.type === 'swap') {
           return this.executeSwap(userId, pending.intent);
         }
+        if (pending.type === 'fund_gas') {
+          return this.fundGasForWallet(userId, pending.intent);
+        }
         return this.executeCashOut(pending.intent, userId);
       }
       if (trimmed === 'no' || trimmed === 'cancel' || trimmed === 'never mind' || trimmed === 'nope' || trimmed === 'nah' || trimmed === 'stop' || trimmed === 'abort') {
@@ -188,7 +191,7 @@ export class AgentChatService implements AgentChatServiceLike {
       // "send ETH" without a destination → fund gas request
       const isEthRequest = (i.token === 'ETH' || i.brand?.toUpperCase() === 'ETH');
       if (isEthRequest && !i.toLabel) {
-        return this.fundGasForWallet(userId, i);
+        return this.handleFundGasConfirmation(userId, i);
       }
       return this.handleSend(userId, i);
     }
@@ -868,6 +871,52 @@ export class AgentChatService implements AgentChatServiceLike {
   }
 
   /**
+   * ⛽ First step: shows confirmation card for gas funding.
+   * User must reply "yes" to execute. This prevents the flow from
+   * skipping past the confirmation step.
+   */
+  private async handleFundGasConfirmation(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
+    const balance = await this.balanceService.getBalance(userId);
+    if (!isOk(balance)) {
+      const reply = await this.buildReply(intent, userId, 'error', { error: 'Could not read balance' });
+      return this.emptyResult(intent, reply);
+    }
+
+    const b = balance.value;
+    const fromLabel = intent.fromLabel?.trim() ?? 'Wallet 1';
+    const amountEth = intent.amount.value > 0 ? intent.amount.value : 0.00005;
+    const chainId = intent.chainId ?? 42161;
+
+    // Check if wallet already has ETH
+    const ethAssets = b.assets.filter(
+      (a) => (a.walletLabel === fromLabel || !a.walletLabel) && a.symbol === 'ETH' && a.chainId === chainId,
+    );
+    const ethBalance = ethAssets.reduce((sum, a) => sum + a.amount, 0);
+
+    const planSummary = ethBalance > 0.00001
+      ? `⛽ ${fromLabel} already has ${ethBalance.toFixed(6)} ETH — skipping (enough for ~${Math.floor(ethBalance / 0.000002)} txns)`
+      : `⛽ Openfort will send ${amountEth} ETH to ${fromLabel} for gas (FREE — sponsored by Openfort)`;
+
+    // Store pending confirmation
+    pendingConfirmations.set(userId, {
+      intent,
+      planSummary,
+      type: 'fund_gas',
+    });
+
+    const reply = await this.buildReply(intent, userId, 'fund_gas_confirmation', {
+      balance: b,
+      planSummary,
+    });
+
+    return this.emptyResult(intent, reply, {
+      phase: 'fund_gas_confirmation',
+      balanceSnapshot: b,
+      planSummary,
+    });
+  }
+
+  /**
    * ⛽ Sends gas ETH from the Openfort backend wallet to a user's wallet.
    * Uses Openfort's gas sponsorship — the user pays nothing.
    */
@@ -1180,6 +1229,10 @@ function templateReply(context: ReplyContext): string {
 
     case 'swap_confirmation': {
       return `🔄 **${context.planSummary ?? 'Confirm swap'}**\n\nThis will use Uniswap V3 on Arbitrum to swap ARB → ETH.\n\nReady to swap? Reply "yes" to confirm or "no" to cancel.`;
+    }
+
+    case 'fund_gas_confirmation': {
+      return `⛽ **${context.planSummary ?? 'Confirm gas funding'}**\n\nOpenfort will send ETH to your wallet for gas — completely free for you.\n\nReady to fund? Reply "yes" to confirm or "no" to cancel.`;
     }
 
     case 'fallback':

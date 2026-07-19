@@ -52,7 +52,7 @@ export interface AgentChatResponse extends CashOutResult {
   reply: string;
   trace: CashOutResult['trace'];
   /** Conversation phase — tells the frontend what UI to show. */
-  phase: 'reply' | 'confirmation' | 'executed' | 'send_confirmation' | 'swap_confirmation';
+  phase: 'reply' | 'confirmation' | 'executed' | 'send_confirmation' | 'swap_confirmation' | 'fund_gas_confirmation';
   /** Balance snapshot at confirmation time. */
   balanceSnapshot?: Balance;
   /** Summary of what the user is about to confirm. */

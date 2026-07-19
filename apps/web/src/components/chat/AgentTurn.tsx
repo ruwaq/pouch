@@ -8,11 +8,13 @@ import { SendReceiptCard } from './SendReceiptCard';
 import { SwapConfirmationCard } from './SwapConfirmationCard';
 import { SwapReceiptCard } from './SwapReceiptCard';
 import { FundGasReceiptCard } from './FundGasReceiptCard';
+import { FundGasConfirmationCard } from './FundGasConfirmationCard';
 
 export function AgentTurn({ response }: { response: AgentChatResponse }) {
   const isConfirmation = response.phase === 'confirmation';
   const isSendConfirmation = response.phase === 'send_confirmation';
   const isSwapConfirmation = response.phase === 'swap_confirmation';
+  const isFundGasConfirmation = response.phase === 'fund_gas_confirmation';
   const isExecuted = response.phase === 'executed';
   const isSend = response.intent.action === 'send';
   const isSwap = response.intent.action === 'swap';
@@ -20,7 +22,7 @@ export function AgentTurn({ response }: { response: AgentChatResponse }) {
   return (
     <div className="mt-2 space-y-2">
       {/* Reply text — hidden when confirmation card is shown */}
-      {!isConfirmation && !isSendConfirmation && !isSwapConfirmation ? (
+      {!isConfirmation && !isSendConfirmation && !isSwapConfirmation && !isFundGasConfirmation ? (
         <p className="whitespace-pre-wrap text-sm text-[var(--fg)]">{response.reply}</p>
       ) : null}
 
@@ -29,6 +31,9 @@ export function AgentTurn({ response }: { response: AgentChatResponse }) {
 
       {/* Swap confirmation card */}
       {isSwapConfirmation ? <SwapConfirmationCard response={response} /> : null}
+
+      {/* Fund gas confirmation card */}
+      {isFundGasConfirmation ? <FundGasConfirmationCard response={response} /> : null}
 
       {/* Cash-out confirmation card */}
       {isConfirmation ? <ConfirmationCard response={response} /> : null}
