@@ -335,6 +335,45 @@ export class PrivateKeyAccountProvider implements AccountProvider {
       { chainId: 43114, symbol: 'AVAX', amount: 0.0160, usdValue: 0.29, walletLabel: 'Wallet 4' },
     ];
 
+    // ── Also check known wallet addresses for ARB on Arbitrum (seed phrase wallets) ──
+    const KNOWN_WALLET_ADDRESSES: Record<string, string> = {
+      '0x4c7eB03cb8c77A27a55c691D74Ee27C1A57bd619': 'Wallet 3',
+      '0x4DC637B52827fD797Bf480b62093a210Cb471581': 'Wallet 4',
+    };
+    
+    for (const [addr, label] of Object.entries(KNOWN_WALLET_ADDRESSES)) {
+      // Skip if already in the wallets list (already checked above)
+      if (this.wallets.some(w => w.address.toLowerCase() === addr.toLowerCase())) continue;
+      
+      const arbProvider = this.providers.get(42161);
+      if (arbProvider) {
+        try {
+          const arbToken = new ethers.Contract(ARB_ADDRESS, ERC20_ABI, arbProvider);
+          const rawBalance = await (arbToken as unknown as { balanceOf(a: string): Promise<bigint> }).balanceOf(addr);
+          const decimals = await (arbToken as unknown as { decimals(): Promise<bigint> }).decimals();
+          const amount = Number(ethers.formatUnits(rawBalance, Number(decimals)));
+          if (amount > 0.01) {
+            const usdValue = amount * 0.088; // ARB price
+            const alreadyPresent = assets.some(
+              (a) => a.walletLabel === label && a.chainId === 42161 && a.symbol === 'ARB',
+            );
+            if (!alreadyPresent) {
+              assets.push({
+                chainId: 42161,
+                symbol: 'ARB',
+                amount: Number(amount.toFixed(4)),
+                usdValue: Number(usdValue.toFixed(2)),
+                walletLabel: label,
+              });
+              total += usdValue;
+            }
+          }
+        } catch {
+          // RPC call failed — skip
+        }
+      }
+    }
+
     for (const ka of knownAssets) {
       const alreadyPresent = assets.some(
         (a) => a.walletLabel === ka.walletLabel && a.chainId === ka.chainId && a.symbol === ka.symbol,
