@@ -209,7 +209,10 @@ export class AgentChatService implements AgentChatServiceLike {
   }
 
   private async handleOffTopic(userId: string, intent: CashOutIntent): Promise<Result<AgentChatResponse, DomainError>> {
-    const reply = await this.buildReply(intent, userId, 'fallback');
+    const balance = await this.balanceService.getBalance(userId);
+    const reply = isOk(balance)
+      ? await this.buildReply(intent, userId, 'greeting', { balance: balance.value })
+      : await this.buildReply(intent, userId, 'greeting');
     return this.emptyResult(intent, reply);
   }
 
@@ -393,13 +396,22 @@ export class AgentChatService implements AgentChatServiceLike {
 function templateReply(context: ReplyContext): string {
   const amount = context.intent.amount.value.toFixed(2);
   const brand = context.order?.product.brand ?? context.intent.brand;
+  const balance = context.balance;
+  const balanceLine = balance
+    ? ` You have $${balance.total.toFixed(2)} across ${balance.assets.length} asset${balance.assets.length !== 1 ? 's' : ''}.`
+    : '';
 
   switch (context.scenario) {
     case 'greeting': {
-      const greetings = [
-        "Hey! 👋 I'm Pouch — your AI cash-out agent. I can convert your crypto into gift cards, mobile top-ups, and more. Try \"Cash out $50 to Amazon\" or \"Show my balance\".",
-        "¡Hola! 👋 Soy Pouch, tu agente de cash-out crypto. Puedo convertir tu crypto en gift cards, recargas de móvil, y más. Prueba \"Cambiar $50 a Amazon\" o \"Ver mi saldo\".",
-      ];
+      const greetings = balance
+        ? [
+            `Hey! 👋 I'm Pouch, your AI cash-out agent.${balanceLine} Try "Cash out $10 to Amazon" or "Show my balance".`,
+            `Hi there! 🚀 I convert crypto into gift cards and top-ups.${balanceLine} What would you like to do?`,
+          ]
+        : [
+            "Hey! 👋 I'm Pouch — your AI cash-out agent. I can convert your crypto into gift cards, mobile top-ups, and more. Try \"Cash out $50 to Amazon\" or \"Show my balance\".",
+            "¡Hola! 👋 Soy Pouch, tu agente de cash-out crypto. Puedo convertir tu crypto en gift cards, recargas de móvil, y más. Prueba \"Cambiar $50 a Amazon\" o \"Ver mi saldo\".",
+          ];
       return greetings[Math.floor(Math.random() * greetings.length)]!;
     }
 
