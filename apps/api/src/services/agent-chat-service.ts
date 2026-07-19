@@ -883,9 +883,15 @@ export class AgentChatService implements AgentChatServiceLike {
     const chainId = intent.chainId ?? 42161;
 
     // Auto-skip: if wallet already has ETH, don't waste Openfort funds
-    const ethAssets = b.assets.filter(
+    let ethAssets = b.assets.filter(
       (a) => a.walletLabel === fromLabel && a.symbol === 'ETH' && a.chainId === chainId,
     );
+    // Fallback: if no walletLabel-based match, check all ETH on this chain
+    if (ethAssets.length === 0) {
+      ethAssets = b.assets.filter(
+        (a) => a.symbol === 'ETH' && a.chainId === chainId,
+      );
+    }
     const ethBalance = ethAssets.reduce((sum, a) => sum + a.amount, 0);
     if (ethBalance > 0.00001) {
       const trace = [
