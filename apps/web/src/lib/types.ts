@@ -2,6 +2,7 @@ import type {
   Balance,
   CashOutIntent,
   CashOutResult,
+  FundGasReceipt,
   Order,
   SecurityResult,
   SendReceipt,
@@ -14,6 +15,7 @@ export type BalanceResponse = Balance & { userId: string };
 
 export type {
   Balance,
+  FundGasReceipt,
   Order,
   SecurityResult,
   SendReceipt,
@@ -63,4 +65,6 @@ export interface AgentChatResponse extends CashOutResult {
   sendReceipt?: SendReceipt;
   /** Receipt for token swaps. */
   swapReceipt?: SwapResult;
+  /** Receipt for gas funding operations. */
+  fundGasReceipt?: FundGasReceipt;
 }

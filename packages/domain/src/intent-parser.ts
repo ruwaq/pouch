@@ -125,7 +125,7 @@ export class IntentParser implements IntentParserStrategy {
         category: 'giftcard',
         token: 'ETH',
         brand: 'ETH',
-        amount: { value: 0.0005, currency: 'USD' },
+        amount: { value: 0.00005, currency: 'USD' },
         chainId: 42161,
       });
     }
