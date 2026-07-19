@@ -1,4 +1,5 @@
 import { err, ok, type Result } from '@pouch/shared';
+import { getExplorerUrl } from '@pouch/shared';
 import type {
   AgentWalletPort,
   DomainError,
@@ -151,6 +152,7 @@ export class OpenfortAgentWallet implements AgentWalletPort {
       return ok({
         txHash: result.response.transactionHash,
         chainId: params.chainId,
+        explorerUrl: getExplorerUrl(params.chainId, 'tx', result.response.transactionHash),
       });
     } catch (error) {
       this.logger.error({ error, chainId: params.chainId }, 'Openfort settlement failed.');
@@ -203,6 +205,7 @@ export class OpenfortAgentWallet implements AgentWalletPort {
       return ok({
         txHash: result.response.transactionHash,
         chainId: params.chainId,
+        explorerUrl: getExplorerUrl(params.chainId, 'tx', result.response.transactionHash),
       });
     } catch (error) {
       this.logger.error({ error, to: params.to }, 'Openfort ETH send failed.');
