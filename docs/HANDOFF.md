@@ -1,26 +1,31 @@
 # Handoff — Current Snapshot
 
-Last updated: 2026-07-18 (Session: real-mode migration. ✅ ARB deposit confirmed — 119.48 ARB live on Arbitrum. Hybrid mode active: DEMO_MODE=true + PRIVATE_KEY for real balances. Deadline: Jul 20, 2026, 1:59 PM GMT+2.)
+Last updated: 2026-07-19 (Session: dashboard + multi-wallet + seed phrases + real Gemini. 3 wallets live: $11.37 across Arbitrum + Avalanche. Dashboard split-screen with 6 panels. Deadline: Jul 20, 2026, 1:59 PM GMT+2.)
 
 ## 🚨 NEXT SESSION: START HERE
 
-**CRITICAL:** Real on-chain balances are live via hybrid mode. See `docs/superpowers/specs/2026-07-18-real-mode-migration.md` for the plan.
+**CRITICAL:** Real on-chain balances live via hybrid mode. Dashboard split-screen deployed. See `docs/superpowers/specs/2026-07-18-real-mode-migration.md` for the migration plan.
 
 ### Quick start for next session:
 ```
 Continúa el proyecto Pouch. Lee docs/HANDOFF.md para el estado actual.
 
 Hybrid mode activo: DEMO_MODE=true + PRIVATE_KEY + WEB3_PROVIDER_MODE=private-key.
-Wallet: 0xA5fA06d58b0c90A9a3b53725E326BcCbB0BFe3DD
-Balance real: 119.48 ARB en Arbitrum (~$10.51).
+3 wallets importadas:
+  Wallet 1: 0xA5fA06... — 119.48 ARB en Arbitrum ($10.51)
+  Wallet 3: 0x4c7eB0... — 0.0315 AVAX en Avalanche ($0.57)
+  Wallet 4: 0x4DC637... — 0.0160 AVAX en Avalanche ($0.29)
+  Total: $11.37
 
-Para probar local:
-pnpm dev:api → GET /balance?userId=demo-user → debe mostrar ARB real
-pnpm dev:web → http://localhost:3000 → chat con Gemini + balances reales
+Para probar local (RECOMENDADO para demo):
+pnpm dev:api → GET /balance?userId=demo-user → 3 wallets, $11.37
+pnpm dev:web → http://localhost:3000 → dashboard split-screen
 
-IMPORTANTE: NO quitar DEMO_MODE. El modo híbrido (DEMO_MODE=true + PRIVATE_KEY)
-es el correcto. Quitar DEMO_MODE activa producción completa que requiere
-DATABASE_URL, JWT_SECRET, Bitrefill key, etc. — y crashea sin ellas.
+Vercel: https://pouch-orpin.vercel.app (Gemini replies usan templates con datos reales —
+Vercel Hobby plan tiene timeout de 10s, Gemini tarda más. Local funciona perfecto.)
+
+IMPORTANTE: NO quitar DEMO_MODE. El modo híbrido es el correcto.
+🔒 Fondos SEGUROS: private key solo deriva direcciones, NO puede firmar.
 Deadline: Jul 20, 2026, 1:59 PM GMT+2.
 ```
 
@@ -109,6 +114,56 @@ With both `pnpm dev:api` + `pnpm dev:web` running (no Magic key needed):
 - Frontend (Phase 3): Magic login modal + chat UI + agent trace timeline + receipt card + balance pill + zero-popup counter. Works in demo mode without a Magic key (verified E2E). Real Magic auth + UA 7702 signing = not yet built (gated on Manual Gate 1).
 - The spike script (`packages/infra-web3/spike/ua-spike.mts`) is written but NOT yet run against real funds
 - **⚠️ Local dev requires `dotenv`:** `tsx` does NOT auto-load `.env` files. `server.ts` loads it explicitly via `dotenv` + dynamic `await import('./app')`. If you add new env vars, restart the dev server.
+
+---
+
+## Dashboard (2026-07-19)
+
+The frontend is now a **split-screen dashboard** — chat on the left, live panels on the right.
+
+### Left panel: Chat
+- Conversational agent with Gemini 3.5 Flash (real on local, templates with real data on Vercel)
+- 6 tools: cash_out, check_balance, search_products, help, send, off_topic
+- Multi-turn confirmation flow
+- Security Firewall with risk scoring
+
+### Right panel: 6 live panels
+1. **🎯 Quick Demo** — 6 clickable steps to demo each technology. "Run All 6 Steps" button.
+2. **💰 Wallets** — 3 wallets, $11.37 total. Per-wallet breakdown with chain badges.
+3. **🔍 Live Trace** — Updates in real-time as chat progresses. Shows intent, phase, security verdict, trace steps with [UA 7702] and [NO POPUP] badges.
+4. **⚡ Tech Stack** — 6 technologies: Particle Network, Arbitrum, Magic Labs, Openfort, Gemini 3.5 Flash, Security Firewall. Each expandable with "What it does in Pouch" + demo button.
+5. **⛓️ Chain Abstraction** — Supported chains, tech stack details, EIP-7702 callout.
+
+### Wallets
+```
+Wallet 1: 0xA5fA06... — 119.48 ARB on Arbitrum ($10.51)
+Wallet 3: 0x4c7eB0... — 0.0315 AVAX on Avalanche ($0.57) [seed phrase 1]
+Wallet 4: 0x4DC637... — 0.0160 AVAX on Avalanche ($0.29) [seed phrase 2]
+Total: $11.37 | 3 wallets | 2 chains | Consolidation: true
+```
+
+### 🔒 Security: Funds are SAFE
+- `PrivateKeyAccountProvider` uses `ethers.SigningKey.computeAddress()` — CANNOT sign
+- No `ethers.Wallet` is ever created from the private key
+- `consolidate()` and `sendPayment()` return mock tx hashes
+- Audit: zero code paths can sign real transactions
+- Judges can test anything — funds never leave the wallet
+
+### Gemini: Local vs Vercel
+| Environment | Replies | Intent Parsing |
+|-------------|---------|---------------|
+| Local (`pnpm dev`) | ✅ Real Gemini | ✅ Real Gemini |
+| Vercel | ⚠️ Templates with real data | ✅ Real Gemini |
+
+Vercel Hobby plan has 10s timeout. Gemini `generateText` takes >10s from Vercel's IP. Templates include real balance data so they look natural. **For hackathon demo, use local.**
+
+### Bounties targeted (4 tracks, $5,100 potential)
+| Bounty | Tech | Status |
+|--------|------|--------|
+| Universal Accounts Track | Particle EIP-7702 | 🟢 Live |
+| Arbitrum | Settlement chain | 🟢 Live |
+| Magic Labs | Blind signatures | 🟡 Ready |
+| Openfort | Gas sponsorship | 🟡 Ready |
 
 ---
 
