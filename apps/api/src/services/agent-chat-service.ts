@@ -1,5 +1,5 @@
-import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, IntentParserStrategy, OffRampProvider, Order, OrderRepository, Product, ReplyContext, ReplyScenario, ReplyStrategy, SecurityChecker, SecurityResult, SendReceipt, SwapResult, AgentWalletPort } from '@pouch/domain';
-import { isOk, ok, type Result } from '@pouch/shared';
+import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, FundGasReceipt, IntentParserStrategy, OffRampProvider, Order, OrderRepository, Product, ReplyContext, ReplyScenario, ReplyStrategy, SecurityChecker, SecurityResult, SendReceipt, SwapResult, TraceStep, AgentWalletPort } from '@pouch/domain';
+import { isOk, ok, getExplorerUrl, type Result } from '@pouch/shared';
 import type { BalanceServiceLike } from './balance-service';
 import type { AccountProvider } from '@pouch/domain';
 
@@ -23,6 +23,8 @@ export interface AgentChatResponse extends CashOutResult {
   sendReceipt?: SendReceipt;
   /** Receipt for token swaps (set when phase === 'executed' and action === 'swap'). */
   swapReceipt?: SwapResult;
+  /** Receipt for gas funding operations (set when phase === 'executed' and action is fund_gas). */
+  fundGasReceipt?: FundGasReceipt;
 }
 
 export interface AgentChatServiceLike {
@@ -395,14 +397,14 @@ export class AgentChatService implements AgentChatServiceLike {
             token: 'ETH',
             brand: 'ETH',
             fromLabel: matchedFrom,
-            amount: { value: 0.0005, currency: 'USD' },
+            amount: { value: 0.00005, currency: 'USD' },
           });
           if (isOk(fundResult)) {
             // Gas funded! Continue with the send confirmation
             const reply = await this.buildReply(resolvedIntent, userId, 'send_confirmation', {
               balance: b,
               planSummary,
-              error: `⛽ Gas auto-funded by Openfort! 0.0005 ETH sent to ${matchedFrom}. Ready to send.`,
+              error: `⛽ Gas auto-funded by Openfort! 0.00005 ETH sent to ${matchedFrom}. Ready to send.`,
             });
             return this.emptyResult(resolvedIntent, reply, {
               phase: 'send_confirmation',
@@ -586,7 +588,7 @@ export class AgentChatService implements AgentChatServiceLike {
         { id: '2', label: 'Security check', status: 'complete' as const, badge: 'SAFE ✓' },
         { id: '3', label: 'Signing transaction', status: 'complete' as const, badge: 'NO POPUP' },
         { id: '4', label: 'Broadcasting to Arbitrum', status: 'complete' as const, badge: 'Arbitrum' },
-        { id: '5', label: 'Confirmed (demo)', status: 'complete' as const, badge: `Block #${mockBlockNumber}` },
+        { id: '5', label: 'Confirmed (demo)', status: 'complete' as const, badge: `Block #${mockBlockNumber}`, ...(sendReceipt.explorerUrl ? { explorerUrl: sendReceipt.explorerUrl } : {}) },
       ];
 
       const reply = `✅ **Sent ${amount} ${token}!** (demo mode)\n\n📤 From: ${fromLabel}\n📥 To: ${toLabel}\n⛽ Gas: Sponsored by Openfort\n⛓️ Network: Arbitrum One\n\n📋 Tx: \`${mockTxHash}\`\n🔗 [View on Arbiscan](${sendReceipt.explorerUrl})\n\n⚠️ Demo mode: send ETH to Wallet 1 for real transactions. Architecture is production-ready.`;
@@ -625,12 +627,12 @@ export class AgentChatService implements AgentChatServiceLike {
     };
 
     // ── Build trace ──
-    const trace = [
+    const trace: TraceStep[] = [
       { id: '1', label: 'Checking balance', status: 'complete' as const, badge: `${token}` },
       { id: '2', label: 'Security check', status: 'complete' as const, badge: 'SAFE ✓' },
       { id: '3', label: 'Signing transaction', status: 'complete' as const, badge: 'NO POPUP' },
       { id: '4', label: 'Broadcasting to Arbitrum', status: 'complete' as const, badge: 'Arbitrum' },
-      { id: '5', label: 'Confirmed', status: 'complete' as const, badge: tx.blockNumber ? `Block #${tx.blockNumber}` : 'Pending' },
+      { id: '5', label: 'Confirmed', status: 'complete' as const, badge: tx.blockNumber ? `Block #${tx.blockNumber}` : 'Pending', ...(sendReceipt.explorerUrl ? { explorerUrl: sendReceipt.explorerUrl } : {}) },
     ];
 
     const reply = `✅ **Sent ${amount} ${token}!**\n\n📤 From: ${fromLabel}\n📥 To: ${toLabel}\n⛽ Gas: ${tx.gasCostUsd ? `$${tx.gasCostUsd.toFixed(4)}` : 'N/A'}\n⛓️ Network: Arbitrum One\n\n📋 Tx Hash: \`${tx.txHash}\`\n🔗 [View on Arbiscan](${sendReceipt.explorerUrl})`;
@@ -803,12 +805,12 @@ export class AgentChatService implements AgentChatServiceLike {
         explorerUrl: `https://arbiscan.io/tx/${mockTxHash}`,
       };
 
-      const trace = [
+      const trace: TraceStep[] = [
         { id: '1', label: 'Checking ARB balance', status: 'complete' as const, badge: `${amount} ARB` },
         { id: '2', label: 'Approving Uniswap router', status: 'complete' as const, badge: 'Uniswap V3' },
         { id: '3', label: 'Swapping ARB → WETH', status: 'complete' as const, badge: 'Arbitrum' },
         { id: '4', label: 'Unwrapping WETH → ETH', status: 'complete' as const, badge: 'GAS READY' },
-        { id: '5', label: 'Confirmed (demo)', status: 'complete' as const, badge: `Block #${mockBlockNumber}` },
+        { id: '5', label: 'Confirmed (demo)', status: 'complete' as const, badge: `Block #${mockBlockNumber}`, ...(swap.explorerUrl ? { explorerUrl: swap.explorerUrl } : {}) },
       ];
 
       const reply = `✅ **Swapped ${amount} ARB → ~${swap.amountOut} ETH!** (demo mode)\n\n📤 From: ${fromLabel}\n🔄 Route: Uniswap V3 on Arbitrum\n\n📋 Tx: \`${mockTxHash}\`\n🔗 [View on Arbiscan](${swap.explorerUrl})\n\n💡 You now have ETH for gas! Try sending ARB to another wallet.\n\n⚠️ Demo mode: send ETH to Wallet 1 for real swaps. Architecture is production-ready.`;
@@ -830,12 +832,12 @@ export class AgentChatService implements AgentChatServiceLike {
     const swap = result.value;
 
     // ── Build trace ──────────────────────────────────────────────
-    const trace = [
+    const trace: TraceStep[] = [
       { id: '1', label: 'Checking ARB balance', status: 'complete' as const, badge: `${amount} ARB` },
       { id: '2', label: 'Approving Uniswap router', status: 'complete' as const, badge: 'Uniswap V3' },
       { id: '3', label: 'Swapping ARB → WETH', status: 'complete' as const, badge: 'Arbitrum' },
       { id: '4', label: 'Unwrapping WETH → ETH', status: 'complete' as const, badge: 'GAS READY' },
-      { id: '5', label: 'Confirmed', status: 'complete' as const, badge: swap.blockNumber ? `Block #${swap.blockNumber}` : 'Pending' },
+      { id: '5', label: 'Confirmed', status: 'complete' as const, badge: swap.blockNumber ? `Block #${swap.blockNumber}` : 'Pending', ...(swap.explorerUrl ? { explorerUrl: swap.explorerUrl } : {}) },
     ];
 
     const reply = `✅ **Swapped ${amount} ARB → ${swap.amountOut} ETH!**\n\n📤 From: ${fromLabel}\n🔄 Route: Uniswap V3 on Arbitrum\n⛽ Gas: ${swap.gasCostUsd ? `$${swap.gasCostUsd.toFixed(4)}` : 'N/A'}\n\n📋 Tx Hash: \`${swap.txHash}\`\n🔗 [View on Arbiscan](${swap.explorerUrl})\n\n💡 You now have ETH for gas! Try sending ARB to another wallet.`;
@@ -878,6 +880,30 @@ export class AgentChatService implements AgentChatServiceLike {
 
     const b = balance.value;
     const fromLabel = intent.fromLabel?.trim() ?? 'Wallet 1';
+    const chainId = intent.chainId ?? 42161;
+
+    // Auto-skip: if wallet already has ETH, don't waste Openfort funds
+    const ethAssets = b.assets.filter(
+      (a) => a.walletLabel === fromLabel && a.symbol === 'ETH' && a.chainId === chainId,
+    );
+    const ethBalance = ethAssets.reduce((sum, a) => sum + a.amount, 0);
+    if (ethBalance > 0.00001) {
+      const trace = [
+        { id: '1', label: `Wallet already has ${ethBalance.toFixed(6)} ETH`, status: 'complete' as const, badge: 'SKIP' },
+        { id: '2', label: 'Skipping gas funding', status: 'complete' as const, badge: '💰' },
+      ];
+      const reply = `⛽ **Gas already funded!**\n\n${fromLabel} has ${ethBalance.toFixed(6)} ETH — enough for ~${Math.floor(ethBalance / 0.000002)} transactions. No need to spend Openfort credits. 💰`;
+      pushHistory(userId, 'agent', reply);
+      return ok({
+        orderId: `skip-gas-${Date.now()}`,
+        status: 'delivered',
+        trace,
+        intent,
+        reply,
+        phase: 'executed',
+        llmReply: false,
+      });
+    }
 
     // Find the wallet address
     let walletAddress = '';
@@ -902,7 +928,7 @@ export class AgentChatService implements AgentChatServiceLike {
 
     // Use duck-typed sendEth on the agent wallet
     const wallet = this.agentWallet as unknown as {
-      sendEth?(params: { to: string; amountEth: number; chainId: number }): Promise<Result<{ txHash: string; chainId?: number }, DomainError>>;
+      sendEth?(params: { to: string; amountEth: number; chainId: number }): Promise<Result<{ txHash: string; chainId?: number; explorerUrl?: string }, DomainError>>;
     };
 
     if (!wallet.sendEth) {
@@ -912,8 +938,7 @@ export class AgentChatService implements AgentChatServiceLike {
       return this.emptyResult(intent, reply);
     }
 
-    const amountEth = intent.amount.value > 0 ? intent.amount.value : 0.0005;
-    const chainId = intent.chainId ?? 42161;
+    const amountEth = intent.amount.value > 0 ? intent.amount.value : 0.00005;
 
     const result = await wallet.sendEth({ to: walletAddress, amountEth, chainId });
 
@@ -921,15 +946,27 @@ export class AgentChatService implements AgentChatServiceLike {
       // In demo mode, simulate success with a mock tx hash
       // (Openfort backend wallet needs funding for real ETH sends)
       const mockTxHash = `0xopenfort-gas-${Date.now().toString(16)}`;
-      const explorerUrl = `https://arbiscan.io/tx/${mockTxHash}`;
+      const explorerUrl = getExplorerUrl(chainId, 'tx', mockTxHash);
+
+      const fundGasReceipt: FundGasReceipt = {
+        txHash: mockTxHash,
+        chainId,
+        amountEth,
+        fromLabel: 'Openfort Backend',
+        fromAddress: '0xOpenfort...Demo',
+        toLabel: fromLabel,
+        toAddress: walletAddress,
+        gasSponsored: true,
+        explorerUrl,
+      };
 
       const trace = [
         { id: '1', label: 'Openfort backend wallet', status: 'complete' as const, badge: 'GASLESS' },
         { id: '2', label: `Sending ${amountEth} ETH to ${fromLabel}`, status: 'complete' as const, badge: 'Arbitrum' },
-        { id: '3', label: 'Gas sponsored by Openfort', status: 'complete' as const, badge: 'NO POPUP' },
+        { id: '3', label: 'Gas sponsored by Openfort', status: 'complete' as const, badge: 'NO POPUP', explorerUrl },
       ];
 
-      const reply = `⛽ **Gas funded!** (demo mode)\n\n📥 Sent ${amountEth} ETH to ${fromLabel}\n💰 Cost: $0.00 (sponsored by Openfort)\n\n📋 Tx: \`${mockTxHash}\`\n🔗 [View on Arbiscan](${explorerUrl})\n\n💡 You now have ETH for gas! Try "send 5 ARB to Wallet 3".\n\n⚠️ Demo mode: Openfort backend wallet needs funding for real ETH transfers. The architecture is production-ready.`;
+      const reply = `⛽ **Gas funded!** (demo mode)\n\n📥 Sent ${amountEth} ETH to ${fromLabel}\n💰 Cost: $0.00 (sponsored by Openfort)\n\n📋 Tx: \`${mockTxHash}\`\n🔗 [View on Arbiscan](${explorerUrl})\n\n💡 You now have ETH for gas! Try "send 0.1 ARB to Wallet 3".\n\n⚠️ Demo mode: Openfort backend wallet needs funding for real ETH transfers. The architecture is production-ready.`;
 
       pushHistory(userId, 'agent', reply);
 
@@ -941,19 +978,40 @@ export class AgentChatService implements AgentChatServiceLike {
         reply,
         phase: 'executed',
         llmReply: false,
+        fundGasReceipt,
       });
     }
 
     const tx = result.value;
-    const explorerUrl = `https://arbiscan.io/tx/${tx.txHash}`;
+    const explorerUrl = tx.explorerUrl ?? getExplorerUrl(chainId, 'tx', tx.txHash);
+
+    const fundGasReceipt: FundGasReceipt = {
+      txHash: tx.txHash,
+      chainId,
+      amountEth,
+      fromLabel: 'Openfort Backend',
+      fromAddress: '',
+      toLabel: fromLabel,
+      toAddress: walletAddress,
+      gasSponsored: true,
+      explorerUrl,
+    };
+
+    // Get Openfort wallet address if available
+    if (this.agentWallet) {
+      const addrResult = await this.agentWallet.getAddress();
+      if (isOk(addrResult)) {
+        fundGasReceipt.fromAddress = addrResult.value.address;
+      }
+    }
 
     const trace = [
       { id: '1', label: 'Openfort backend wallet', status: 'complete' as const, badge: 'GASLESS' },
       { id: '2', label: `Sending ${amountEth} ETH to ${fromLabel}`, status: 'complete' as const, badge: 'Arbitrum' },
-      { id: '3', label: 'Gas sponsored by Openfort', status: 'complete' as const, badge: 'NO POPUP' },
+      { id: '3', label: 'Gas sponsored by Openfort', status: 'complete' as const, badge: 'NO POPUP', explorerUrl },
     ];
 
-    const reply = `⛽ **Gas funded!**\n\n📥 Sent ${amountEth} ETH to ${fromLabel}\n💰 Cost: $0.00 (sponsored by Openfort)\n\n📋 Tx: \`${tx.txHash}\`\n🔗 [View on Arbiscan](${explorerUrl})\n\n💡 You now have ETH for gas! Try "send 5 ARB to Wallet 3".`;
+    const reply = `⛽ **Gas funded!**\n\n📥 Sent ${amountEth} ETH to ${fromLabel}\n💰 Cost: $0.00 (sponsored by Openfort)\n\n📋 Tx: \`${tx.txHash}\`\n🔗 [View on Arbiscan](${explorerUrl})\n\n💡 You now have ETH for gas! Try "send 0.1 ARB to Wallet 3".`;
 
     pushHistory(userId, 'agent', reply);
 
@@ -965,6 +1023,7 @@ export class AgentChatService implements AgentChatServiceLike {
       reply,
       phase: 'executed',
       llmReply: false,
+      fundGasReceipt,
     });
   }
 
