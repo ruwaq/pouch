@@ -1,4 +1,5 @@
 import { err, ok, type Result } from '@pouch/shared';
+import { getExplorerUrl } from '@pouch/shared';
 import type { AccountProvider, Balance, BalanceAsset, DomainError, TxResult, UserId, SwapResult } from '@pouch/domain';
 import { ethers } from 'ethers';
 import type { Config } from '@pouch/shared';
@@ -82,12 +83,6 @@ const WETH_ABI = [
   'function withdraw(uint256 amount) external',
 ];
 
-const BLOCK_EXPLORERS: Record<number, string> = {
-  42161: 'https://arbiscan.io/tx',
-  8453: 'https://basescan.org/tx',
-  43114: 'https://snowtrace.io/tx',
-};
-
 /** Token addresses for transfers (ERC-20 tokens we can send). */
 const TOKEN_ADDRESSES: Record<number, Record<string, string>> = {
   42161: {
@@ -106,8 +101,8 @@ const TOKEN_ADDRESSES: Record<number, Record<string, string>> = {
 };
 
 // Gas settings
-const GAS_BUFFER = 1.2; // 20% buffer on estimates
-const MAX_GAS_PRICE_GWEI = 150; // reject if gas > 150 gwei
+const GAS_BUFFER = 1.2; // 20% buffer on gas estimates
+const MAX_GAS_PRICE_GWEI = 50; // reject if gas > 50 gwei (Arbitrum is ~0.01 gwei)
 
 interface WalletConfig {
   label: string;
@@ -435,17 +430,19 @@ export class PrivateKeyAccountProvider implements AccountProvider {
 
       // ── Create signer ──
       const signer = new ethers.Wallet(fromWallet.privateKey, provider);
-      const explorerUrl = BLOCK_EXPLORERS[chainId];
 
       // ── Execute transfer ──
       if (token.toUpperCase() === 'ETH' || token.toUpperCase() === 'AVAX') {
         // Native token transfer
         const amountWei = ethers.parseEther(amount.value.toString());
-        const tx = await signer.sendTransaction({
+        const rawTx = {
           to,
           value: amountWei,
           ...(feeData.gasPrice ? { gasPrice: feeData.gasPrice } : {}),
-        });
+        };
+        const estimatedGas = await signer.estimateGas(rawTx);
+        const bufferedGas = BigInt(Math.ceil(Number(estimatedGas) * GAS_BUFFER));
+        const tx = await signer.sendTransaction({ ...rawTx, gasLimit: bufferedGas });
         const receipt = await tx.wait();
         if (!receipt) {
           return err({ type: 'UNKNOWN', message: 'Transaction failed — no receipt returned.' });
@@ -462,7 +459,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
           blockNumber: receipt.blockNumber,
           gasUsed: receipt.gasUsed.toString(),
           gasCostUsd: Number((gasCostEth * nativePrice).toFixed(4)),
-          ...(explorerUrl ? { explorerUrl: `${explorerUrl}/${tx.hash}` } : {}),
+          explorerUrl: getExplorerUrl(chainId, 'tx', tx.hash),
         });
       }
 
@@ -515,7 +512,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
         blockNumber: receipt.blockNumber,
         gasUsed: receipt.gasUsed.toString(),
         gasCostUsd: Number((gasCostEth * nativePrice).toFixed(4)),
-        ...(explorerUrl ? { explorerUrl: `${explorerUrl}/${tx.hash}` } : {}),
+        explorerUrl: getExplorerUrl(chainId, 'tx', tx.hash),
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -687,7 +684,8 @@ export class PrivateKeyAccountProvider implements AccountProvider {
         recipient: wallet.address, // WETH goes to the wallet
         deadline,
         amountIn: amountInWei,
-        amountOutMinimum: 0n, // No slippage protection for demo (production: use oracle)
+        // 5% slippage (500 bps) — ARB ~0.00025 ETH per ARB
+        amountOutMinimum: amountInWei * 25n / 100000n * 95n / 100n,
         sqrtPriceLimitX96: 0n,
       });
 
@@ -713,7 +711,6 @@ export class PrivateKeyAccountProvider implements AccountProvider {
 
       const gasCostEth = Number(ethers.formatEther(swapReceipt.fee));
       const nativePrice = NATIVE_PRICES[chainId] ?? 2500;
-      const explorerUrl = BLOCK_EXPLORERS[chainId];
 
       console.log(`✅ Swap complete: ${amountIn} ARB → ~${wethAmount.toFixed(6)} ETH | gas: ${gasCostEth.toFixed(6)} ETH`);
 
@@ -727,7 +724,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
         amountOut: Number(wethAmount.toFixed(6)),
         gasUsed: swapReceipt.gasUsed.toString(),
         gasCostUsd: Number((gasCostEth * nativePrice).toFixed(4)),
-        ...(explorerUrl ? { explorerUrl: `${explorerUrl}/${swapTx.hash}` } : {}),
+        explorerUrl: getExplorerUrl(chainId, 'tx', swapTx.hash),
         walletLabel: wallet.label,
       });
     } catch (error) {
