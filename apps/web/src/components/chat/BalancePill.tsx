@@ -61,27 +61,45 @@ export function BalancePill() {
           <div className="fixed inset-0 z-10" onClick={() => setOpen(false)} />
           <div className="absolute left-0 top-full z-20 mt-2 w-56 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-3 shadow-lg">
             <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)]">
-              Unified Balance
+              Unified Balance — All Wallets
             </p>
-            {balance.assets.map((a) => {
-              const chainName = CHAIN_NAMES[a.chainId] ?? `Chain ${a.chainId}`;
-              return (
-                <div key={`${a.chainId}-${a.symbol}-${a.walletLabel ?? ''}-${a.amount}`} className="flex items-center justify-between py-1">
-                  <div className="flex items-center gap-2">
-                    {a.walletLabel ? (
-                      <span className="text-[10px] font-medium text-[var(--accent)]">{a.walletLabel}</span>
-                    ) : null}
-                    <span className="text-xs font-medium text-[var(--fg)]">
-                      {a.amount.toFixed(a.symbol === 'ETH' ? 4 : 2)} {a.symbol}
-                    </span>
-                    <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[10px] text-[var(--muted)]">
-                      {chainName}
-                    </span>
+            {(() => {
+              // Group assets by wallet for subtotals
+              const byWallet = new Map<string, typeof balance.assets>();
+              for (const a of balance.assets) {
+                const key = a.walletLabel ?? 'Wallet';
+                const list = byWallet.get(key) ?? [];
+                list.push(a);
+                byWallet.set(key, list);
+              }
+              return Array.from(byWallet.entries()).map(([walletLabel, assets]) => {
+                const walletTotal = assets.reduce((sum, a) => sum + a.usdValue, 0);
+                return (
+                  <div key={walletLabel} className="mb-2 last:mb-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[10px] font-semibold text-[var(--fg)]">{walletLabel}</span>
+                      <span className="text-[10px] font-medium text-[var(--accent)]">${walletTotal.toFixed(2)}</span>
+                    </div>
+                    {assets.map((a) => {
+                      const chainName = CHAIN_NAMES[a.chainId] ?? `Chain ${a.chainId}`;
+                      return (
+                        <div key={`${a.chainId}-${a.symbol}-${a.amount}`} className="flex items-center justify-between py-0.5 pl-2">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-[var(--fg)]">
+                              {a.amount.toFixed(a.symbol === 'ETH' ? 4 : 2)} {a.symbol}
+                            </span>
+                            <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] text-[var(--muted)]">
+                              {chainName}
+                            </span>
+                          </div>
+                          <span className="text-xs text-[var(--muted-2)]">${a.usdValue.toFixed(2)}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <span className="text-xs text-[var(--muted-2)]">${a.usdValue.toFixed(2)}</span>
-                </div>
-              );
-            })}
+                );
+              });
+            })()}
             {balance.requiresConsolidation ? (
               <p className="mt-2 border-t border-[var(--border)] pt-2 text-[10px] text-amber-300">
                 ⚡ Multi-chain — consolidates via <TechBadge badge="UA 7702" />
