@@ -10,6 +10,36 @@ import { SwapReceiptCard } from './SwapReceiptCard';
 import { FundGasReceiptCard } from './FundGasReceiptCard';
 import { FundGasConfirmationCard } from './FundGasConfirmationCard';
 
+/**
+ * Renders reply text with clickable markdown links.
+ * Converts [text](url) → <a href="url">text</a>
+ */
+function ReplyText({ text }: { text: string }) {
+  // Split on markdown links: [text](url)
+  const parts = text.split(/(\[.*?\]\(.*?\))/g);
+  return (
+    <p className="whitespace-pre-wrap text-sm text-[var(--fg)]">
+      {parts.map((part, i) => {
+        const match = part.match(/^\[(.*?)\]\((.*?)\)$/);
+        if (match) {
+          return (
+            <a
+              key={i}
+              href={match[2]}
+              target="_blank"
+              rel="noreferrer"
+              className="text-[var(--accent)] underline hover:text-[var(--accent)]/80"
+            >
+              {match[1]}
+            </a>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </p>
+  );
+}
+
 export function AgentTurn({ response }: { response: AgentChatResponse }) {
   const isConfirmation = response.phase === 'confirmation';
   const isSendConfirmation = response.phase === 'send_confirmation';
@@ -23,7 +53,7 @@ export function AgentTurn({ response }: { response: AgentChatResponse }) {
     <div className="mt-2 space-y-2">
       {/* Reply text — hidden when confirmation card is shown */}
       {!isConfirmation && !isSendConfirmation && !isSwapConfirmation && !isFundGasConfirmation ? (
-        <p className="whitespace-pre-wrap text-sm text-[var(--fg)]">{response.reply}</p>
+        <ReplyText text={response.reply} />
       ) : null}
 
       {/* Send confirmation card */}

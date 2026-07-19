@@ -8,10 +8,9 @@ const DEMO_STEPS = [
     label: 'Check Balance',
     message: 'Show my balance',
     icon: '💰',
-    description: 'Reads real on-chain balances from Arbitrum via RPC — 4 wallets, $11.37',
+    description: 'Reads real on-chain balances from Arbitrum via RPC — 4 wallets, all chains',
     bounty: 'Arbitrum Bounty',
     tech: 'Live RPC',
-    autoConfirm: false,
   },
   {
     label: 'Chain Abstraction',
@@ -20,47 +19,38 @@ const DEMO_STEPS = [
     description: 'Particle Network UA + EIP-7702: one balance, any chain, zero new addresses',
     bounty: 'UA Track',
     tech: 'EIP-7702',
-    autoConfirm: false,
   },
   {
     label: 'Fund Gas (Openfort)',
     message: 'fund gas',
     icon: '⛽',
-    description: 'Openfort sends 0.00005 ETH to your wallet — gas is FREE (sponsored)',
+    description: 'Openfort sends 0.00005 ETH — FREE gas. ⚠️ Reply "yes" to confirm manually.',
     bounty: 'Openfort + Arbitrum',
     tech: 'GASLESS',
-    autoConfirm: true,
-    confirmMessage: 'yes',
   },
   {
     label: 'Swap ARB → ETH',
     message: 'swap 0.05 ARB for ETH',
     icon: '🔄',
-    description: 'Uniswap V3 on Arbitrum: converts 0.05 ARB to ETH for gas — real on-chain swap',
+    description: 'Uniswap V3 on Arbitrum — real on-chain swap. ⚠️ Reply "yes" to confirm manually.',
     bounty: 'Arbitrum Bounty',
     tech: 'Uniswap V3',
-    autoConfirm: true,
-    confirmMessage: 'yes',
   },
   {
-    label: 'Send to Wallet',
-    message: 'send 0.1 ARB to Wallet 3',
+    label: 'Send to Wallet 3',
+    message: 'send 0.5 ARB to Wallet 3',
     icon: '💸',
-    description: 'Real Arbitrum transfer between your wallets — verifiable on Arbiscan',
+    description: 'Real Arbitrum transfer. ⚠️ Reply "yes" to confirm manually. Tip: "send 0.5 ARB from Wallet 3 to Wallet 1" to return.',
     bounty: 'Arbitrum Bounty',
     tech: 'Real TX',
-    autoConfirm: true,
-    confirmMessage: 'yes',
   },
   {
     label: 'Cash Out',
     message: 'Cash out $2 to Amazon',
     icon: '🎁',
-    description: 'Full flow: balance → security → routing → order → payment [NO POPUP]',
+    description: 'Full flow: balance → security → routing → order → payment [NO POPUP]. ⚠️ Reply "yes" to confirm.',
     bounty: 'UA Track',
     tech: 'UA 7702',
-    autoConfirm: true,
-    confirmMessage: 'yes',
   },
 ];
 
@@ -83,18 +73,11 @@ export function DemoFlow() {
       sendMessage(step.message);
       setCompleted((prev) => (prev.includes(i) ? prev : [...prev, i]));
       
-      // Wait for the response to render
-      if (step.autoConfirm) {
-        // Give the human time to read the confirmation card (8 seconds)
-        await new Promise((r) => setTimeout(r, 8000));
-        // Auto-confirm: send "yes" to execute the transaction
-        sendMessage(step.confirmMessage ?? 'yes');
-        // Give the human time to read the receipt (6 seconds)
-        await new Promise((r) => setTimeout(r, 6000));
-      } else {
-        // Info steps: give time to read (4 seconds)
-        await new Promise((r) => setTimeout(r, 4000));
-      }
+      // Wait for human to read and manually confirm each step
+      // Steps 0-1 (info): 4s pause for reading
+      // Steps 2-5 (actions): 10s pause — user must type "yes" manually
+      const waitTime = i <= 1 ? 4000 : 10000;
+      await new Promise((r) => setTimeout(r, waitTime));
     }
     setActiveStep(null);
   };
@@ -140,7 +123,7 @@ export function DemoFlow() {
         </button>
 
         <p className="text-[10px] text-[var(--muted)] text-center">
-          Steps 3-5 require ETH for gas (~$0.000002 each). Run &ldquo;Fund Gas&rdquo; first to get free ETH from Openfort.
+          Steps 3-6 require confirmation — reply &ldquo;yes&rdquo; to each. Gas is FREE via Openfort. Click each step or Run All.
         </p>
       </div>
     </PanelCard>
