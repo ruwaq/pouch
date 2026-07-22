@@ -58,8 +58,19 @@ mnemonic.txt
 seed.txt
 .wallet-testing.json
 
+# AI tooling (local)
+.claude/
+.zcode/
+.agents/
+
+# Deploy
+.vercel/
+
 # VTT transcripts (large, not source code)
 *.vtt
-.zcode/
-.vercel/
-.github/workflows/ci.yml
+
+# Stray files
+*.pdf
+
+# CI (requires workflow token scope to push)
+.github/workflows/
