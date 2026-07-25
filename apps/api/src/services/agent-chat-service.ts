@@ -58,6 +58,11 @@ function touchEntry(userId: string): void {
   entryTimestamps.set(userId, Date.now());
 }
 
+/** Demo users see simulated receipts on real failures; real users get the error. */
+function isDemo(userId: string): boolean {
+  return userId === 'demo-user' || userId === '0xdemo';
+}
+
 function evictStaleEntries(): void {
   const now = Date.now();
   const stale: string[] = [];
@@ -565,6 +570,8 @@ export class AgentChatService implements AgentChatServiceLike {
     });
 
     if (!isOk(result)) {
+      // Real user, real failure — propagate the error (C6: no fake receipt).
+      if (!isDemo(userId)) return result;
       // Demo fallback: simulate success with mock tx
       const mockTxHash = `0xsend-${Date.now().toString(16)}`;
       const mockBlockNumber = Math.floor(Math.random() * 1000000) + 28000000;
@@ -789,6 +796,8 @@ export class AgentChatService implements AgentChatServiceLike {
     });
 
     if (!isOk(result)) {
+      // Real user, real failure — propagate the error (C6: no fake receipt).
+      if (!isDemo(userId)) return result;
       // Demo fallback: simulate success with mock tx
       const mockTxHash = `0xswap-${Date.now().toString(16)}`;
       const mockBlockNumber = Math.floor(Math.random() * 1000000) + 28000000;
@@ -995,6 +1004,8 @@ export class AgentChatService implements AgentChatServiceLike {
     const result = await wallet.sendEth({ to: walletAddress, amountEth, chainId });
 
     if (!isOk(result)) {
+      // Real user, real failure — propagate the error (C6: no fake receipt).
+      if (!isDemo(userId)) return result;
       // In demo mode, simulate success with a mock tx hash
       // (Openfort backend wallet needs funding for real ETH sends)
       const mockTxHash = `0xopenfort-gas-${Date.now().toString(16)}`;
