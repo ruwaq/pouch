@@ -24,13 +24,15 @@ These must land before Jul 30. Each is independent enough to ship as its own com
 | # | Fix | Files | Status | Effort |
 |---|-----|-------|--------|--------|
 | C1 | Bitrefill webhook HMAC verification with `crypto.timingSafeEqual` + `WEBHOOK_SECRET`; require in route before `service.handle` | `packages/infra-offramp/src/bitrefill/adapter.ts`, `apps/api/src/routes/webhooks/bitrefill.ts`, `apps/api/src/services/bitrefill-webhook-service.ts` | `[x]` | S |
-| C2 | Never enable `allowDemoFallback` in production; `createRuntimeAppServices` fail-closed in prod | `apps/api/src/middleware/auth.ts`, `apps/api/src/app.ts`, `apps/api/src/bootstrap/create-runtime-app-services.ts` | `[ ]` | M |
-| C3 | Only mount `POST /auth/demo` when `mode === 'demo'` (or `!isProduction`) | `apps/api/src/app.ts` | `[ ]` | XS |
-| C4 | Derive identity only from `context.get('userId')`; strip `userId` from body/query in `/agent/chat`, `/balance`, `/orders/:id`; enforce repo tenancy | `apps/api/src/routes/agent.ts`, `balance.ts`, `orders.ts`, `packages/infra-db/src/repositories/order-repository.ts` | `[ ]` | M |
-| C5 | Remove `KNOWN_ADDRESSES`/`KNOWN_WALLETS` hardcoded whitelist; derive expected address from `SEED_PHRASE_*`; make `resolveSender` strict | `packages/infra-web3/src/private-key/private-key-provider.ts`, `apps/api/src/services/agent-chat-service.ts` | `[ ]` | M |
-| C6 | Only fabricate demo receipt when `isDemo(userId)`; propagate real errors otherwise | `apps/api/src/services/agent-chat-service.ts` (send :576, swap :800, fund-gas :1006) | `[ ]` | S |
+| C2 | Never enable `allowDemoFallback` in production; `createRuntimeAppServices` fail-closed in prod | `apps/api/src/middleware/auth.ts`, `apps/api/src/app.ts`, `apps/api/src/bootstrap/create-runtime-app-services.ts` | `[x]` | M |
+| C3 | Only mount `POST /auth/demo` when `mode === 'demo'` (or `!isProduction`) | `apps/api/src/app.ts` | `[x]` | XS |
+| C4 | Derive identity only from `context.get('userId')`; strip `userId` from body/query in `/agent/chat`, `/balance`, `/orders/:id`; enforce repo tenancy | `apps/api/src/routes/agent.ts`, `balance.ts`, `orders.ts`, `packages/infra-db/src/repositories/order-repository.ts` | `[x]` | M |
+| C5 | Remove `KNOWN_ADDRESSES`/`KNOWN_WALLETS` hardcoded whitelist; derive expected address from `SEED_PHRASE_*`; make `resolveSender` strict | `packages/infra-web3/src/private-key/private-key-provider.ts`, `apps/api/src/services/agent-chat-service.ts` | `[x]` | M |
+| C6 | Only fabricate demo receipt when `isDemo(userId)`; propagate real errors otherwise | `apps/api/src/services/agent-chat-service.ts` (send :576, swap :800, fund-gas :1006) | `[x]` | S |
 
 **Estimated total:** ~1 day. **Risk:** C5 may break the live demo if Wallet 3/4 addresses were the only thing making sends work — test demo flow end-to-end after C5.
+
+> ✅ **All CRITICAL fixes (C1–C6) landed on branch `audit-fixes` on 2026-07-25.** Full repo `pnpm typecheck` (8/8) and `pnpm test` (8/8) green. C5 note: the hardcoded addresses did not derive from any `.env` seed, so removing the bypass did not break derived-wallet sends (Wallet 1 ↔ Wallet 2). Demo sends between derived wallets and the judge demo flow (demo-user receipts) are preserved.
 
 ---
 
