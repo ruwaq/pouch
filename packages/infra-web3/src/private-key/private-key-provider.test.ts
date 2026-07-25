@@ -110,4 +110,30 @@ describe('PrivateKeyAccountProvider security (C5)', () => {
       expect(injectedLabels).not.toContain('Wallet 4');
     }
   });
+
+  it('every real asset includes an on-chain address when present', async () => {
+    // Regression guard for the wallet-explorer-links feature.
+    // With a throwaway key the on-chain balance is 0, so getUnifiedBalance()
+    // early-returns with an empty assets array. This test asserts that ANY
+    // asset that DOES get pushed by the real-provider branches includes an
+    // `address` field matching /^0x[a-fA-F0-9]{40}$/. If a future change adds
+    // a push without `address`, this test will catch it (once the early-return
+    // is bypassed in real runs). The hardcoded AVAX fallback assets (Wallet 3/4)
+    // intentionally have NO address and are excluded by the filter.
+    const provider = new PrivateKeyAccountProvider(makeConfig());
+    const result = await provider.getUnifiedBalance('any-user');
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const assetsWithWalletLabel = result.value.assets.filter((a) => a.walletLabel);
+      // Skip the known hardcoded AVAX fallback (Wallet 3/4 on 43114) — those are
+      // intentionally address-less demo data, out of scope for this assertion.
+      const realAssets = assetsWithWalletLabel.filter(
+        (a) => !(a.chainId === 43114 && a.symbol === 'AVAX' && (a.walletLabel === 'Wallet 3' || a.walletLabel === 'Wallet 4')),
+      );
+      for (const a of realAssets) {
+        expect(a.address).toMatch(/^0x[a-fA-F0-9]{40}$/);
+      }
+    }
+  });
 });
