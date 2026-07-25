@@ -31,6 +31,7 @@ export function buildOffRampProviders(config: Config): OffRampProvider[] {
         {
           includeTestProducts: config.NODE_ENV !== 'production',
           paymentMethod: toSettlementPaymentMethod(config.SETTLEMENT_CHAIN_ID),
+          webhookSecret: config.WEBHOOK_SECRET,
         },
       ),
     );

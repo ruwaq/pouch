@@ -159,6 +159,11 @@ export class PrivateKeyAccountProvider implements AccountProvider {
   private readonly wallets: WalletConfig[];
   private readonly providers: Map<number, ethers.JsonRpcProvider>;
   private readonly chains: number[];
+  /**
+   * When true, an invalid SEED_PHRASE_* aborts construction (fail-fast).
+   * In non-production we skip the bad seed so local dev stays resilient.
+   */
+  private readonly isProduction: boolean;
 
   constructor(config: Config) {
     if (!config.PRIVATE_KEY) {
@@ -168,6 +173,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     this.chains = config.SUPPORTED_CHAINS;
     this.providers = new Map();
     this.wallets = [];
+    this.isProduction = config.NODE_ENV === 'production';
 
     const raw = config as unknown as Record<string, string | undefined>;
 
@@ -191,17 +197,22 @@ export class PrivateKeyAccountProvider implements AccountProvider {
     // Seed phrase wallets (BIP-39, first account)
     for (let i = 1; i <= 3; i++) {
       const seed = raw[`SEED_PHRASE_${i}`]?.trim();
-      if (seed) {
-        try {
-          const { address, privateKey } = deriveFromSeed(seed);
-          this.wallets.push({
-            label: `Wallet ${this.wallets.length + 1}`,
-            address,
-            privateKey,
-          });
-        } catch {
-          // Invalid seed phrase — skip
+      if (!seed) continue;
+      try {
+        const { address, privateKey } = deriveFromSeed(seed);
+        this.wallets.push({
+          label: `Wallet ${this.wallets.length + 1}`,
+          address,
+          privateKey,
+        });
+      } catch (error) {
+        if (this.isProduction) {
+          throw new Error(
+            `SEED_PHRASE_${i} is invalid: ${error instanceof Error ? error.message : String(error)}`,
+          );
         }
+        // Non-production: log and skip (keeps local dev resilient).
+        console.warn(`⚠️ SEED_PHRASE_${i} invalid — skipping. Set NODE_ENV=production to fail-fast.`);
       }
     }
 
@@ -335,45 +346,6 @@ export class PrivateKeyAccountProvider implements AccountProvider {
       { chainId: 43114, symbol: 'AVAX', amount: 0.0160, usdValue: 0.29, walletLabel: 'Wallet 4' },
     ];
 
-    // ── Also check known wallet addresses for ARB on Arbitrum (seed phrase wallets) ──
-    const KNOWN_WALLET_ADDRESSES: Record<string, string> = {
-      '0x4c7eB03cb8c77A27a55c691D74Ee27C1A57bd619': 'Wallet 3',
-      '0x4DC637B52827fD797Bf480b62093a210Cb471581': 'Wallet 4',
-    };
-    
-    for (const [addr, label] of Object.entries(KNOWN_WALLET_ADDRESSES)) {
-      // Skip if already in the wallets list (already checked above)
-      if (this.wallets.some(w => w.address.toLowerCase() === addr.toLowerCase())) continue;
-      
-      const arbProvider = this.providers.get(42161);
-      if (arbProvider) {
-        try {
-          const arbToken = new ethers.Contract(ARB_ADDRESS, ERC20_ABI, arbProvider);
-          const rawBalance = await (arbToken as unknown as { balanceOf(a: string): Promise<bigint> }).balanceOf(addr);
-          const decimals = await (arbToken as unknown as { decimals(): Promise<bigint> }).decimals();
-          const amount = Number(ethers.formatUnits(rawBalance, Number(decimals)));
-          if (amount > 0.01) {
-            const usdValue = amount * 0.088; // ARB price
-            const alreadyPresent = assets.some(
-              (a) => a.walletLabel === label && a.chainId === 42161 && a.symbol === 'ARB',
-            );
-            if (!alreadyPresent) {
-              assets.push({
-                chainId: 42161,
-                symbol: 'ARB',
-                amount: Number(amount.toFixed(4)),
-                usdValue: Number(usdValue.toFixed(2)),
-                walletLabel: label,
-              });
-              total += usdValue;
-            }
-          }
-        } catch {
-          // RPC call failed — skip
-        }
-      }
-    }
-
     for (const ka of knownAssets) {
       const alreadyPresent = assets.some(
         (a) => a.walletLabel === ka.walletLabel && a.chainId === ka.chainId && a.symbol === ka.symbol,
@@ -414,17 +386,11 @@ export class PrivateKeyAccountProvider implements AccountProvider {
   }): Promise<Result<TxResult, DomainError>> {
     const { to, amount, chainId, token } = params;
 
-    // ── Security gate: only allow transfers to known wallets ──
+    // ── Security gate: only allow transfers to imported wallets ──
     const toWallet = this.wallets.find(
       (w) => w.address.toLowerCase() === to.toLowerCase(),
     );
-    // Fallback: known addresses for seed-phrase wallets not in the wallets list
-    const KNOWN_ADDRESSES: Record<string, string> = {
-      '0x4c7eb03cb8c77a27a55c691d74ee27c1a57bd619': 'Wallet 3',
-      '0x4dc637b52827fd797bf480b62093a210cb471581': 'Wallet 4',
-    };
-    const knownToWallet = KNOWN_ADDRESSES[to.toLowerCase()];
-    if (!toWallet && !knownToWallet) {
+    if (!toWallet) {
       return err({
         type: 'SECURITY_BLOCKED',
         check: 'wallet-whitelist',
@@ -432,7 +398,6 @@ export class PrivateKeyAccountProvider implements AccountProvider {
         riskScore: 100,
       });
     }
-    const toLabel = toWallet?.label ?? knownToWallet ?? to.slice(0, 10);
 
     // ── Find the sending wallet ──
     const fromWallet = this.resolveSender(params.from);
@@ -497,7 +462,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
         const gasCostEth = Number(ethers.formatEther(receipt.fee));
         const nativePrice = NATIVE_PRICES[chainId] ?? 2500;
 
-        console.log(`✅ ${fromWallet.label} → ${toWallet?.label ?? knownToWallet ?? to.slice(0,10)}: ${amount.value} ${token} | tx: ${tx.hash} | block: ${receipt.blockNumber}`);
+        console.log(`✅ ${fromWallet.label} → ${toWallet.label}: ${amount.value} ${token} | tx: ${tx.hash} | block: ${receipt.blockNumber}`);
 
         return ok({
           txHash: tx.hash,
@@ -550,7 +515,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
       const gasCostEth = Number(ethers.formatEther(receipt.fee));
       const nativePrice = NATIVE_PRICES[chainId] ?? 2500;
 
-      console.log(`✅ ${fromWallet.label} → ${toWallet?.label ?? knownToWallet ?? to.slice(0,10)}: ${amount.value} ${token} | tx: ${tx.hash} | block: ${receipt.blockNumber} | gas: ${gasCostEth.toFixed(6)} ETH`);
+      console.log(`✅ ${fromWallet.label} → ${toWallet.label}: ${amount.value} ${token} | tx: ${tx.hash} | block: ${receipt.blockNumber} | gas: ${gasCostEth.toFixed(6)} ETH`);
 
       return ok({
         txHash: tx.hash,
@@ -584,20 +549,10 @@ export class PrivateKeyAccountProvider implements AccountProvider {
 
   /** Resolves which wallet to send FROM based on userId. */
   private resolveSender(userId: string): WalletConfig | undefined {
-    // Try matching by userId (which may be the wallet address)
-    const byAddress = this.wallets.find(
-      (w) => w.address.toLowerCase() === userId.toLowerCase(),
-    );
+    const byAddress = this.wallets.find((w) => w.address.toLowerCase() === userId.toLowerCase());
     if (byAddress) return byAddress;
-
-    // Try matching by label
-    const byLabel = this.wallets.find(
-      (w) => w.label.toLowerCase() === userId.toLowerCase(),
-    );
-    if (byLabel) return byLabel;
-
-    // Default: first wallet with a private key
-    return this.wallets.find((w) => w.privateKey);
+    const byLabel = this.wallets.find((w) => w.label.toLowerCase() === userId.toLowerCase());
+    return byLabel; // undefined if no match — caller's SECURITY_BLOCKED branch fires
   }
 
   /** Public method to get wallet info for the send flow (without exposing keys). */

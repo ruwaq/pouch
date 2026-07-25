@@ -16,8 +16,8 @@ export class BitrefillWebhookService {
     private readonly eventStore: WebhookEventStore,
   ) {}
 
-  async handle(payload: unknown, headers: Record<string, string>): Promise<Result<BitrefillWebhookResponse, DomainError>> {
-    const event = await this.provider.verifyWebhook(payload, headers);
+  async handle(rawBody: string, headers: Record<string, string>): Promise<Result<BitrefillWebhookResponse, DomainError>> {
+    const event = await this.provider.verifyWebhook(rawBody, headers);
 
     if (!isOk(event)) {
       return event;

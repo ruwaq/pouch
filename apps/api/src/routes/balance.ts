@@ -9,9 +9,10 @@ export function createBalanceRoutes(balanceService: BalanceServiceLike): Hono<Au
 
   router.get('/', async (context) => {
     // Prefer the authenticated EVM address (the real UA owner) from the auth context;
-    // fall back to ?userId= for demo mode / unauthenticated local dev.
+    // fall back to the auth userId, then to demo-user for local dev.
+    // ?userId= is intentionally ignored — identity comes from the auth context only.
     const evmAddress = context.get('evmAddress');
-    const userId = evmAddress ?? context.req.query('userId')?.trim() ?? 'demo-user';
+    const userId = evmAddress ?? context.get('userId') ?? 'demo-user';
     const result = await balanceService.getBalance(userId);
 
     if (!result.ok) {

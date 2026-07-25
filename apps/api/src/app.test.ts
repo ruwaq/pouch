@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { CashOutExecutor, IntentParser, OffRampRouter, type AccountProvider, type LoggerPort, type OffRampProvider, type OrderRequest, type Product } from '@pouch/domain';
 import { ok } from '@pouch/shared';
@@ -322,11 +322,14 @@ describe('API app', () => {
   it('returns the unified balance from GET /balance', async () => {
     const app = buildAgentApp();
 
-    const response = await app.request('/balance?userId=wallet-user');
+    // C4: ?userId= is intentionally ignored — identity comes only from the auth
+    // context. In demo mode the middleware sets userId='demo-user', so the
+    // previously-used 'wallet-user' override no longer applies.
+    const response = await app.request('/balance');
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      userId: 'wallet-user',
+      userId: 'demo-user',
       total: 125,
       assets: [{ chainId: 42161, symbol: 'USDC', amount: 125, usdValue: 125 }],
       requiresConsolidation: false,
@@ -413,5 +416,151 @@ describe('API app', () => {
 
     expect(response.status).toBe(404);
     await expect(response.json()).resolves.toEqual({ error: 'Order not found' });
+  });
+});
+
+// ── C1: webhook signature verification at the HTTP layer ──────────────
+// Locks down raw-body extraction + status-code semantics (401 for auth
+// failures, 400 for malformed-but-signed). Uses the real BitrefillAdapter
+// with a known WEBHOOK_SECRET so the HMAC path is exercised end-to-end.
+import { createHmac } from 'node:crypto';
+import { BitrefillAdapter, BitrefillMapper } from '@pouch/infra-offramp';
+
+const ROUTE_SECRET = 'r'.repeat(32);
+
+function signBody(body: string, secret: string): string {
+  return createHmac('sha256', secret).update(body).digest('hex');
+}
+
+function buildSignedWebhookApp() {
+  const repository = new MemoryOrderRepository();
+  const client = {
+    getInvoice: async () => ({ data: { id: 'inv_signed', orders: [] } }),
+    getOrder: async () => ({ data: { id: 'o1' } }),
+  } as never;
+  const adapter = new BitrefillAdapter(client, new BitrefillMapper(), {
+    paymentMethod: 'bitcoin',
+    webhookSecret: ROUTE_SECRET,
+  });
+  const webhookService = new BitrefillWebhookService(adapter, repository, new MemoryWebhookEventStore());
+  const orderService = new OrderService(repository);
+  return createApp({ bitrefillWebhookService: webhookService, orderService });
+}
+
+describe('POST /webhooks/bitrefill (C1 raw-body + status codes)', () => {
+  it('returns 401 when the signature header is missing', async () => {
+    const app = buildSignedWebhookApp();
+    const res = await app.request('/webhooks/bitrefill', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ data: { id: 'inv_signed' } }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when the signature does not match the raw body', async () => {
+    const app = buildSignedWebhookApp();
+    const res = await app.request('/webhooks/bitrefill', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-webhook-signature': 'deadbeef',
+      },
+      body: JSON.stringify({ data: { id: 'inv_signed' } }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 200 when the signature matches the exact raw body bytes', async () => {
+    const app = buildSignedWebhookApp();
+    const raw = JSON.stringify({ data: { id: 'inv_signed' } });
+    const res = await app.request('/webhooks/bitrefill', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-webhook-signature': signBody(raw, ROUTE_SECRET),
+      },
+      body: raw,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 400 for a malformed-but-signed payload (bad JSON)', async () => {
+    const app = buildSignedWebhookApp();
+    // Valid signature over invalid JSON bytes — auth passes, parsing fails.
+    const malformed = 'not-json-at-all';
+    const res = await app.request('/webhooks/bitrefill', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-webhook-signature': signBody(malformed, ROUTE_SECRET),
+      },
+      body: malformed,
+    });
+    expect(res.status).toBe(400);
+  });
+});
+
+// ── C2: disable demo auth fallback in production ─────────────────────
+// When NODE_ENV === 'production', the auth middleware must NEVER fall back
+// to demo-user, even if the runtime is in demo mode (forced by DEMO_MODE=true
+// or a swallowed boot error). Closes an auth bypass where DEMO_MODE=true in
+// production opened the entire API unauthenticated.
+describe('app demo auth fallback (C2)', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalDemoMode = process.env.DEMO_MODE;
+  const originalJwt = process.env.JWT_SECRET;
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.DEMO_MODE = originalDemoMode;
+    process.env.JWT_SECRET = originalJwt;
+  });
+
+  it('returns 401 in production even when DEMO_MODE=true forces demo runtime', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DEMO_MODE = 'true';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    const app = createApp();
+
+    const res = await app.request('/balance');
+    expect(res.status).toBe(401);
+  });
+});
+
+// ── C3: only mount /auth/demo outside production ──────────────────────
+// POST /auth/demo mints a real 24h JWT (sub: 'demo-user'). Mounting it in
+// production lets anonymous clients forge demo sessions. Gate the mount on
+// !isProduction so the route is gone entirely in prod (404, not 401).
+describe('app /auth/demo mount (C3)', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalDemoMode = process.env.DEMO_MODE;
+  const originalJwt = process.env.JWT_SECRET;
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.DEMO_MODE = originalDemoMode;
+    process.env.JWT_SECRET = originalJwt;
+  });
+
+  it('does not mount /auth/demo in production', async () => {
+    // DEMO_MODE=true keeps createRuntimeAppServices from fail-fasting on
+    // missing prod config; isProduction is still true, so the route must be
+    // absent (404, not 401 — the mount itself is gated).
+    process.env.NODE_ENV = 'production';
+    process.env.DEMO_MODE = 'true';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    const app = createApp();
+
+    const res = await app.request('/auth/demo', { method: 'POST' });
+    expect(res.status).toBe(404);
+  });
+
+  it('mounts /auth/demo in development', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    const app = createApp();
+
+    const res = await app.request('/auth/demo', { method: 'POST' });
+    expect(res.status).toBe(200);
   });
 });

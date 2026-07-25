@@ -1,7 +1,15 @@
+import { createHmac } from 'node:crypto';
+
 import { describe, expect, it } from 'vitest';
 
 import { BitrefillAdapter } from '../src/bitrefill/adapter';
 import { BitrefillMapper } from '../src/bitrefill/mapper';
+
+const SECRET = 'x'.repeat(32);
+
+function sign(body: string, secret: string): string {
+  return createHmac('sha256', secret).update(body).digest('hex');
+}
 
 describe('BitrefillAdapter', () => {
   it('searches catalog products with the requested category and filters by query', async () => {
@@ -34,6 +42,7 @@ describe('BitrefillAdapter', () => {
     const adapter = new BitrefillAdapter(client, new BitrefillMapper(), {
       includeTestProducts: true,
       paymentMethod: 'usdc_arbitrum',
+      webhookSecret: SECRET,
     });
 
     const result = await adapter.searchProducts('amazon', { category: 'giftcard', countryCode: 'US' });
@@ -110,6 +119,7 @@ describe('BitrefillAdapter', () => {
     const adapter = new BitrefillAdapter(client, new BitrefillMapper(), {
       includeTestProducts: true,
       paymentMethod: 'usdc_arbitrum',
+      webhookSecret: SECRET,
       senderName: 'Pouch',
     });
 
@@ -195,6 +205,7 @@ describe('BitrefillAdapter', () => {
     const adapter = new BitrefillAdapter(client, new BitrefillMapper(), {
       includeTestProducts: true,
       paymentMethod: 'usdc_arbitrum',
+      webhookSecret: SECRET,
     });
 
     const result = await adapter.getQuote(
@@ -269,17 +280,20 @@ describe('BitrefillAdapter', () => {
     const adapter = new BitrefillAdapter(client, new BitrefillMapper(), {
       includeTestProducts: true,
       paymentMethod: 'usdc_arbitrum',
+      webhookSecret: SECRET,
     });
 
-    const result = await adapter.verifyWebhook(
-      {
-        data: {
-          id: 'invoice-verified',
-          status: 'denied',
-        },
+    const PAYLOAD = JSON.stringify({
+      data: {
+        id: 'invoice-verified',
+        status: 'denied',
       },
-      { 'x-bitrefill-signature': 'sha256=fake', 'content-type': 'application/json' },
-    );
+    });
+
+    const result = await adapter.verifyWebhook(PAYLOAD, {
+      'x-webhook-signature': sign(PAYLOAD, SECRET),
+      'content-type': 'application/json',
+    });
 
     expect(invoiceLookups).toEqual(['invoice-verified']);
     expect(orderLookups).toEqual(['order-verified']);
@@ -295,5 +309,43 @@ describe('BitrefillAdapter', () => {
       code: 'AMZN-XXXX-XXXX',
       link: 'https://claim.example/amzn',
     });
+  });
+});
+
+describe('BitrefillAdapter.verifyWebhook signature (C1)', () => {
+  function build() {
+    const client = {
+      getInvoice: async () => ({ data: { id: 'inv_123', orders: [] } }),
+      getOrder: async () => ({ data: { id: 'o1' } }),
+    } as never;
+    return new BitrefillAdapter(client, new BitrefillMapper(), {
+      paymentMethod: 'bitcoin',
+      webhookSecret: SECRET,
+    });
+  }
+  const PAYLOAD = JSON.stringify({ data: { id: 'inv_123' } });
+
+  it('rejects when signature header is missing', async () => {
+    const result = await build().verifyWebhook(PAYLOAD, {});
+    expect(result.ok).toBe(false);
+  });
+
+  it('rejects when signature does not match', async () => {
+    const result = await build().verifyWebhook(PAYLOAD, { 'x-webhook-signature': 'deadbeef' });
+    expect(result.ok).toBe(false);
+  });
+
+  it('accepts when signature matches the body', async () => {
+    const result = await build().verifyWebhook(PAYLOAD, {
+      'x-webhook-signature': sign(PAYLOAD, SECRET),
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts case-insensitive header lookup', async () => {
+    const result = await build().verifyWebhook(PAYLOAD, {
+      'X-Webhook-Signature': sign(PAYLOAD, SECRET),
+    });
+    expect(result.ok).toBe(true);
   });
 });

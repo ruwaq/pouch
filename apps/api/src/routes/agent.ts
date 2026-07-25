@@ -1,10 +1,11 @@
 import { Hono } from 'hono';
 
+import type { AuthEnv } from '../middleware/auth';
 import type { AgentChatServiceLike } from '../services/agent-chat-service';
 import { toDomainErrorMessage, toDomainErrorStatus } from './domain-errors';
 
-export function createAgentRoutes(agentService: AgentChatServiceLike): Hono {
-  const router = new Hono();
+export function createAgentRoutes(agentService: AgentChatServiceLike): Hono<AuthEnv> {
+  const router = new Hono<AuthEnv>();
 
   router.post('/chat', async (context) => {
     let body: unknown;
@@ -15,10 +16,7 @@ export function createAgentRoutes(agentService: AgentChatServiceLike): Hono {
       return context.json({ error: 'request body must be valid JSON' }, 400);
     }
 
-    const payload = body as {
-      message?: unknown;
-      userId?: unknown;
-    };
+    const payload = body as { message?: unknown };
 
     if (!body || typeof body !== 'object' || typeof payload.message !== 'string' || !payload.message.trim()) {
       return context.json({ error: 'message must be a non-empty string' }, 400);
@@ -28,7 +26,8 @@ export function createAgentRoutes(agentService: AgentChatServiceLike): Hono {
       return context.json({ error: 'message is too long (max 2000 characters)' }, 400);
     }
 
-    const userId = typeof payload.userId === 'string' && payload.userId.trim() ? payload.userId : 'demo-user';
+    // Identity from the JWT middleware (set to 'demo-user' in demo mode). Body is never trusted.
+    const userId = context.get('userId') ?? 'demo-user';
 
     try {
       const result = await agentService.handleMessage(payload.message, userId);

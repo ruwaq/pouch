@@ -58,6 +58,11 @@ function touchEntry(userId: string): void {
   entryTimestamps.set(userId, Date.now());
 }
 
+/** Demo users see simulated receipts on real failures; real users get the error. */
+function isDemo(userId: string): boolean {
+  return userId === 'demo-user' || userId === '0xdemo';
+}
+
 function evictStaleEntries(): void {
   const now = Date.now();
   const stale: string[] = [];
@@ -554,15 +559,6 @@ export class AgentChatService implements AgentChatServiceLike {
         if (w.label.toLowerCase() === toLabel.toLowerCase()) toAddress = w.address;
       }
     }
-    // Fallback: known wallet addresses (for seed phrase wallets not in getWalletInfo)
-    const KNOWN_WALLETS: Record<string, string> = {
-      'wallet 1': '0xA5fA06d58b0c90A9a3b53725E326BcCbB0BFe3DD',
-      'wallet 2': '0xCa1DCc67c6087B1E9Ad6Bc00EE22941B5c16922f',
-      'wallet 3': '0x4c7eB03cb8c77A27a55c691D74Ee27C1A57bd619',
-      'wallet 4': '0x4DC637B52827fD797Bf480b62093a210Cb471581',
-    };
-    if (!toAddress) toAddress = KNOWN_WALLETS[toLabel.toLowerCase()] ?? '';
-    if (!fromAddress) fromAddress = KNOWN_WALLETS[fromLabel.toLowerCase()] ?? '';
 
     // ── Execute the real transfer ──
     const result = await this.accountProvider.sendPayment({
@@ -574,6 +570,8 @@ export class AgentChatService implements AgentChatServiceLike {
     });
 
     if (!isOk(result)) {
+      // Real user, real failure — propagate the error (C6: no fake receipt).
+      if (!isDemo(userId)) return result;
       // Demo fallback: simulate success with mock tx
       const mockTxHash = `0xsend-${Date.now().toString(16)}`;
       const mockBlockNumber = Math.floor(Math.random() * 1000000) + 28000000;
@@ -798,6 +796,8 @@ export class AgentChatService implements AgentChatServiceLike {
     });
 
     if (!isOk(result)) {
+      // Real user, real failure — propagate the error (C6: no fake receipt).
+      if (!isDemo(userId)) return result;
       // Demo fallback: simulate success with mock tx
       const mockTxHash = `0xswap-${Date.now().toString(16)}`;
       const mockBlockNumber = Math.floor(Math.random() * 1000000) + 28000000;
@@ -1004,6 +1004,8 @@ export class AgentChatService implements AgentChatServiceLike {
     const result = await wallet.sendEth({ to: walletAddress, amountEth, chainId });
 
     if (!isOk(result)) {
+      // Real user, real failure — propagate the error (C6: no fake receipt).
+      if (!isDemo(userId)) return result;
       // In demo mode, simulate success with a mock tx hash
       // (Openfort backend wallet needs funding for real ETH sends)
       const mockTxHash = `0xopenfort-gas-${Date.now().toString(16)}`;

@@ -6,25 +6,23 @@ export function createBitrefillWebhookRoutes(service: BitrefillWebhookService): 
   const router = new Hono();
 
   router.post('/', async (context) => {
-    let payload: unknown;
-
-    try {
-      payload = await context.req.json();
-    } catch {
-      return context.json({ error: 'request body must be valid JSON' }, 400);
-    }
+    const rawBody = await context.req.text();
 
     const headers: Record<string, string> = {};
     context.req.raw.headers.forEach((value, key) => {
       headers[key] = value;
     });
 
-    const result = await service.handle(payload, headers);
+    const result = await service.handle(rawBody, headers);
 
     if (!result.ok) {
-      context.status(400);
+      // Signature failures are 401 (request could not be authenticated as Bitrefill).
+      // Malformed-but-signed payloads (bad JSON, missing invoice id) are 400.
+      const message = 'message' in result.error ? result.error.message : '';
+      const isAuthFailure = message.startsWith('UNAUTHORIZED:');
+      context.status(isAuthFailure ? 401 : 400);
       return context.json({
-        error: 'Invalid Bitrefill webhook payload.',
+        error: 'Invalid Bitrefill webhook.',
         type: result.error.type,
       });
     }
