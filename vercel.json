@@ -7,10 +7,7 @@
     "env": {
       "APP_URL": "https://pouch-orpin.vercel.app",
       "SETTLEMENT_CHAIN_ID": "42161",
-      "SUPPORTED_CHAINS": "42161,8453",
-      "DATABASE_URL": "postgresql://placeholder:placeholder@localhost:5432/placeholder",
-      "JWT_SECRET": "placeholder-jwt-secret-minimum-32-chars!!",
-      "WEBHOOK_SECRET": "placeholder-webhook-secret-minimum-32!"
+      "SUPPORTED_CHAINS": "42161,8453"
     }
   }
 }
