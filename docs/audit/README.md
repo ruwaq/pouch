@@ -4,25 +4,36 @@ Security and quality audits for the Pouch project.
 
 > **For the next session / agent: start here.**
 
-## Latest audit
+## ➡️ Read [`SESSION-HANDOFF.md`](./SESSION-HANDOFF.md) first
 
-### [2026-07-25 Security Audit](./2026-07-25-security-audit.md)
-Complete audit performed before the **Jul 30 deadline**. Found 6 CRITICAL, 10 HIGH, 13 MEDIUM, and ~15 LOW/INFO issues. All CRITICAL findings manually verified against source.
+It has the exact repo state, what's done (C1–C6 shipped, merged, pushed),
+what's open (demo flow under production, Workstream B/C priority), and the
+findings discovered during implementation that aren't in the original audit.
 
-**Start with:**
-1. [`2026-07-25-security-audit.md`](./2026-07-25-security-audit.md) — full findings with file:line refs and fixes.
-2. [`FOLLOW-UP-ACTION-PLAN.md`](./FOLLOW-UP-ACTION-PLAN.md) — prioritized execution table with status checkboxes. Update it as fixes land.
+## Status at a glance
 
-## TL;DR of the 6 CRITICAL issues
+- ✅ **Workstream A (6 CRITICAL): DONE** — merged to `main`, pushed to `origin/main`.
+- ⏭️ **Workstream B (10 HIGH): not started.** Demo-relevant first (H2, H6, H3).
+- ⏭️ **Workstream C (13 MEDIUM + LOWs): not started.**
 
-| ID | One-liner |
-|----|-----------|
-| C1 | Bitrefill webhook has **no signature verification** — unauthenticated, anyone can forge events. |
-| C2 | Demo-mode auth bypass — `DEMO_MODE=true` (or any boot error) opens **all** endpoints unauthenticated. |
-| C3 | `POST /auth/demo` issues a real 24h JWT in **every** environment. |
-| C4 | `/agent/chat` + `/balance` + `/orders` trust `userId` from body/query (**IDOR**). |
-| C5 | Hardcoded wallet addresses bypass the funds whitelist (escape hatch). |
-| C6 | Real send/swap failures fabricate a fake "delivered" receipt for **any** user. |
+## The documents
+
+| Doc | What it's for |
+|-----|---------------|
+| [`SESSION-HANDOFF.md`](./SESSION-HANDOFF.md) | **Start here.** Current state + open decisions + how to resume. |
+| [`2026-07-25-security-audit.md`](./2026-07-25-security-audit.md) | Full audit (CRITICAL + HIGH + MEDIUM + LOW with file:line refs). |
+| [`FOLLOW-UP-ACTION-PLAN.md`](./FOLLOW-UP-ACTION-PLAN.md) | Execution table with `[x]`/`[ ]` status. C1–C6 marked done. |
+
+## TL;DR of the 6 CRITICAL issues (all fixed)
+
+| ID | One-liner | Status |
+|----|-----------|--------|
+| C1 | Bitrefill webhook has **no signature verification** — unauthenticated, anyone can forge events. | ✅ |
+| C2 | Demo-mode auth bypass — `DEMO_MODE=true` (or any boot error) opens **all** endpoints unauthenticated. | ✅ |
+| C3 | `POST /auth/demo` issues a real 24h JWT in **every** environment. | ✅ |
+| C4 | `/agent/chat` + `/balance` + `/orders` trust `userId` from body/query (**IDOR**). | ✅ |
+| C5 | Hardcoded wallet addresses bypass the funds whitelist (escape hatch). | ✅ |
+| C6 | Real send/swap failures fabricate a fake "delivered" receipt for **any** user. | ✅ |
 
 ## What's already good (don't touch)
 
@@ -30,13 +41,11 @@ Complete audit performed before the **Jul 30 deadline**. Found 6 CRITICAL, 10 HI
 - `.env` correctly gitignored (verified not committed).
 - SQL parameterized (Drizzle), JWT pinned to HS256, no `dangerouslySetInnerHTML`.
 - Every LLM path has a deterministic regex fallback.
-- `typecheck` passes clean on the domain package.
+- `typecheck` passes clean on all packages.
 
-## Workflow for fixes
+## Verification commands
 
 ```bash
-git switch -c audit-fixes
-# work top-to-bottom in FOLLOW-UP-ACTION-PLAN.md
-pnpm typecheck && pnpm test
-# commit per-fix: fix(security): C1 — webhook HMAC verification
+pnpm typecheck   # 8/8 expected
+pnpm test        # 8/8 expected (api=49 tests, web=12)
 ```
