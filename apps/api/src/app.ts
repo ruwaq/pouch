@@ -82,7 +82,7 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
   app.use('*', createAuthMiddleware({
     jwtSecret: effectiveSecret,
     publicPaths: new Set(['/', '/health']),
-    allowDemoFallback: isDemo,
+    allowDemoFallback: isDemo && !isProduction, // C2: never in production
   }));
 
   app.get('/', (context) => {

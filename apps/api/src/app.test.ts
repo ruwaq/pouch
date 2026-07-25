@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { CashOutExecutor, IntentParser, OffRampRouter, type AccountProvider, type LoggerPort, type OffRampProvider, type OrderRequest, type Product } from '@pouch/domain';
 import { ok } from '@pouch/shared';
@@ -495,5 +495,32 @@ describe('POST /webhooks/bitrefill (C1 raw-body + status codes)', () => {
       body: malformed,
     });
     expect(res.status).toBe(400);
+  });
+});
+
+// ── C2: disable demo auth fallback in production ─────────────────────
+// When NODE_ENV === 'production', the auth middleware must NEVER fall back
+// to demo-user, even if the runtime is in demo mode (forced by DEMO_MODE=true
+// or a swallowed boot error). Closes an auth bypass where DEMO_MODE=true in
+// production opened the entire API unauthenticated.
+describe('app demo auth fallback (C2)', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalDemoMode = process.env.DEMO_MODE;
+  const originalJwt = process.env.JWT_SECRET;
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.DEMO_MODE = originalDemoMode;
+    process.env.JWT_SECRET = originalJwt;
+  });
+
+  it('returns 401 in production even when DEMO_MODE=true forces demo runtime', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DEMO_MODE = 'true';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    const app = createApp();
+
+    const res = await app.request('/balance');
+    expect(res.status).toBe(401);
   });
 });
