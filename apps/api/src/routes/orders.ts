@@ -8,8 +8,14 @@ export function createOrderRoutes(orderService: OrderServiceLike): Hono<AuthEnv>
 
   router.get('/:id', async (context) => {
     const orderId = context.req.param('id');
-    // Prefer userId from the auth context; fall back to ?userId= for demo.
-    const userId = context.get('userId') ?? context.req.query('userId');
+    // Identity MUST come from the auth context — never from the query string.
+    // Orders contain sensitive redemption codes, so authentication is required
+    // (no demo fallback here). In demo mode the middleware sets userId='demo-user'.
+    const userId = context.get('userId');
+    if (!userId) {
+      context.status(401);
+      return context.json({ error: 'Unauthorized' });
+    }
 
     const order = await orderService.getOrder(orderId, userId);
 

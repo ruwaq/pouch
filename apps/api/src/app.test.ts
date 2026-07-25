@@ -322,11 +322,14 @@ describe('API app', () => {
   it('returns the unified balance from GET /balance', async () => {
     const app = buildAgentApp();
 
-    const response = await app.request('/balance?userId=wallet-user');
+    // C4: ?userId= is intentionally ignored — identity comes only from the auth
+    // context. In demo mode the middleware sets userId='demo-user', so the
+    // previously-used 'wallet-user' override no longer applies.
+    const response = await app.request('/balance');
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      userId: 'wallet-user',
+      userId: 'demo-user',
       total: 125,
       assets: [{ chainId: 42161, symbol: 'USDC', amount: 125, usdValue: 125 }],
       requiresConsolidation: false,
