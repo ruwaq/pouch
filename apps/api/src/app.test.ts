@@ -415,3 +415,85 @@ describe('API app', () => {
     await expect(response.json()).resolves.toEqual({ error: 'Order not found' });
   });
 });
+
+// ── C1: webhook signature verification at the HTTP layer ──────────────
+// Locks down raw-body extraction + status-code semantics (401 for auth
+// failures, 400 for malformed-but-signed). Uses the real BitrefillAdapter
+// with a known WEBHOOK_SECRET so the HMAC path is exercised end-to-end.
+import { createHmac } from 'node:crypto';
+import { BitrefillAdapter, BitrefillMapper } from '@pouch/infra-offramp';
+
+const ROUTE_SECRET = 'r'.repeat(32);
+
+function signBody(body: string, secret: string): string {
+  return createHmac('sha256', secret).update(body).digest('hex');
+}
+
+function buildSignedWebhookApp() {
+  const repository = new MemoryOrderRepository();
+  const client = {
+    getInvoice: async () => ({ data: { id: 'inv_signed', orders: [] } }),
+    getOrder: async () => ({ data: { id: 'o1' } }),
+  } as never;
+  const adapter = new BitrefillAdapter(client, new BitrefillMapper(), {
+    paymentMethod: 'bitcoin',
+    webhookSecret: ROUTE_SECRET,
+  });
+  const webhookService = new BitrefillWebhookService(adapter, repository, new MemoryWebhookEventStore());
+  const orderService = new OrderService(repository);
+  return createApp({ bitrefillWebhookService: webhookService, orderService });
+}
+
+describe('POST /webhooks/bitrefill (C1 raw-body + status codes)', () => {
+  it('returns 401 when the signature header is missing', async () => {
+    const app = buildSignedWebhookApp();
+    const res = await app.request('/webhooks/bitrefill', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ data: { id: 'inv_signed' } }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 401 when the signature does not match the raw body', async () => {
+    const app = buildSignedWebhookApp();
+    const res = await app.request('/webhooks/bitrefill', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-webhook-signature': 'deadbeef',
+      },
+      body: JSON.stringify({ data: { id: 'inv_signed' } }),
+    });
+    expect(res.status).toBe(401);
+  });
+
+  it('returns 200 when the signature matches the exact raw body bytes', async () => {
+    const app = buildSignedWebhookApp();
+    const raw = JSON.stringify({ data: { id: 'inv_signed' } });
+    const res = await app.request('/webhooks/bitrefill', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-webhook-signature': signBody(raw, ROUTE_SECRET),
+      },
+      body: raw,
+    });
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 400 for a malformed-but-signed payload (bad JSON)', async () => {
+    const app = buildSignedWebhookApp();
+    // Valid signature over invalid JSON bytes — auth passes, parsing fails.
+    const malformed = 'not-json-at-all';
+    const res = await app.request('/webhooks/bitrefill', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-webhook-signature': signBody(malformed, ROUTE_SECRET),
+      },
+      body: malformed,
+    });
+    expect(res.status).toBe(400);
+  });
+});

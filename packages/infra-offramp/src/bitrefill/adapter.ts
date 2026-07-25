@@ -159,9 +159,10 @@ export class BitrefillAdapter implements OffRampProvider {
     // so we require the raw body here (not a re-serialized JSON object).
     const provided = this.readHeader(headers, 'x-webhook-signature');
     if (!provided) {
+      // 'UNAUTHORIZED:' prefix lets the route map to 401 (vs 400 for malformed-but-signed).
       return err({
         type: 'UNKNOWN',
-        message: 'Missing webhook signature.',
+        message: 'UNAUTHORIZED: Missing webhook signature.',
       });
     }
 
@@ -172,7 +173,7 @@ export class BitrefillAdapter implements OffRampProvider {
     ) {
       return err({
         type: 'UNKNOWN',
-        message: 'Invalid webhook signature.',
+        message: 'UNAUTHORIZED: Invalid webhook signature.',
       });
     }
 

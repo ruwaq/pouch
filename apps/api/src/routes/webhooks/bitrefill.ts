@@ -16,9 +16,11 @@ export function createBitrefillWebhookRoutes(service: BitrefillWebhookService): 
     const result = await service.handle(rawBody, headers);
 
     if (!result.ok) {
-      // Signature failures (and any other verification error) are Unauthorized:
-      // the request could not be authenticated as coming from Bitrefill.
-      context.status(401);
+      // Signature failures are 401 (request could not be authenticated as Bitrefill).
+      // Malformed-but-signed payloads (bad JSON, missing invoice id) are 400.
+      const message = 'message' in result.error ? result.error.message : '';
+      const isAuthFailure = message.startsWith('UNAUTHORIZED:');
+      context.status(isAuthFailure ? 401 : 400);
       return context.json({
         error: 'Invalid Bitrefill webhook.',
         type: result.error.type,
