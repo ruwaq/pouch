@@ -1,3 +1,5 @@
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
 import { err, ok, type Result } from '@pouch/shared';
 
 import type { Amount, DomainError, OffRampCategory, OffRampProvider, Order, OrderRequest, OrderStatus, Product, SearchOptions, WebhookEvent } from '@pouch/domain';
@@ -25,6 +27,7 @@ type BitrefillClientLike = {
 export interface BitrefillAdapterOptions {
   includeTestProducts?: boolean;
   paymentMethod: string;
+  webhookSecret: string;
   webhookUrl?: string;
   refundAddress?: string;
   receiptEmail?: string;
@@ -151,17 +154,49 @@ export class BitrefillAdapter implements OffRampProvider {
     }
   }
 
-  async verifyWebhook(payload: unknown, _headers: Record<string, string> = {}): Promise<Result<WebhookEvent, DomainError>> {
-    if (!payload || typeof payload !== 'object') {
+  async verifyWebhook(rawBody: string, headers: Record<string, string>): Promise<Result<WebhookEvent, DomainError>> {
+    // Signature gate. HMAC must be computed over the exact bytes Bitrefill sent,
+    // so we require the raw body here (not a re-serialized JSON object).
+    const provided = this.readHeader(headers, 'x-webhook-signature');
+    if (!provided) {
       return err({
         type: 'UNKNOWN',
-        message: 'Bitrefill webhook payload is invalid.',
+        message: 'Missing webhook signature.',
       });
     }
 
-    const invoice = 'data' in payload && payload.data && typeof payload.data === 'object' ? payload.data : payload;
+    const expected = createHmac('sha256', this.options.webhookSecret).update(rawBody).digest('hex');
+    if (
+      provided.length !== expected.length ||
+      !timingSafeEqual(Buffer.from(provided), Buffer.from(expected))
+    ) {
+      return err({
+        type: 'UNKNOWN',
+        message: 'Invalid webhook signature.',
+      });
+    }
 
-    if (!('id' in invoice) || typeof invoice.id !== 'string') {
+    let payload: unknown;
+    try {
+      payload = JSON.parse(rawBody);
+    } catch {
+      return err({
+        type: 'UNKNOWN',
+        message: 'Bitrefill webhook body is not valid JSON.',
+      });
+    }
+
+    const invoice =
+      payload && typeof payload === 'object' && 'data' in (payload as object)
+        ? (payload as { data: unknown }).data
+        : payload;
+
+    if (
+      !invoice ||
+      typeof invoice !== 'object' ||
+      !('id' in invoice) ||
+      typeof (invoice as { id: unknown }).id !== 'string'
+    ) {
       return err({
         type: 'UNKNOWN',
         message: 'Bitrefill webhook payload is missing an invoice id.',
@@ -169,7 +204,7 @@ export class BitrefillAdapter implements OffRampProvider {
     }
 
     try {
-      const canonicalInvoice = await this.client.getInvoice(invoice.id);
+      const canonicalInvoice = await this.client.getInvoice((invoice as { id: string }).id);
       const canonicalOrderId = canonicalInvoice.data.orders?.[0]?.id;
       const canonicalOrder = canonicalOrderId ? await this.client.getOrder(canonicalOrderId) : null;
 
@@ -180,6 +215,12 @@ export class BitrefillAdapter implements OffRampProvider {
         message: error instanceof Error ? error.message : 'Bitrefill webhook verification failed.',
       });
     }
+  }
+
+  private readHeader(headers: Record<string, string>, name: string): string | undefined {
+    const lower = name.toLowerCase();
+    const hit = Object.entries(headers).find(([key]) => key.toLowerCase() === lower);
+    return hit?.[1];
   }
 
   private buildCreateInvoicePayload(product: Product, request: OrderRequest): BitrefillCreateInvoicePayload {

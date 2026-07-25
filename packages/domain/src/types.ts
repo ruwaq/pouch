@@ -122,7 +122,7 @@ export interface OffRampProvider {
   getQuote(product: Product, amount: Amount): Promise<Result<Quote, DomainError>>;
   createOrder(request: OrderRequest): Promise<Result<Order, DomainError>>;
   getOrderStatus(orderId: string): Promise<Result<OrderStatus, DomainError>>;
-  verifyWebhook(payload: unknown, headers: Record<string, string>): Promise<Result<WebhookEvent, DomainError>>;
+  verifyWebhook(rawBody: string, headers: Record<string, string>): Promise<Result<WebhookEvent, DomainError>>;
 }
 
 export interface BalanceAsset {

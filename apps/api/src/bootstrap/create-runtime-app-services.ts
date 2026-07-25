@@ -122,7 +122,7 @@ function createDemoOffRampProvider(): OffRampProvider {
     async getOrderStatus() {
       return ok('payment_pending');
     },
-    async verifyWebhook() {
+    async verifyWebhook(_rawBody: string, _headers: Record<string, string>) {
       throw new Error('Demo provider does not implement webhooks.');
     },
   };
