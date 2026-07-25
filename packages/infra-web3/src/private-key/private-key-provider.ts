@@ -280,6 +280,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
               amount: Number(nativeEth.toFixed(6)),
               usdValue: Number(usdValue.toFixed(2)),
               walletLabel: walletConfig.label,
+              address: walletConfig.address,
             });
             total += usdValue;
           }
@@ -300,6 +301,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
                 amount: Number(usdcAmount.toFixed(2)),
                 usdValue: Number(usdcAmount.toFixed(2)),
                 walletLabel: walletConfig.label,
+                address: walletConfig.address,
               });
               total += usdcAmount;
             }
@@ -322,6 +324,7 @@ export class PrivateKeyAccountProvider implements AccountProvider {
                   amount: Number(amount.toFixed(4)),
                   usdValue: Number(usdValue.toFixed(2)),
                   walletLabel: walletConfig.label,
+                  address: walletConfig.address,
                 });
                 total += usdValue;
               }
