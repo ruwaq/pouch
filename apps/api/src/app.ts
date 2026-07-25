@@ -136,24 +136,28 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
 
   // Demo login — creates a session for judges who don't want to sign up.
   // Issues a valid JWT for 'demo-user' so the app works without Magic.
-  app.post('/auth/demo', async (context) => {
-    const secret = new TextEncoder().encode(effectiveSecret);
-    const jwt = await new SignJWT({ sub: 'demo-user', evmAddress: '0xdemo' })
-      .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
-      .setIssuedAt()
-      .setExpirationTime('24h')
-      .sign(secret);
+  // C3: only mount outside production so anonymous clients can't mint demo
+  // tokens in prod.
+  if (!isProduction) {
+    app.post('/auth/demo', async (context) => {
+      const secret = new TextEncoder().encode(effectiveSecret);
+      const jwt = await new SignJWT({ sub: 'demo-user', evmAddress: '0xdemo' })
+        .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
+        .setIssuedAt()
+        .setExpirationTime('24h')
+        .sign(secret);
 
-    setCookie(context, 'pouch_session', jwt, {
-      httpOnly: true,
-      secure: isProduction,
-      sameSite: 'Strict',
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60,
+      setCookie(context, 'pouch_session', jwt, {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: 'Strict',
+        path: '/',
+        maxAge: 7 * 24 * 60 * 60,
+      });
+
+      return context.json({ userId: 'demo-user', evmAddress: '0xdemo' }, 200);
     });
-
-    return context.json({ userId: 'demo-user', evmAddress: '0xdemo' }, 200);
-  });
+  }
 
   if (bitrefillWebhookService) {
     app.route('/webhooks/bitrefill', createBitrefillWebhookRoutes(bitrefillWebhookService));

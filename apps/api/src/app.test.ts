@@ -524,3 +524,40 @@ describe('app demo auth fallback (C2)', () => {
     expect(res.status).toBe(401);
   });
 });
+
+// ── C3: only mount /auth/demo outside production ──────────────────────
+// POST /auth/demo mints a real 24h JWT (sub: 'demo-user'). Mounting it in
+// production lets anonymous clients forge demo sessions. Gate the mount on
+// !isProduction so the route is gone entirely in prod (404, not 401).
+describe('app /auth/demo mount (C3)', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalDemoMode = process.env.DEMO_MODE;
+  const originalJwt = process.env.JWT_SECRET;
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.DEMO_MODE = originalDemoMode;
+    process.env.JWT_SECRET = originalJwt;
+  });
+
+  it('does not mount /auth/demo in production', async () => {
+    // DEMO_MODE=true keeps createRuntimeAppServices from fail-fasting on
+    // missing prod config; isProduction is still true, so the route must be
+    // absent (404, not 401 — the mount itself is gated).
+    process.env.NODE_ENV = 'production';
+    process.env.DEMO_MODE = 'true';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    const app = createApp();
+
+    const res = await app.request('/auth/demo', { method: 'POST' });
+    expect(res.status).toBe(404);
+  });
+
+  it('mounts /auth/demo in development', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    const app = createApp();
+
+    const res = await app.request('/auth/demo', { method: 'POST' });
+    expect(res.status).toBe(200);
+  });
+});
