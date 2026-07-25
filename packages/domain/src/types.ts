@@ -132,6 +132,12 @@ export interface BalanceAsset {
   usdValue: number;
   /** Human-readable wallet label (e.g. "Wallet 1", "Wallet 2") for multi-wallet demos. */
   walletLabel?: string;
+  /**
+   * On-chain address of the wallet holding this asset. Populated by the real
+   * PrivateKeyAccountProvider; absent for demo/mock providers. When present,
+   * the frontend renders a link to the chain's block explorer.
+   */
+  address?: string;
 }
 
 export interface Balance {
