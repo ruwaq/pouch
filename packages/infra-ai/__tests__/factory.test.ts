@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { Config } from '@pouch/shared';
 import type { IntentParserStrategy, ReplyStrategy } from '@pouch/domain';
 
-import { createAgentLlm, createIntentParser, createLlmProvider, createReplyStrategy } from '../src/factory';
+import { createAgentLlm, createIntentParser, createLlmProvider, createReplyStrategy, resolveLlmModel, DEFAULT_LLM_MODEL } from '../src/factory';
 
 function baseConfig(overrides: Partial<Config> = {}): Config {
   return {
@@ -39,8 +39,8 @@ describe('createLlmProvider', () => {
 
   it('uses gemini-3.6-flash as the default model when LLM_MODEL is not set', () => {
     // We can't read the private `model` field directly, so we assert via behavior:
-    // construct a provider and check it doesn't throw + is defined. The model string
-    // is asserted exhaustively in gemini-provider.test.ts via the request URL.
+    // construct a provider and check it doesn't throw + is defined. Direct assertion
+    // of the model string lives in the resolveLlmModel tests below.
     const provider = createLlmProvider(
       baseConfig({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'fake-key' }),
     );
@@ -90,5 +90,22 @@ describe('createAgentLlm', () => {
     );
     expect(typeof (intentParser as IntentParserStrategy).parse).toBe('function');
     expect(replyStrategy).toBeDefined();
+  });
+});
+
+describe('resolveLlmModel', () => {
+  it('returns DEFAULT_LLM_MODEL when LLM_MODEL is undefined', () => {
+    expect(resolveLlmModel({})).toBe(DEFAULT_LLM_MODEL);
+    expect(DEFAULT_LLM_MODEL).toBe('gemini-3.6-flash');
+  });
+
+  it('returns the configured LLM_MODEL when set', () => {
+    expect(resolveLlmModel({ LLM_MODEL: 'gemini-2.5-pro' })).toBe('gemini-2.5-pro');
+  });
+
+  it('trims whitespace and falls back when LLM_MODEL is empty/whitespace', () => {
+    expect(resolveLlmModel({ LLM_MODEL: '  gemini-3.6-flash  ' })).toBe('gemini-3.6-flash');
+    expect(resolveLlmModel({ LLM_MODEL: '' })).toBe(DEFAULT_LLM_MODEL);
+    expect(resolveLlmModel({ LLM_MODEL: '   ' })).toBe(DEFAULT_LLM_MODEL);
   });
 });

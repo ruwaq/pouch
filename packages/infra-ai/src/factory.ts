@@ -8,9 +8,8 @@ import type { LLMProvider } from './llm-provider';
 import { POUCH_TOOL_DECLARATIONS } from './llm-tools';
 
 /**
- * Default Gemini model. Verified working on the production API key on 2026-07-26
- * (HTTP 200, ~0.95s). gemini-3.6-flash is a thinking model — see GeminiProvider
- * for the generationConfig sizing that accounts for hidden reasoning tokens.
+ * Default Gemini model. Verified working on the production API key on 2026-07-26.
+ * gemini-3.6-flash is a thinking model (emits hidden reasoning tokens).
  *
  * To override for a deployment, set LLM_MODEL in the environment.
  */
@@ -18,8 +17,8 @@ export const DEFAULT_LLM_MODEL = 'gemini-3.6-flash';
 
 /**
  * Resolves the effective model name from config, falling back to DEFAULT_LLM_MODEL.
- * Single source of truth — both the chat provider and the /health probe call this
- * so they can never diverge.
+ * Pure function; both the chat provider and (planned) the /health probe should call
+ * this so they resolve to the same model.
  */
 export function resolveLlmModel(config: Pick<Config, 'LLM_MODEL'>): string {
   return config.LLM_MODEL?.trim() || DEFAULT_LLM_MODEL;
