@@ -1,293 +1,168 @@
-# Session Handoff — Audit Fixes + Demo Plan (2026-07-26)
+# Session Handoff — Audit Fixes + Demo Plan (2026-07-26, sesión 2)
 
 > **For the next session: read this first.** Status snapshot at the end of the
-> 2026-07-26 session. The user made all demo decisions — this is the single
-> source of truth for what to build before the Jul 30 deadline.
+> 2026-07-26 second session. The user wants to ship a live real-money demo by
+> **Jul 30**, risk-controlled (judges are non-malicious). This is the single
+> source of truth.
 
 ---
 
-## TL;DR
+## TL;DR — dónde estamos parados
 
-- ✅ **All 6 CRITICAL fixes (C1–C6) shipped, merged, pushed** (previous session).
-- ✅ **PASO 0 DONE this session** — Vercel secrets rotated by the agent, `vercel.json` cleaned, verified cryptographically.
-- ✅ **Wallet explorer links feature DONE this session** — judges can now see each wallet's address + Arbiscan/Basescan/Snowtrace link in the `WalletPanel`.
-- ✅ `pnpm build` 8/8, `pnpm test` 8/8 — green on `main` and on production.
-- 🎯 **Demo decisions LOCKED** — no more clarification needed.
-- ⏭️ **Build queue for next session:** whitelist of wallets (H11) → H2 → H3 → H6 → real-time balance → reactivate `allowDemoFallback` → Bitrefill DEMO → Gemini 3.6 → rate limit.
+- ✅ **PASO 0** (secrets del repo público) — cerrado y re-verificado esta sesión.
+- ✅ **Item #1 — Re-enable demo fallback** — DONE, en producción. Judges sin login entran (HTTP 200).
+- 🟡 **Item #2 — Gemini 3.6 Flash chat upgrade** — **EN PROGRESO, 5/9 tareas hechas**. Faltan T6-T9. Spec + plan + implementación T1-T5 ya commiteados localmente (NO pusheados).
+- ⏭️ **Re-priorización confirmada esta sesión:** como los jueces NO son maliciosos, dejamos la seguridad de fondos al gate C5 existente y **priorizamos funcionalidad**. El item "whitelist" (originalmente #1 del build queue) está **cerrado sin código nuevo** — el gate C5 ya bloquea envíos externos.
+
+**Estado de git:** `main` está **9 commits adelante** de `origin/main` (NO pusheados). El primer paso de la próxima sesión es decidir/pushear.
+
+---
+
+## 🔴 PRIMER PASO de la próxima sesión — resolver el push
+
+Estás en `main`, 9 commits adelante de `origin/main`, working tree limpio. Los commits (locales, verdes):
+
+| Commit | Qué |
+|--------|-----|
+| `506a982` | T5 multi-turn contents |
+| `6838f47` | T4 AbortController 15s timeout (L6) |
+| `57dffd6` | T3 generationConfig thinking-ready |
+| `fd75138` | T2 review M1 (all-thoughts test) |
+| `145691a` | T2 skip thought:true parts |
+| `5bdf18a` | T1 fix honest JSDoc + resolveLlmModel tests |
+| `b024c47` | T1 DEFAULT_LLM_MODEL=gemini-3.6-flash |
+| `bcb5dd3` | plan del upgrade (9 tareas) |
+| `fb03477` | spec del upgrade |
+| `08ce163` | (este sí está pusheado) DEMO_FALLBACK_ENABLED |
+
+**Decisión pendiente:** push ahora, o seguir con T6-T9 y push al final. Recomendado: **hacer T6-T8 (sin deploy), luego push + deploy + smoke (T9) todo junto** — así no multiplicamos deploys.
+
+---
+
+## 🟡 Item #2 — Gemini 3.6 Chat Upgrade (EN PROGRESO, 5/9 tareas)
+
+### Documentos de referencia
+- **Spec:** `docs/superpowers/specs/2026-07-26-gemini-3.6-chat-upgrade-design.md`
+- **Plan (9 tareas bite-sized, TDD):** `docs/superpowers/plans/2026-07-26-gemini-3.6-chat-upgrade.md`
+- **Metodología:** subagent-driven development (implementer + spec review + quality review por tarea).
+
+### Tareas HECHAS y aprobadas (commits arriba)
+
+| # | Tarea | Commit | Verificación |
+|---|-------|--------|--------------|
+| T1 | `DEFAULT_LLM_MODEL='gemini-3.6-flash'` + `resolveLlmModel()` helper exportado en `packages/infra-ai/src/factory.ts` | `b024c47` + `5bdf18a` | tests unitarios en factory.test.ts |
+| T2 | Parser skip `thought:true` parts en `gemini-provider.ts` (helper `firstVisiblePart`) — el bug de los 241 tokens ocultos de 3.6 | `145691a` + `fd75138` | 4 tests nuevos en gemini-provider.test.ts |
+| T3 | `GENERATION_CONFIG {maxOutputTokens:2048, temp:0.7, topP:0.95}` en ambos métodos | `57dffd6` | test asserta el body del fetch |
+| T4 | `AbortController` 15s timeout (cierra audit L6) + **AbortError non-retryable** | `6838f47` | test con fetch colgado, aborta a los 15s |
+| T5 | Multi-turn `contents` real (cambia port `LlmTextRequest` + `ConversationTurn`; `buildContents` helper; reply strategy mapea `agent→model`) | `506a982` | 2 tests nuevos, typecheck 8/8 repo |
+
+**Baseline actual:** `pnpm typecheck` 8/8 ✅ · `pnpm --filter @pouch/infra-ai test` 48/48 ✅ (era 40 antes del item). **No rompe ningún consumer** (`@pouch/api`, `@pouch/web` typecheck verde).
+
+### Tareas PENDIENTES (T6-T9) — instrucciones ya en el plan
+
+| # | Tarea | Archivos |
+|---|-------|----------|
+| **T6** | `/health` usa el shared model source (hoy hardcodea `gemini-3.5-flash` en `apps/api/src/app.ts:112`, ignora `LLM_MODEL`). Importar `resolveLlmModel` de `@pouch/infra-ai`, usarlo en la URL del probe. + test nuevo en `apps/api/src/app.test.ts`. | `apps/api/src/app.ts`, `apps/api/src/app.test.ts` |
+| **T7** | Silenciar logs `[demo] LLM config...` y `[demo] replyStrategy...` detrás de `DEBUG_LLM` en `apps/api/src/bootstrap/create-demo-agent-service.ts` (~líneas 145, 153). | `create-demo-agent-service.ts` |
+| **T8** | `.env:84` y `.env.example` → `LLM_MODEL=gemini-3.6-flash` (con comentario explicando el thinking model). **`.env` NO se commitea** (gitignored), solo `.env.example`. | `.env`, `.env.example` |
+| **T9** | `pnpm typecheck && pnpm build && pnpm test` (full repo) → subir `LLM_MODEL=gemini-3.6-flash` a Vercel Production (**¡usar `printf` no `echo`!** ver lección abajo) → `vercel --prod --yes` → smoke: `/api/agent/chat` debe dar reply en español, no truncado, sin thoughts leak. + actualizar este handoff + push. | — |
+
+**Lección aprendida esta sesión (¡importante!):** al crear env vars en Vercel con `echo "true" | vercel env add ...`, el valor queda con `\n` al final y la comparación `=== 'true'` falla silenciosamente. **Usar `printf 'valor'` (sin newline)** y verificar con `od -c` antes de deployar. Ya pasó con `DEMO_FALLBACK_ENABLED`.
+
+### Follow-up pendiente (no bloqueante, capturado por reviewer)
+- **Medium — double-send de history:** en T5, la historia se envía dos veces (inlined text en `buildPrompt` + structured `contents`). El spec lo permitió como transitional. Si el smoke de T9 muestra problemas de calidad, este es el primer lever — quitar el `historyBlock` inlined de `llm-reply-strategy.ts:50-52` y los `${historyBlock}` en cada caso del switch.
+- **Minor — temperature compartida (T3):** 0.7 para tool-routing y text-gen. Si el intent parsing falla en smoke, bajar temp solo para `generateWithTools`.
+- **Minor — body-read timeout (T4):** el AbortController cubre el fetch pero no `res.json()`. Gap chico para JSON corto.
+
+---
+
+## ✅ Item #1 — Re-enable demo fallback (DONE, en producción)
+
+Commit `08ce163` (este sí está pusheado). Env var `DEMO_FALLBACK_ENABLED=true` en Vercel Production.
+
+- Producción **sin** flag → sigue 401 (C2 intacto, default seguro).
+- Producción **con** `DEMO_FALLBACK_ENABLED=true` → judges sin cookie entran como `demo-user`. El gate C5 sigue bloqueando envíos externos.
+- Cookie inválida/tampered → cae a `demo-user` (no 401), para que un cookie vencido nunca bloquee a un juez.
+- **Smoke verificado en producción esta sesión:** `/api/balance` sin cookie → 200 + `demo-user` + $13.87. `/api/agent/chat` sin cookie → 200 + Gemini respondió end-to-end.
+
+---
+
+## ✅ PASO 0 — re-verificado esta sesión
+
+`gemini-3.5-flash` (viejo) ya NO está en uso para el chat (migrado a 3.6 en este item, parcialmente). Los secrets rotados siguen firmes: JWT forjado con placeholder viejo → **401**; con secreto actual → **200** + balance real.
+
+**Cookie name correction (bug de mi primer smoke, no de la app):** el cookie es `pouch_session` (**underscore**), no `pouch-session`. El endpoint `/api/balance` es **GET**, no POST. El JWT payload solo necesita `sub` (+ opcional `evmAddress`).
 
 ---
 
 ## Demo decisions (LOCKED — user confirmed)
 
-The user wants a **live demo with REAL money**, but **risk-controlled via a strict whitelist**:
+El usuario quiere **demo en vivo con dinero REAL**, pero los jueces **no son maliciosos**. Esto cambió las prioridades esta sesión: **funcionalidad primero, seguridad de fondos al mínimo necesario** (el gate C5 ya existe).
 
 | Decision | Value |
 |----------|-------|
-| Deploy | Existing `https://pouch-orpin.vercel.app` (production). No separate staging. |
-| Access control | **No Magic login.** URL is shared only with judges privately. (Confirmed again this session: "no debe haber login".) |
-| Money | **REAL assets from the main wallet** (the one with all the funds). |
-| Fund safety | **Whitelist of wallets.** Funds must ONLY circulate between our own wallets. Any attempt to send outside the whitelist must be blocked. |
-| Balance | Must update **in real time** (currently it is NOT real-time — see "Gaps"). |
-| Bitrefill | **DEMO mode only.** Must be clearly labeled "DEMO" in UI/chat. No real gift-card purchases. |
-| LLM | Gemini **3.6** flash (free tier — confirmed working). |
-| Movement | Minimum movement of assets. |
-| Wallet visibility | **Always show** the on-chain address + link to scan explorer for every real wallet. NO mocks: a wallet without a real address shows no link (do not fake it). |
-
-### Residual risk the user accepted
-
-With "main wallet + whitelist", the whitelist protects against **external attacks**
-(anyone trying to drain to an unknown address is blocked). It does NOT protect against
-**internal value loss via buggy swap math (H2)** — every under-priced swap eats value
-*inside* the circuit. **H2 is therefore critical for this demo decision**, not optional.
+| Deploy | `https://pouch-orpin.vercel.app` (producción). Sin staging. |
+| Access control | **Sin Magic login.** URL compartida privadamente con jueces. Demo fallback habilitado via `DEMO_FALLBACK_ENABLED=true`. |
+| Money | **Assets reales del wallet principal** (el de los fondos). |
+| Fund safety | **Gate C5 existente** (`private-key-provider.ts:392`) bloquea cualquier envío fuera de nuestras wallets derivadas. No se construye whitelist nueva — los jueces no son adversarios. |
+| Balance | Debe actualizar **en tiempo real** (hoy no lo hace — ver item #4). |
+| Bitrefill | **DEMO mode only.** Label "DEMO" claro. Sin compras reales. |
+| LLM | **Gemini 3.6 Flash** (verificado funciona con la key actual, ~0.95s, pero es thinking model). |
+| Wallet visibility | Siempre mostrar la on-chain address + link al explorer (feature de la sesión anterior, DONE). |
+| Chat quality | **"Mejora exponencial"** — item #2 en curso. + **modo educativo** (item #3): el asistente explica cómo funciona el sistema mientras opera. |
 
 ---
 
-## ✅ PASO 0 — DONE (this session, by the agent)
+## Build queue (prioridad funcional, no la original de seguridad)
 
-The repo `github.com/ruwaq/pouch` is **PUBLIC**. The committed `vercel.json` *used to*
-contain placeholder values for `JWT_SECRET`/`WEBHOOK_SECRET`/`DATABASE_URL`. Worse, the
-Vercel Production env vars were **empty** (marked `sensitive` with value `''`), so the
-app was falling back to the public placeholders at runtime.
+### 🔴 En progreso / siguientes
+1. **Item #2 — Gemini 3.6 chat upgrade** → **terminar T6-T9** (ver arriba).
+2. **Item #3 — Sistema-guía (modo educativo):** brainstorm + spec + plan + TDD. El system prompt (`packages/infra-ai/src/system-prompt.ts`) ya tiene contenido educativo aprovechable. El asistente debe explicar el sistema a los jueces mientras opera.
+3. **Item #4 — Real-time balance:** `balance-service.ts` delega a `accountProvider.getUnifiedBalance()` sin polling/refresh. Implementar cache TTL corta + refresh on-chain.
 
-**What was done this session (all by the agent, none by the user):**
+### 🟡 Después
+4. **H3** — amount validation (`private-key-provider.ts:483,531`): NaN/negativos llegan a `parseEther`, crashea la demo.
+5. **H6** — timeouts/AbortController en web3 calls (el patrón de T4 se puede reusar).
+6. **Wallet 3/4 clarity:** las fallback AVAX wallets no tienen address → si un juez dice "envía a Wallet 3", el gate bloquea con mensaje confuso. UX.
+7. **H2** — slippage math (`private-key-provider.ts:734`): subprecia ~40x. Sigue importando incluso con jueces no maliciosos (cada swap come valor en uso normal).
 
-1. Generated 3 fresh 64-char-hex secrets with `openssl rand -hex 32`.
-2. Uploaded them to Vercel Production as `type=encrypted` (replacing the empty ones).
-3. Updated the local `.env` (backup at `.env.bak.20260725-225111`, gitignored).
-4. Removed the placeholder lines from the committed `vercel.json` (commit `8115431`).
-5. Redeployed to production.
-6. **Verified cryptographically:** forged a JWT with the OLD placeholder secret → got
-   `401 Unauthorized`; forged a JWT with the NEW secret → got `200` + real balance.
-   The public-repo token-forgery vector is closed.
-
-**Commits:** `8115431` (vercel.json cleanup). Secrets themselves are in Vercel + `.env`
-only, never in the repo.
+### 🟢 Pulido / verificación
+8. Bitrefill DEMO label + rate limit (`/agent/chat`) + gas caps.
+9. **Smoke final con movimiento real chico antes del 30.**
 
 ---
 
-## ✅ Wallet Explorer Links feature — DONE (this session)
+## Cómo arrancar la próxima sesión
 
-Spec: `docs/superpowers/specs/2026-07-26-wallet-explorer-links-design.md`.
-Plan: `docs/superpowers/plans/2026-07-26-wallet-explorer-links.md`.
+1. **Decidir el push:** `git push origin main` (9 commits locales) — recomendado antes de seguir, para no acumular.
+2. **Re-smokear item #1 + PASO 0** (que sigan firmes): `curl` a `/api/balance` sin cookie → 200; JWT forjado viejo → 401.
+3. **Continuar item #2:** abrir `docs/superpowers/plans/2026-07-26-gemini-3.6-chat-upgrade.md` y ejecutar **T6** con subagent-driven development (implementer + spec review + quality review). El usuario aprobó esta metodología y trabajar directo en `main`.
 
-**What was built (subagent-driven, 6 tasks, all reviewed):**
-
-1. `BalanceAsset` interface (`packages/domain/src/types.ts`) gained an optional
-   `address?: string` field.
-2. `PrivateKeyAccountProvider.getUnifiedBalance()` populates `address: walletConfig.address`
-   in the 3 real-provider push sites (native ETH, USDC, extra tokens). The hardcoded AVAX
-   `knownAssets` fallback (Wallet 3/4) intentionally stays address-free.
-3. Regression test in `private-key-provider.test.ts` asserts every real asset has a
-   valid `0x…` address.
-4. New helper `apps/web/src/lib/explorer.ts`: `shortAddress`, `explorerAddressUrl`
-   (wraps `@pouch/shared`'s `getExplorerUrl`, returns `null` instead of Arbiscan fallback
-   for unknown chains), re-exports `getExplorerName`.
-5. `apps/web/src/components/dashboard/WalletPanel.tsx` renders
-   `0xAbcd…F01 ↗ Arbiscan` under each wallet label (only when a real address exists).
-6. **Smoke-tested in production**: `/api/balance` returns `address` on real assets
-   (Wallet 1 on Arbitrum → `0xA5fA06…e3DD`). The AVAX fallback wallets show no link,
-   as designed.
-
-**Commits:** `164bb32`, `e202983`, `a087d84`, `3532012`, `b29b540`.
-
-**Note for next session:** the explorer link only renders for assets that come back with
-a non-empty `address`. The AVAX "Wallet 3"/"Wallet 4" fallback entries in
-`private-key-provider.ts` (~lines 344-347) have no address; this is intentional, but if
-the user wants them verified on Snowtrace too, those entries need real addresses added.
-
----
-
-## 🚨 Demo fallback is OFF in production (NEW gap)
-
-During PASO 0 verification, the smoke test of `/api/balance` without a cookie returned
-`401 Unauthorized` — meaning `allowDemoFallback: false` in production. **This breaks the
-"no login" demo decision**: any judge hitting the URL without a valid session cookie is
-rejected.
-
-This is consistent with the C5 fix (`allowDemoFallback = isDemo && !isProduction`).
-**It must be re-enabled** so the demo works for judges without login — but ONLY after
-the whitelist + H2 are in place, because re-enabling demo fallback re-opens the C5
-vector that those two items now close.
-
-**Action (in the build queue below, item 6):** flip `allowDemoFallback` back to `true`
-in production AFTER whitelist + H2/H3/H6 land.
-
----
-
-## Build queue for next session (priority order)
-
-### 🔴 Blocking for real-money demo (all required before Jul 30)
-
-1. **Whitelist of wallets (H11).** Hook into the send/transfer path so any destination
-   address not in a configurable allow-list is blocked at the policy layer
-   (`SecurityChecker`), never reaching the chain. Allow-list = our own wallets only.
-   Circuito cerrado. **This is now the SOLE external-defense layer** (since demo fallback
-   will be re-enabled). The allow-list should reuse the addresses already exposed via
-   `BalanceAsset.address` / `PrivateKeyAccountProvider.getWalletInfo()`.
-
-2. **H2 — slippage math fix** (`private-key-provider.ts` swap function, ~line 734).
-   Currently under-prices ~40x. With real money + whitelist, every swap eats value
-   inside the circuit. **Critical.**
-
-3. **H3 — amount validation** (`private-key-provider.ts:483,531`). Negatives/NaN reach
-   `parseEther`. Blocks a crash during the live demo.
-
-4. **H6 — timeouts / AbortController** on web3 calls. Without this a slow tx freezes the
-   worker in front of the judges. **Also the foundation for real-time balance** (#5).
-
-5. **Real-time balance refresh.** Today `balance-service.ts` delegates to
-   `accountProvider.getUnifiedBalance()` with no polling/refresh. Implement a short-TTL
-   cache + on-chain refresh so balances update during the demo.
-
-6. **Re-enable `allowDemoFallback` in production** (after 1-5 land). Without this the
-   demo returns 401 to unauthenticated judges. See the "Demo fallback is OFF" note above.
-
-### 🟡 Demo polish
-
-7. **Bitrefill — force DEMO mode + clear "DEMO" label.** No real gift-card purchases.
-   Label in the UI and in chat replies.
-
-8. **Gemini 3.5-flash → 3.6-flash** (`apps/api/src/app.ts:105` and
-   `create-demo-agent-service.ts`).
-
-9. **H7 — rate limit on `/agent/chat`.** Because the demo runs without login, this
-   protects `GEMINI_API_KEY` from abuse.
-
-10. **M5/M2 — per-chain gas cap + fail-fast if `SEED_PHRASE_3` still absent.**
-
-### 🟢 Verification
-
-11. **Smoke test the demo on production** with a small real movement before Jul 30:
-    whitelist blocks external sends, balance updates live, swaps price correctly,
-    Bitrefill stays demo, chat works, explorer links open the right explorer.
-
-12. **`git branch -d audit-fixes`** — local branch already merged, safe to delete.
-
----
-
-## Gaps discovered (carried over + new this session)
-
-1. **PASO 0 (RESOLVED this session).** `JWT_SECRET`/`WEBHOOK_SECRET`/`DATABASE_URL`
-   were placeholders committed to a PUBLIC repo, AND the Vercel Production values were
-   empty. Now rotated + verified.
-
-2. **Balances are NOT real-time.** `balance-service.ts` delegates to
-   `accountProvider.getUnifiedBalance()` with no polling/refresh. New requirement #5.
-
-3. **Demo mode uses real `GEMINI_API_KEY` for every chat turn.** Riskier without login.
-   Mitigated by H7 (#9).
-
-4. **Bitrefill in `mode: 'configured'` makes REAL gift-card orders.** User wants demo
-   only with clear labels. Requirement #7.
-
-5. **`SEED_PHRASE_3` is absent** from `.env` (only `SEED_PHRASE_1`/`_2` present).
-
-6. **C5 was an active drain vector** (restated for clarity): pre-fix, anyone who knew
-   the two hardcoded addresses could move Wallet 1's funds. Closed by `d6a6e17`.
-   The whitelist (item #1) hardens this further. **Re-enabling demo fallback (#6)
-   re-opens the surface — only do it after #1+#2 are in.**
-
-7. **NEW — `allowDemoFallback` is `false` in production.** Breaks the no-login demo
-   today. See "Demo fallback is OFF" section above.
-
-8. **NEW — AVAX fallback wallets (Wallet 3/4) have no on-chain address.** They show
-   no explorer link in the panel. Intentional for now; if the user wants them
-   verifiable on Snowtrace, real addresses need to be added to the `knownAssets`
-   array in `private-key-provider.ts`.
-
----
-
-## Exact repo state
-
-- **Branch:** `main` (you are here)
-- **HEAD:** `b29b540` — "feat(web): show wallet address + explorer link in WalletPanel"
-- **Remote:** `origin/main` = `b29b540` (in sync, pushed)
-- **Working tree:** clean (only `.env.bak.20260725-225111` untracked, gitignored)
-- **Leftover local branch:** `audit-fixes` (merged; safe to delete)
-
-### Commits from this session (on main, pushed)
-
-| What | Commit | One-liner |
-|------|--------|-----------|
-| PASO 0 | `8115431` | Remove placeholder secrets from `vercel.json` |
-| Spec | `969e78e` | Wallet explorer links design doc |
-| Plan | `425b9ad` | Wallet explorer links implementation plan |
-| Task 1 | `164bb32` | Add optional `address` to `BalanceAsset` |
-| Task 2 | `e202983` | Populate `address` on real wallet balance assets |
-| Task 3 | `a087d84` | Regression guard for address field |
-| Task 4 | `3532012` | Explorer URL helpers (reuses `@pouch/shared`) |
-| Task 5 | `b29b540` | Render address + explorer link in `WalletPanel` |
-
-(Secrets themselves are in Vercel env vars + local `.env` only — never in the repo.)
-
-### Prior session commits (still on main)
-
-| Fix | Commit | One-liner |
-|-----|--------|-----------|
-| C1 | `13ec3ed` + `1a0581e` | Bitrefill webhook HMAC + 401/400 narrowing |
-| C2 | `7cda9a2` | `allowDemoFallback = isDemo && !isProduction` |
-| C3 | `d28ec5d` | `/auth/demo` mounted only outside production |
-| C4 | `2da0d93` | Identity from JWT context (closed IDOR) |
-| C5 | `d6a6e17` | Removed wallet bypass + strict `resolveSender` |
-| C6 | `2e0438e` | Fake receipts only for `demo-user` |
-
----
-
-## How to resume
-
-1. **Confirm PASO 0 is still solid:** smoke `/api/balance` with a forged-OLD-placeholder
-   token (expect 401) and with the real `.env` `JWT_SECRET` (expect 200). If either
-   regressed, investigate before anything else.
-2. **Work the build queue in priority order.** Items 1-6 are the blocking set — do them
-   as a TDD sequence before any polish. Item 6 (re-enable demo fallback) MUST come after
-   1+2.
-3. **Do not** touch the items in "What NOT to touch" below without checking with the user.
-
----
-
-## Verification commands (re-run anytime)
-
+**Comandos de verificación (re-run anytime):**
 ```bash
 cd "/Users/munay/dev/UXmaxx Hackathon"
-pnpm install
-pnpm build       # 8/8 expected
-pnpm test        # 8/8 expected; api=49 tests, web=18, infra-web3=30, others passWithNoTests
-pnpm typecheck   # 8/8 expected
+pnpm typecheck                              # 8/8 esperado
+pnpm --filter @pouch/infra-ai test          # 48/48 esperado (post-T5)
+pnpm test                                   # full repo
+pnpm build                                  # 8/8 esperado
 ```
-
-Smoke production after any deploy:
-
-```bash
-# Forge a token with the current .env JWT_SECRET and call /api/balance.
-# Expect 200 + assets with `address` field on real wallets (Wallet 1 on Arbitrum).
-```
-
-If anything is red, **stop and investigate** — do not start new work on a broken baseline.
 
 ---
 
-## Files of record
-
-- `docs/audit/README.md` — entry point, TL;DR of the 6 CRITICALs.
-- `docs/audit/2026-07-25-security-audit.md` — full audit (CRITICAL + HIGH + MEDIUM + LOW).
-- `docs/audit/FOLLOW-UP-ACTION-PLAN.md` — execution table with `[x]`/`[ ]` status.
-- `docs/audit/SESSION-HANDOFF.md` — **this file.**
-- `docs/superpowers/specs/2026-07-26-wallet-explorer-links-design.md` — design for the
-  wallet explorer links feature shipped this session.
-- `docs/superpowers/plans/2026-07-26-wallet-explorer-links.md` — implementation plan
-  for that feature (6 tasks, all completed).
+## Archivos de referencia
+- `docs/audit/README.md` — entry point del audit.
+- `docs/audit/2026-07-25-security-audit.md` — audit completo.
+- `docs/audit/FOLLOW-UP-ACTION-PLAN.md` — tabla de fixes (CRITICAL todos `[x]`).
+- `docs/audit/SESSION-HANDOFF.md` — **este archivo.**
+- `docs/superpowers/specs/2026-07-26-gemini-3.6-chat-upgrade-design.md` — spec del item #2.
+- `docs/superpowers/plans/2026-07-26-gemini-3.6-chat-upgrade.md` — plan 9 tareas del item #2 (T1-T5 done, T6-T9 pendientes).
 
 ---
 
-## What NOT to touch without checking with the user first
-
-- **C2/C3 behavior.** `allowDemoFallback = isDemo && !isProduction` is correct as-is.
-  Re-enabling demo fallback in production is a deliberate decision tied to whitelist
-  readiness (build queue item 6) — do not flip it casually.
-- **The `demo-user` fallback in `balance.ts`/`agent.ts`.** Removing it breaks the judge demo.
-- **The hardcoded `knownAssets` AVAX balances** (`private-key-provider.ts:~344-347`).
-  They have no `address` by design — the explorer link correctly skips them. If the user
-  wants them verifiable, real addresses must be sourced first.
-- **The wallet choice.** Main wallet with full funds is locked. Protect via whitelist,
-  not by switching wallets.
-- **The Vercel env vars.** PASO 0 is closed. Do not rotate secrets again without reason.
+## What NOT to touch sin checkear con el usuario
+- **C2/C3 behavior** — `allowDemoFallback` default seguro + mount de `/auth/demo`. El flag `DEMO_FALLBACK_ENABLED` es el escape hatch deliberado.
+- **El `demo-user` fallback** en `balance.ts`/`agent.ts` — rompe la demo de jueces.
+- **Las hardcoded AVAX Wallet 3/4** (`private-key-provider.ts:~347`) — sin address a propósito.
+- **La elección de wallet** — main wallet locked.
+- **Los Vercel env vars** — PASO 0 cerrado. No rotar secrets sin razón.
+- **El system prompt text** (`system-prompt.ts`) — se toca en el item #3 (sistema-guía), no antes.
