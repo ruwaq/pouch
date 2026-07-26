@@ -9,21 +9,26 @@
 
 ## TL;DR — dónde estamos parados
 
-- ✅ **PASO 0** (secrets del repo público) — cerrado y re-verificado esta sesión.
+- ✅ **PASO 0** (secrets del repo público) — cerrado y re-verificado.
 - ✅ **Item #1 — Re-enable demo fallback** — DONE, en producción. Judges sin login entran (HTTP 200).
-- 🟡 **Item #2 — Gemini 3.6 Flash chat upgrade** — **EN PROGRESO, 5/9 tareas hechas**. Faltan T6-T9. Spec + plan + implementación T1-T5 ya commiteados localmente (NO pusheados).
-- ⏭️ **Re-priorización confirmada esta sesión:** como los jueces NO son maliciosos, dejamos la seguridad de fondos al gate C5 existente y **priorizamos funcionalidad**. El item "whitelist" (originalmente #1 del build queue) está **cerrado sin código nuevo** — el gate C5 ya bloquea envíos externos.
+- ✅ **Bug fix: Try Demo button** — `/auth/demo` route now mounted in production when `DEMO_FALLBACK_ENABLED=true` (antes solo en dev). Commit `019300b`, deployado.
+- 🟡 **Item #2 — Gemini 3.6 Flash chat upgrade** — **EN PROGRESO, 5/9 tareas hechas**. Faltan T6-T9. T1-T5 pusheados a origin/main.
+- ⏭️ **Re-priorización confirmada:** como los jueces NO son maliciosos, dejamos la seguridad de fondos al gate C5 existente y **priorizamos funcionalidad**.
 
-**Estado de git:** `main` está **9 commits adelante** de `origin/main` (NO pusheados). El primer paso de la próxima sesión es decidir/pushear.
+**Estado de git:** `main` = `origin/main`, todo pusheado.
 
 ---
 
-## 🔴 PRIMER PASO de la próxima sesión — resolver el push
+## 🟢 PRIMER PASO de la próxima sesión — continuar Item #2 (T6-T9)
 
-Estás en `main`, 9 commits adelante de `origin/main`, working tree limpio. Los commits (locales, verdes):
+Todo está pusheado y deployado. Arrancar con **T6 (/health unification)** usando subagent-driven development.
+
+### Commits recientes en origin/main
 
 | Commit | Qué |
 |--------|-----|
+| `019300b` | **fix: mount /auth/demo in prod when DEMO_FALLBACK_ENABLED=true** |
+| `fbc3cde` | handoff update |
 | `506a982` | T5 multi-turn contents |
 | `6838f47` | T4 AbortController 15s timeout (L6) |
 | `57dffd6` | T3 generationConfig thinking-ready |
@@ -33,9 +38,7 @@ Estás en `main`, 9 commits adelante de `origin/main`, working tree limpio. Los 
 | `b024c47` | T1 DEFAULT_LLM_MODEL=gemini-3.6-flash |
 | `bcb5dd3` | plan del upgrade (9 tareas) |
 | `fb03477` | spec del upgrade |
-| `08ce163` | (este sí está pusheado) DEMO_FALLBACK_ENABLED |
-
-**Decisión pendiente:** push ahora, o seguir con T6-T9 y push al final. Recomendado: **hacer T6-T8 (sin deploy), luego push + deploy + smoke (T9) todo junto** — así no multiplicamos deploys.
+| `08ce163` | DEMO_FALLBACK_ENABLED |
 
 ---
 
