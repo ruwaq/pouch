@@ -39,29 +39,6 @@ const runtimeLogger: LoggerPort = {
   error() {},
 };
 
-/** Demo account provider used when a judge clicks "Try Demo" — no real funds needed. */
-function createDemoAccountProvider(): AccountProvider {
-  return {
-    async getUnifiedBalance() {
-      return ok({
-        total: 100,
-        assets: [
-          { chainId: 42161, symbol: 'USDC', amount: 45, usdValue: 45 },
-          { chainId: 8453, symbol: 'USDC', amount: 30, usdValue: 30 },
-          { chainId: 8453, symbol: 'ETH', amount: 0.007, usdValue: 25 },
-        ],
-        requiresConsolidation: true,
-      });
-    },
-    async consolidate() {
-      return ok({ txHash: '0xdemo-consolidation' });
-    },
-    async sendPayment() {
-      return ok({ txHash: '0xdemo-payment' });
-    },
-  };
-}
-
 /** Demo off-ramp provider — simulates gift card purchases without a real API key. */
 function createDemoOffRampProvider(): OffRampProvider {
   return {
@@ -157,37 +134,6 @@ function createHybridOrderRepository(drizzleRepo: OrderRepository): OrderReposit
     },
   };
 }
-function createHybridAccountProvider(realProvider: AccountProvider): AccountProvider {
-  const demoProvider = createDemoAccountProvider();
-  const isDemo = (userId: string) => userId === 'demo-user' || userId === '0xdemo';
-
-  // Expose wallet info methods from the real provider (if available)
-  // so the send flow can discover available wallets.
-  const realExtra = realProvider as unknown as Record<string, unknown>;
-  const extraMethods: Record<string, unknown> = {};
-  for (const key of ['getWalletLabels', 'getWalletInfo', 'findWallet', 'swap', 'sendEth']) {
-    if (typeof realExtra[key] === 'function') {
-      extraMethods[key] = realExtra[key];
-    }
-  }
-
-  return {
-    async getUnifiedBalance(userId) {
-      if (isDemo(userId)) return demoProvider.getUnifiedBalance(userId);
-      return realProvider.getUnifiedBalance(userId);
-    },
-    async consolidate(userId, targetChainId, targetToken) {
-      if (isDemo(userId)) return demoProvider.consolidate(userId, targetChainId, targetToken);
-      return realProvider.consolidate(userId, targetChainId, targetToken);
-    },
-    async sendPayment(params) {
-      if (isDemo(params.from)) return demoProvider.sendPayment(params);
-      return realProvider.sendPayment(params);
-    },
-    ...extraMethods,
-  };
-}
-
 function shouldFailFast(env: Record<string, string | undefined>): boolean {
   if ((env.DEMO_MODE ?? process.env.DEMO_MODE ?? '').trim() === 'true') return false;
   return (env.NODE_ENV ?? process.env.NODE_ENV ?? 'development') === 'production';
@@ -248,10 +194,12 @@ export function createRuntimeAppServices(options: {
       };
     }
 
-    return {
-      mode: 'demo',
-      ...createDemoAppServices(),
-    };
+    // DEMO_MODE=true without a funded PRIVATE_KEY is not allowed: balances and
+    // transactions must be real on Arbitrum. Fail loud rather than serve mock data.
+    throw new Error(
+      'DEMO_MODE=true requires a funded PRIVATE_KEY (real funds on Arbitrum). ' +
+        'Set PRIVATE_KEY in your .env, or unset DEMO_MODE to use the configured runtime.',
+    );
   }
 
   let config: Config;
@@ -295,33 +243,13 @@ export function createRuntimeAppServices(options: {
       : undefined;
 
     const accountProvider = (dependencies.createAccountProvider ?? createAccountProvider)(config);
-    // Wrap with hybrid: demo-user gets simulated balances; real users get Particle UA.
-    const hybridAccountProvider = createHybridAccountProvider(accountProvider);
 
     const agentWallet = config.OPENFORT_SECRET_KEY
       ? (dependencies.createAgentWallet ?? createAgentWallet)(config, runtimeLogger)
       : undefined;
 
-    // Don't use the real agent wallet for demo users — the demo provider
-    // uses a simulated payment address that would fail on-chain.
-    const hybridAgentWallet: AgentWalletPort | undefined = agentWallet
-      ? {
-          label: agentWallet.label,
-          async getAddress() {
-            return agentWallet.getAddress();
-          },
-          async settlePayment(params) {
-            if (params.to === '0x000000000000000000000000000000000000dEaD') {
-              return ok({ txHash: '0xdemo-gasless-settlement' });
-            }
-            return agentWallet.settlePayment(params);
-          },
-          // Expose sendEth for gas funding
-          ...(typeof (agentWallet as unknown as { sendEth?: unknown }).sendEth === 'function'
-            ? { sendEth: (agentWallet as unknown as { sendEth: Function }).sendEth.bind(agentWallet) }
-            : {}),
-        }
-      : undefined;
+    // Real agent wallet used directly — no simulated settlements (spec: everything real).
+    const hybridAgentWallet = agentWallet;
 
     // ── Security policy store ──────────────────────────────────────
     // In production this would read from the database. For now, use defaults.
@@ -335,7 +263,7 @@ export function createRuntimeAppServices(options: {
     const executor = new CashOutExecutor(
       new OffRampRouter(allProviders),
       allProviders,
-      hybridAccountProvider,
+      accountProvider,
       hybridOrderRepo,
       runtimeLogger,
       hybridAgentWallet,
@@ -343,10 +271,10 @@ export function createRuntimeAppServices(options: {
     );
 
     const { intentParser, replyStrategy } = createAgentLlm(config);
-    const balanceService = new BalanceService(hybridAccountProvider);
+    const balanceService = new BalanceService(accountProvider);
     const agentService = replyStrategy
-      ? new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, hybridAccountProvider, replyStrategy, runtimeSecurityChecker, hybridAgentWallet)
-      : new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, hybridAccountProvider, undefined, runtimeSecurityChecker, hybridAgentWallet);
+      ? new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, accountProvider, replyStrategy, runtimeSecurityChecker, hybridAgentWallet)
+      : new AgentChatService(intentParser, executor, hybridOrderRepo, balanceService, allProviders, accountProvider, undefined, runtimeSecurityChecker, hybridAgentWallet);
 
     return {
       mode: 'configured',

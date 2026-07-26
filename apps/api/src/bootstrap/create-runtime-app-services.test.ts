@@ -115,4 +115,10 @@ describe('createRuntimeAppServices', () => {
     expect(createWebhookEventStore).toHaveBeenCalledTimes(1);
     expect(createAccountProvider).toHaveBeenCalledTimes(1);
   });
+
+  it('throws when DEMO_MODE=true but no PRIVATE_KEY is set', () => {
+    expect(() =>
+      createRuntimeAppServices({ env: { NODE_ENV: 'development', DEMO_MODE: 'true' } }),
+    ).toThrow(/PRIVATE_KEY/);
+  });
 });

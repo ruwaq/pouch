@@ -516,12 +516,14 @@ describe('app demo auth fallback (C2)', () => {
   const originalDemoMode = process.env.DEMO_MODE;
   const originalJwt = process.env.JWT_SECRET;
   const originalDemoFallback = process.env.DEMO_FALLBACK_ENABLED;
+  const originalPrivateKey = process.env.PRIVATE_KEY;
 
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
     process.env.DEMO_MODE = originalDemoMode;
     process.env.JWT_SECRET = originalJwt;
     process.env.DEMO_FALLBACK_ENABLED = originalDemoFallback;
+    process.env.PRIVATE_KEY = originalPrivateKey;
   });
 
   it('returns 401 in production even when DEMO_MODE=true forces demo runtime', async () => {
@@ -529,6 +531,10 @@ describe('app demo auth fallback (C2)', () => {
     process.env.DEMO_MODE = 'true';
     delete process.env.DEMO_FALLBACK_ENABLED; // default = off
     process.env.JWT_SECRET = 'a'.repeat(32);
+    // DEMO_MODE=true now requires a funded PRIVATE_KEY (real funds on Arbitrum);
+    // these tests assert auth/mount behavior, so boot the runtime via the private-key
+    // branch with a dummy key. PrivateKeyAccountProvider only checks presence.
+    process.env.PRIVATE_KEY = '0x' + '1'.repeat(64);
     const app = createApp();
 
     const res = await app.request('/balance');
@@ -547,12 +553,14 @@ describe('app demo fallback opt-in (DEMO_FALLBACK_ENABLED)', () => {
   const originalDemoMode = process.env.DEMO_MODE;
   const originalJwt = process.env.JWT_SECRET;
   const originalDemoFallback = process.env.DEMO_FALLBACK_ENABLED;
+  const originalPrivateKey = process.env.PRIVATE_KEY;
 
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
     process.env.DEMO_MODE = originalDemoMode;
     process.env.JWT_SECRET = originalJwt;
     process.env.DEMO_FALLBACK_ENABLED = originalDemoFallback;
+    process.env.PRIVATE_KEY = originalPrivateKey;
   });
 
   it('returns 200 with demo-user in production when DEMO_FALLBACK_ENABLED=true', async () => {
@@ -560,6 +568,7 @@ describe('app demo fallback opt-in (DEMO_FALLBACK_ENABLED)', () => {
     process.env.DEMO_MODE = 'true';
     process.env.DEMO_FALLBACK_ENABLED = 'true';
     process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.PRIVATE_KEY = '0x' + '1'.repeat(64);
     const app = createApp();
 
     const res = await app.request('/balance');
@@ -578,20 +587,24 @@ describe('app /auth/demo mount (C3)', () => {
   const originalDemoMode = process.env.DEMO_MODE;
   const originalJwt = process.env.JWT_SECRET;
   const originalDemoFallback = process.env.DEMO_FALLBACK_ENABLED;
+  const originalPrivateKey = process.env.PRIVATE_KEY;
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
     process.env.DEMO_MODE = originalDemoMode;
     process.env.JWT_SECRET = originalJwt;
     process.env.DEMO_FALLBACK_ENABLED = originalDemoFallback;
+    process.env.PRIVATE_KEY = originalPrivateKey;
   });
 
   it('does not mount /auth/demo in production', async () => {
     // DEMO_MODE=true keeps createRuntimeAppServices from fail-fasting on
     // missing prod config; isProduction is still true, so the route must be
-    // absent (404, not 401 — the mount itself is gated).
+    // absent (404, not 401 — the mount itself is gated). DEMO_MODE=true now
+    // requires a PRIVATE_KEY, so set a dummy one to boot the runtime.
     process.env.NODE_ENV = 'production';
     process.env.DEMO_MODE = 'true';
     process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.PRIVATE_KEY = '0x' + '1'.repeat(64);
     const app = createApp();
 
     const res = await app.request('/auth/demo', { method: 'POST' });
@@ -612,6 +625,7 @@ describe('app /auth/demo mount (C3)', () => {
     process.env.DEMO_MODE = 'true';
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.DEMO_FALLBACK_ENABLED = 'true';
+    process.env.PRIVATE_KEY = '0x' + '1'.repeat(64);
     const app = createApp();
 
     const res = await app.request('/auth/demo', { method: 'POST' });
