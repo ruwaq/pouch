@@ -13,11 +13,11 @@ import { MemoryOrderRepository } from '../support/memory-order-repository';
 const logger = { info() {}, error() {} };
 
 /**
- * C6 regression: the demo-fallback that fabricates a 'delivered' receipt on a
- * real send/swap/fund-gas failure must ONLY fire for the demo user. Real users
- * must get the propagated error instead of a fake success with a 404 Arbiscan
- * link. We drive `executeSend` directly (it is private; cast to access) with an
- * account provider whose sendPayment always fails.
+ * No-mock-receipts regression: real send/swap/fund-gas failures must route to
+ * the error scenario for EVERYONE — including demo users. The 0xsend-/
+ * 0xswap-/0xopenfort-gas- demo fallbacks were removed (spec: everything real on
+ * Arbitrum). We drive `executeSend` directly (it is private; cast to access)
+ * with an account provider whose sendPayment always fails.
  */
 function buildServiceWithFailingSend(): AgentChatService {
   const failingProvider: AccountProvider = {
