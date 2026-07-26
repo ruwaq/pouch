@@ -8,7 +8,7 @@ import { POUCH_SYSTEM_PROMPT } from './system-prompt';
 /**
  * IntentParserStrategy backed by an LLM (function-calling).
  *
- * The LLM (Gemini 3.5 Flash) classifies the user's message into one of 5 tools:
+ * The LLM (Gemini 3.6 Flash) classifies the user's message into one of 5 tools:
  * cash_out, check_balance, search_products, help, or off_topic.
  *
  * Resilience: on ANY LLM failure (provider error, rate limit, plain-text reply,

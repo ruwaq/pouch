@@ -57,7 +57,7 @@ const TECH_STACK: Tech[] = [
   },
   {
     id: 'gemini',
-    name: 'Gemini 3.5 Flash',
+    name: 'Gemini 3.6 Flash',
     icon: '🤖',
     status: 'active',
     description: 'Conversational AI for natural language understanding. Multi-turn confirmation flow.',

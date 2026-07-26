@@ -8,7 +8,7 @@ import { useChat } from '../../context/chat-context';
  * and confirm/cancel buttons.
  */
 export function FundGasConfirmationCard({ response }: { response: AgentChatResponse }) {
-  const { sendMessage } = useChat();
+  const { sendMessage, isSending } = useChat();
   const intent = response.intent;
   const amountEth = intent.amount.value > 0 ? intent.amount.value : 0.00005;
   const fromLabel = intent.fromLabel ?? 'Wallet 1';
@@ -53,13 +53,15 @@ export function FundGasConfirmationCard({ response }: { response: AgentChatRespo
       <div className="flex gap-2">
         <button
           onClick={() => sendMessage('yes')}
-          className="flex-1 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400 transition-colors active:scale-[0.98]"
+          disabled={isSending}
+          className="flex-1 rounded-lg bg-emerald-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-emerald-400 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ✅ Confirm
+          {isSending ? '⏳ Processing…' : '✅ Confirm'}
         </button>
         <button
           onClick={() => sendMessage('cancel')}
-          className="flex-1 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors active:scale-[0.98]"
+          disabled={isSending}
+          className="flex-1 rounded-lg bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/20 transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
         >
           ❌ Cancel
         </button>

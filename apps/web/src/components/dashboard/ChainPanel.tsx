@@ -22,7 +22,7 @@ const TECH_STACK = [
     description: 'Agent backend wallet pays all gas fees. The user never pays gas. Part of the invisible experience.',
   },
   {
-    name: 'Gemini 3.5 Flash',
+    name: 'Gemini 3.6 Flash',
     role: 'Conversational AI',
     badge: undefined,
     description: 'Natural language understanding. Multi-turn confirmation flow. Educational responses about chain abstraction.',

@@ -6,7 +6,7 @@ import { useChat } from '../../context/chat-context';
  * Confirmation card for token swaps (ARB → ETH via Uniswap V3).
  */
 export function SwapConfirmationCard({ response }: { response: AgentChatResponse }) {
-  const { sendMessage } = useChat();
+  const { sendMessage, isSending } = useChat();
   const intent = response.intent;
   const balance = response.balanceSnapshot;
 
@@ -76,13 +76,15 @@ export function SwapConfirmationCard({ response }: { response: AgentChatResponse
       <div className="mt-4 flex gap-2">
         <button
           onClick={() => sendMessage('yes')}
-          className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 transition-colors"
+          disabled={isSending}
+          className="flex-1 rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          ✅ Confirm Swap
+          {isSending ? '⏳ Processing…' : '✅ Confirm Swap'}
         </button>
         <button
           onClick={() => sendMessage('no')}
-          className="flex-1 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--muted)] hover:bg-[var(--card)] transition-colors"
+          disabled={isSending}
+          className="flex-1 rounded-lg border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--muted)] hover:bg-[var(--card)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           ❌ Cancel
         </button>
