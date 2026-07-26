@@ -1,4 +1,4 @@
-import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, FundGasReceipt, IntentParserStrategy, OffRampProvider, Order, OrderRepository, Product, ReplyContext, ReplyScenario, ReplyStrategy, SecurityChecker, SecurityResult, SendReceipt, SwapResult, TraceStep, AgentWalletPort } from '@pouch/domain';
+import type { CashOutExecutor, CashOutIntent, CashOutResult, DomainError, FundGasReceipt, IntentParserStrategy, LiveWalletContext, OffRampProvider, Order, OrderRepository, Product, ReplyContext, ReplyScenario, ReplyStrategy, SecurityChecker, SecurityResult, SendReceipt, SwapResult, TraceStep, AgentWalletPort } from '@pouch/domain';
 import { isOk, ok, getExplorerUrl, type Result } from '@pouch/shared';
 import type { BalanceServiceLike } from './balance-service';
 import type { AccountProvider } from '@pouch/domain';
@@ -49,6 +49,40 @@ const MAX_HISTORY = 10;
 
 const pendingConfirmations = new Map<string, PendingCashOut>();
 const conversationHistory = new Map<string, ConversationMessage[]>();
+
+// ── In-memory real-transaction log (per user) for liveContext ──
+interface TxLogEntry {
+  type: 'send' | 'swap' | 'fund_gas' | 'cash_out';
+  amount: number;
+  token?: string;
+  chainId: number;
+  txHash: string;
+  timestamp: string;
+}
+const txHistory = new Map<string, TxLogEntry[]>();
+const MAX_TX_HISTORY = 5;
+
+const ACTIVE_TECHNOLOGIES = [
+  'Particle Universal Accounts',
+  'EIP-7702',
+  'Openfort gasless',
+  'Magic blind signatures',
+  'Chain Abstraction',
+  'Arbitrum (bounty chain)',
+];
+
+function recordTx(userId: string, entry: TxLogEntry): void {
+  const log = txHistory.get(userId) ?? [];
+  log.push(entry);
+  while (log.length > MAX_TX_HISTORY) log.shift();
+  txHistory.set(userId, log);
+}
+
+function truncateAddress(address: string): string {
+  if (!address) return '';
+  if (address.length <= 10) return address;
+  return `${address.slice(0, 6)}…${address.slice(-4)}`;
+}
 
 // ── Memory cleanup: evict stale entries every 5 minutes (30-min TTL) ──
 const ENTRY_TTL_MS = 30 * 60 * 1000;
@@ -520,6 +554,15 @@ export class AgentChatService implements AgentChatServiceLike {
       result: execution.value,
     });
 
+    recordTx(userId, {
+      type: 'cash_out',
+      amount: intent.amount.value,
+      ...(intent.brand ? { token: intent.brand } : {}),
+      chainId: 42161,
+      txHash: execution.value.orderId,
+      timestamp: new Date().toISOString(),
+    });
+
     return ok({
       ...execution.value,
       intent,
@@ -645,6 +688,15 @@ export class AgentChatService implements AgentChatServiceLike {
     const reply = `✅ **Sent ${amount} ${token}!**\n\n📤 From: ${fromLabel}\n📥 To: ${toLabel}\n⛽ Gas: ${tx.gasCostUsd ? `$${tx.gasCostUsd.toFixed(4)}` : 'N/A'}\n⛓️ Network: Arbitrum One\n\n📋 Tx Hash: \`${tx.txHash}\`\n🔗 [View on Arbiscan](${sendReceipt.explorerUrl})`;
 
     pushHistory(userId, 'agent', reply);
+
+    recordTx(userId, {
+      type: 'send',
+      amount,
+      token,
+      chainId,
+      txHash: tx.txHash,
+      timestamp: new Date().toISOString(),
+    });
 
     return ok({
       orderId: tx.txHash,
@@ -852,6 +904,15 @@ export class AgentChatService implements AgentChatServiceLike {
     const reply = `✅ **Swapped ${amount} ARB → ${swap.amountOut} ETH!**\n\n📤 From: ${fromLabel}\n🔄 Route: Uniswap V3 on Arbitrum\n⛽ Gas: ${swap.gasCostUsd ? `$${swap.gasCostUsd.toFixed(4)}` : 'N/A'}\n\n📋 Tx Hash: \`${swap.txHash}\`\n🔗 [View on Arbiscan](${swap.explorerUrl})\n\n💡 You now have ETH for gas! Try sending ARB to another wallet.`;
 
     pushHistory(userId, 'agent', reply);
+
+    recordTx(userId, {
+      type: 'swap',
+      amount,
+      token: tokenIn,
+      chainId,
+      txHash: swap.txHash,
+      timestamp: new Date().toISOString(),
+    });
 
     return ok({
       orderId: swap.txHash,
@@ -1078,6 +1139,15 @@ export class AgentChatService implements AgentChatServiceLike {
 
     pushHistory(userId, 'agent', reply);
 
+    recordTx(userId, {
+      type: 'fund_gas',
+      amount: amountEth,
+      token: 'ETH',
+      chainId,
+      txHash: tx.txHash,
+      timestamp: new Date().toISOString(),
+    });
+
     return ok({
       orderId: tx.txHash,
       status: 'delivered',
@@ -1091,6 +1161,63 @@ export class AgentChatService implements AgentChatServiceLike {
   }
 
   // ── Reply composition (delegates to ReplyStrategy, with template fallback) ─
+
+  /**
+   * Builds the LiveWalletContext for the LLM: real balance + wallet labels +
+   * truncated addresses + recent real transactions + active technologies.
+   * Privacy: only labels and truncated addresses are emitted — never full
+   * addresses or keys.
+   */
+  private async buildLiveContext(userId: string): Promise<LiveWalletContext | undefined> {
+    const balanceResult = await this.balanceService.getBalance(userId);
+    if (!isOk(balanceResult)) return undefined;
+    const b = balanceResult.value;
+
+    // Wallet labels + truncated addresses from the account provider (if present).
+    const wallets: Array<{ label: string; addressTruncated: string }> = [];
+    const seenLabels = new Set<string>();
+    const provider = this.accountProvider as unknown as {
+      getWalletInfo?: () => Array<{ label: string; address: string; hasKey?: boolean }>;
+      getWalletLabels?: () => string[];
+    };
+    if (typeof provider.getWalletInfo === 'function') {
+      for (const w of provider.getWalletInfo()) {
+        if (seenLabels.has(w.label.toLowerCase())) continue;
+        seenLabels.add(w.label.toLowerCase());
+        wallets.push({ label: w.label, addressTruncated: truncateAddress(w.address) });
+      }
+    } else if (typeof provider.getWalletLabels === 'function') {
+      for (const label of provider.getWalletLabels()) {
+        if (seenLabels.has(label.toLowerCase())) continue;
+        seenLabels.add(label.toLowerCase());
+        wallets.push({ label, addressTruncated: '' });
+      }
+    }
+
+    // Collect any wallet labels surfaced only inside balance assets.
+    for (const a of b.assets) {
+      if (a.walletLabel && !seenLabels.has(a.walletLabel.toLowerCase())) {
+        seenLabels.add(a.walletLabel.toLowerCase());
+        wallets.push({ label: a.walletLabel, addressTruncated: a.address ? truncateAddress(a.address) : '' });
+      }
+    }
+
+    const recentTransactions = txHistory.get(userId);
+
+    return {
+      totalUsd: b.total,
+      assets: b.assets.map((a) => ({
+        symbol: a.symbol,
+        chainId: a.chainId,
+        amount: a.amount,
+        usdValue: a.usdValue,
+        ...(a.walletLabel ? { walletLabel: a.walletLabel } : {}),
+      })),
+      wallets,
+      ...(recentTransactions && recentTransactions.length > 0 ? { recentTransactions } : {}),
+      technologies: ACTIVE_TECHNOLOGIES,
+    };
+  }
 
   private async buildReply(
     intent: CashOutIntent,
@@ -1112,6 +1239,9 @@ export class AgentChatService implements AgentChatServiceLike {
       history: getHistory(userId),
     };
     if (extras?.balance) context.balance = extras.balance;
+    // Inject live, real wallet context so the LLM can ground specific answers.
+    const live = await this.buildLiveContext(userId);
+    if (live) context.liveContext = live;
     const products = extras?.products;
     if (products) context.products = products;
     if (extras?.order !== undefined) context.order = extras.order;
