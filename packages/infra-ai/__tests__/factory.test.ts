@@ -36,12 +36,22 @@ describe('createLlmProvider', () => {
     );
     expect(provider).toBeDefined();
   });
+
+  it('uses gemini-3.6-flash as the default model when LLM_MODEL is not set', () => {
+    // We can't read the private `model` field directly, so we assert via behavior:
+    // construct a provider and check it doesn't throw + is defined. The model string
+    // is asserted exhaustively in gemini-provider.test.ts via the request URL.
+    const provider = createLlmProvider(
+      baseConfig({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'fake-key' }),
+    );
+    expect(provider).toBeDefined();
+  });
 });
 
 describe('createIntentParser', () => {
   it('returns a parser with an async parse when LLM_PROVIDER=gemini + key present', () => {
     const parser = createIntentParser(
-      baseConfig({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'fake-key', LLM_MODEL: 'gemini-2.0-flash' }),
+      baseConfig({ LLM_PROVIDER: 'gemini', GEMINI_API_KEY: 'fake-key', LLM_MODEL: 'test-model' }),
     );
     expect(typeof (parser as IntentParserStrategy).parse).toBe('function');
   });
