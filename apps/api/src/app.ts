@@ -2,6 +2,8 @@ import { Hono } from 'hono';
 import { setCookie } from 'hono/cookie';
 import { SignJWT } from 'jose';
 
+import { resolveLlmModel } from '@pouch/infra-ai';
+
 import { createRuntimeAppServices } from './bootstrap/create-runtime-app-services';
 import { createAuthMiddleware, type AuthEnv } from './middleware/auth';
 import { createAgentRoutes } from './routes/agent';
@@ -108,8 +110,9 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
     let geminiStatus: string = 'not_tested';
     if (hasGeminiKey) {
       try {
+        const healthModel = resolveLlmModel({ LLM_MODEL: process.env.LLM_MODEL });
         const res = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent`,
+          `https://generativelanguage.googleapis.com/v1beta/models/${healthModel}:generateContent`,
           {
             method: 'POST',
             headers: {

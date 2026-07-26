@@ -620,3 +620,50 @@ describe('app /auth/demo mount (C3)', () => {
     expect(body.userId).toBe('demo-user');
   });
 });
+
+// ── /health uses the shared model source (no hardcoded model URL) ────
+describe('app /health gemini model source', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalJwt = process.env.JWT_SECRET;
+  const originalLlmModel = process.env.LLM_MODEL;
+  const originalGeminiKey = process.env.GEMINI_API_KEY;
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.JWT_SECRET = originalJwt;
+    process.env.LLM_MODEL = originalLlmModel;
+    process.env.GEMINI_API_KEY = originalGeminiKey;
+  });
+
+  it('probes the model named in LLM_MODEL, not a hardcoded one', async () => {
+    process.env.NODE_ENV = 'development';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.GEMINI_API_KEY = 'fake-key';
+    process.env.LLM_MODEL = 'gemini-test-XYZ';
+    const app = createApp();
+
+    // Spy on global fetch to capture the probe URL
+    const fetchCalls: string[] = [];
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = ((url: string) => {
+      fetchCalls.push(typeof url === 'string' ? url : String(url));
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
+        text: async () => '',
+      }) as unknown as Response;
+    }) as typeof fetch;
+
+    try {
+      await app.request('/health');
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    const geminiCall = fetchCalls.find((u) => u.includes('generativelanguage.googleapis.com'));
+    expect(geminiCall).toBeDefined();
+    expect(geminiCall).toContain('gemini-test-XYZ');
+    expect(geminiCall).not.toContain('gemini-3.5-flash');
+  });
+});
