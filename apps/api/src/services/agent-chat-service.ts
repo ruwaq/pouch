@@ -1142,14 +1142,17 @@ export class AgentChatService implements AgentChatServiceLike {
     if (extras?.planSummary) context.planSummary = extras.planSummary;
     if (extras?.topic) context.topic = extras.topic;
 
-    // Skip LLM for error scenarios — show the actual error to the user
-    if (this.replyStrategy && scenario !== 'error') {
+    // Use the LLM for EVERY scenario (including error) so the agent explains
+    // real Arbitrum failures in friendly terms and suggests a retry (spec Part 2).
+    // LlmReplyStrategy never throws — it retries then warns + falls back to the
+    // template — so this catch is defensive and should never fire in production.
+    if (this.replyStrategy) {
       try {
         const reply = await this.replyStrategy.buildReply(context);
         pushHistory(userId, 'agent', reply);
         return reply;
       } catch {
-        // LLM failed — fall through to template
+        // LLM failed unexpectedly — fall through to template
       }
     }
 
