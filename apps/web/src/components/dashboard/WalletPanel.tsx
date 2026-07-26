@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { apiGet } from '../../lib/api-client';
+import { explorerAddressUrl, getExplorerName, shortAddress } from '../../lib/explorer';
 
 interface BalanceAsset {
   chainId: number;
@@ -9,6 +10,7 @@ interface BalanceAsset {
   amount: number;
   usdValue: number;
   walletLabel?: string;
+  address?: string;
 }
 
 interface BalanceData {
@@ -94,12 +96,28 @@ export function WalletPanel() {
         {/* Per-wallet breakdown */}
         {Array.from(byWallet.entries()).map(([walletLabel, assets]) => {
           const walletTotal = assets.reduce((sum, a) => sum + a.usdValue, 0);
+          const firstWithAddress = assets.find((a) => a.address);
+          const walletAddress = firstWithAddress?.address;
+          const explorerUrl = walletAddress ? explorerAddressUrl(firstWithAddress!.chainId, walletAddress) : null;
+          const explorerLabel = firstWithAddress ? getExplorerName(firstWithAddress.chainId) : null;
           return (
             <div key={walletLabel} className="space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-semibold text-[var(--fg)]">{walletLabel}</span>
                 <span className="text-[11px] font-medium text-[var(--accent)]">${walletTotal.toFixed(2)}</span>
               </div>
+              {walletAddress && explorerUrl && (
+                <a
+                  href={explorerUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[10px] text-[var(--muted)] underline-offset-2 hover:text-[var(--accent)] hover:underline"
+                >
+                  <code className="font-mono">{shortAddress(walletAddress)}</code>
+                  <span aria-hidden>↗</span>
+                  {explorerLabel && <span className="sr-only">{explorerLabel}</span>}
+                </a>
+              )}
               {assets.map((a, i) => (
                 <div key={i} className="flex items-center justify-between rounded border border-[var(--border)]/50 bg-[var(--bg)] px-3 py-1.5">
                   <div className="flex items-center gap-2">
