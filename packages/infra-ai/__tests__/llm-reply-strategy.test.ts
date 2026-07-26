@@ -324,4 +324,58 @@ describe('LlmReplyStrategy', () => {
     expect(seen).not.toMatch(/keep it under/i);
     expect(seen).toContain('eip-7702');
   });
+
+  it('renders liveContext as a "## Live wallet context" block in the prompt', async () => {
+    let seen = '';
+    const provider: LLMProvider = {
+      async generateText(req) {
+        seen = req.message;
+        return ok('ok');
+      },
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const strategy = new LlmReplyStrategy(provider);
+
+    await strategy.buildReply({
+      scenario: 'balance',
+      intent: { action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+      balance: { total: 113, assets: [{ chainId: 42161, symbol: 'ARB', amount: 113, usdValue: 10 }] },
+      liveContext: {
+        totalUsd: 10,
+        assets: [{ symbol: 'ARB', chainId: 42161, amount: 113, usdValue: 10, walletLabel: 'Wallet 1' }],
+        wallets: [{ label: 'Wallet 1', addressTruncated: '0x1234…abcd' }],
+        technologies: ['EIP-7702', 'Arbitrum'],
+      },
+    });
+
+    expect(seen).toContain('## Live wallet context');
+    expect(seen).toContain('113 ARB');
+    expect(seen).toContain('Wallet 1');
+    expect(seen).toContain('0x1234…abcd');
+    expect(seen).toContain('EIP-7702');
+  });
+
+  it('omits the live-context block when liveContext is absent', async () => {
+    let seen = '';
+    const provider: LLMProvider = {
+      async generateText(req) {
+        seen = req.message;
+        return ok('ok');
+      },
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const strategy = new LlmReplyStrategy(provider);
+
+    await strategy.buildReply({
+      scenario: 'balance',
+      intent: { action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+      balance: { total: 10, assets: [] },
+    });
+
+    expect(seen).not.toContain('## Live wallet context');
+  });
 });

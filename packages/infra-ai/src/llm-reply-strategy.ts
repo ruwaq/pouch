@@ -1,8 +1,51 @@
-import type { ReplyContext, ReplyStrategy } from '@pouch/domain';
+import type { LiveWalletContext, ReplyContext, ReplyStrategy } from '@pouch/domain';
 import { isOk } from '@pouch/shared';
 
 import type { LLMProvider, LlmTextRequest } from './llm-provider';
 import { POUCH_SYSTEM_PROMPT } from './system-prompt';
+
+/**
+ * Renders the live wallet context into a clearly-delimited block appended to
+ * the prompt so the LLM can ground specific answers. Returns '' when there is
+ * no liveContext. Privacy: only labels + truncated addresses are present here
+ * (the chat service truncates before populating).
+ */
+function renderLiveContext(live: LiveWalletContext | undefined): string {
+  if (!live) return '';
+
+  const lines: string[] = ['\n\n## Live wallet context (real, current)'];
+  lines.push(`Total: $${live.totalUsd.toFixed(2)}`);
+
+  if (live.assets.length > 0) {
+    lines.push('Assets:');
+    for (const a of live.assets.slice(0, 8)) {
+      const label = a.walletLabel ? ` [${a.walletLabel}]` : '';
+      lines.push(`  - ${a.amount} ${a.symbol} on chain ${a.chainId}${label} ($${a.usdValue.toFixed(2)})`);
+    }
+  }
+
+  if (live.wallets.length > 0) {
+    lines.push('Wallets:');
+    for (const w of live.wallets.slice(0, 6)) {
+      lines.push(`  - ${w.label} ${w.addressTruncated}`);
+    }
+  }
+
+  if (live.recentTransactions && live.recentTransactions.length > 0) {
+    lines.push('Recent real transactions:');
+    for (const t of live.recentTransactions.slice(0, 5)) {
+      const tok = t.token ? ` ${t.token}` : '';
+      lines.push(`  - ${t.type} ${t.amount}${tok} on chain ${t.chainId} — ${t.txHash} @ ${t.timestamp}`);
+    }
+  }
+
+  if (live.technologies.length > 0) {
+    lines.push(`Active technologies/bounties: ${live.technologies.join(', ')}`);
+  }
+
+  lines.push('Ground your answer in this real data when relevant. Be specific (e.g. "you have 113 ARB in Wallet 1 on Arbitrum"), not generic.');
+  return lines.join('\n');
+}
 
 /**
  * Composes a conversational reply via the LLM for ANY scenario (greeting, balance,
@@ -60,6 +103,7 @@ export class LlmReplyStrategy implements ReplyStrategy {
 // ── Prompt builders per scenario ──────────────────────────────────────────
 
 function buildPrompt(context: ReplyContext): string {
+  const liveBlock = renderLiveContext(context.liveContext);
   const historyBlock = context.history?.length
     ? `\n\nRecent conversation:\n${context.history.map((m) => `${m.role === 'user' ? 'User' : 'Pouch'}: ${m.content}`).join('\n')}`
     : '';
@@ -70,33 +114,33 @@ function buildPrompt(context: ReplyContext): string {
       const userSaid = lastUserMsg && lastUserMsg !== context.intent.brand
         ? `"${lastUserMsg.slice(0, 150)}"`
         : 'a greeting';
-      return `The user said: ${userSaid}. Write a short, friendly reply. If the user asked for something Pouch cannot do (send crypto, swap tokens, transfer between chains), politely explain that Pouch is a crypto off-ramp agent — it converts crypto to gift cards, mobile top-ups, and eSIMs. If the user is just greeting you, introduce yourself briefly in 1-2 sentences and suggest one concrete thing they can try. Length should match the message — a plain "hi" gets a short reply.${historyBlock}`;
+      return `The user said: ${userSaid}. Write a short, friendly reply. If the user asked for something Pouch cannot do (send crypto, swap tokens, transfer between chains), politely explain that Pouch is a crypto off-ramp agent — it converts crypto to gift cards, mobile top-ups, and eSIMs. If the user is just greeting you, introduce yourself briefly in 1-2 sentences and suggest one concrete thing they can try. Length should match the message — a plain "hi" gets a short reply.${historyBlock}${liveBlock}`;
     }
 
     case 'balance':
-      return balancePrompt(context) + historyBlock;
+      return balancePrompt(context) + historyBlock + liveBlock;
 
     case 'search':
-      return searchPrompt(context) + historyBlock;
+      return searchPrompt(context) + historyBlock + liveBlock;
 
     case 'confirmation':
-      return confirmationPrompt(context) + historyBlock;
+      return confirmationPrompt(context) + historyBlock + liveBlock;
 
     case 'success':
-      return successPrompt(context) + historyBlock;
+      return successPrompt(context) + historyBlock + liveBlock;
 
     case 'cancelled':
-      return `The user cancelled their pending cash-out. Write a friendly reply acknowledging the cancellation and asking what they'd like to do instead. Keep it brief.${historyBlock}`;
+      return `The user cancelled their pending cash-out. Write a friendly reply acknowledging the cancellation and asking what they'd like to do instead. Keep it brief.${historyBlock}${liveBlock}`;
 
     case 'insufficient':
-      return insufficientPrompt(context) + historyBlock;
+      return insufficientPrompt(context) + historyBlock + liveBlock;
 
     case 'error':
-      return `Something went wrong while processing the user's request. The error was: "${context.error ?? 'unknown error'}". Write a friendly reply apologizing and suggesting they try again or ask for help. Keep it brief (1-2 sentences) — the user is already aware something went wrong. Do NOT expose raw stack traces or internal error codes, but you MAY name the general problem in plain words (e.g. "the Arbitrum network seems slow").${historyBlock}`;
+      return `Something went wrong while processing the user's request. The error was: "${context.error ?? 'unknown error'}". Write a friendly reply apologizing and suggesting they try again or ask for help. Keep it brief (1-2 sentences) — the user is already aware something went wrong. Do NOT expose raw stack traces or internal error codes, but you MAY name the general problem in plain words (e.g. "the Arbitrum network seems slow").${historyBlock}${liveBlock}`;
 
     case 'help': {
       const topic = context.topic ?? 'general';
-      return `The user asked about: "${topic}". They want to learn how Pouch works. Use your technical knowledge (from the system prompt) to explain thoroughly in plain language — use analogies, break the concept into steps, and explicitly connect it to how Pouch uses this technology and why it matters for the hackathon. Scale the length to the topic: a quick definition can be 2-3 sentences, but a deep concept like EIP-7702 or chain abstraction deserves a fuller paragraph or two. Map the topic to the right technology (eip-7702, chain-abstraction, particle-ua, openfort, magic, no-popups, security, fees, chains, how-it-works, general). End with one concrete suggestion the user can act on (e.g. "try Show my balance" or "cash out $5 to Amazon").${historyBlock}`;
+      return `The user asked about: "${topic}". They want to learn how Pouch works. Use your technical knowledge (from the system prompt) to explain thoroughly in plain language — use analogies, break the concept into steps, and explicitly connect it to how Pouch uses this technology and why it matters for the hackathon. Scale the length to the topic: a quick definition can be 2-3 sentences, but a deep concept like EIP-7702 or chain abstraction deserves a fuller paragraph or two. Map the topic to the right technology (eip-7702, chain-abstraction, particle-ua, openfort, magic, no-popups, security, fees, chains, how-it-works, general). End with one concrete suggestion the user can act on (e.g. "try Show my balance" or "cash out $5 to Amazon").${historyBlock}${liveBlock}`;
     }
 
     case 'send': {
@@ -104,23 +148,23 @@ function buildPrompt(context: ReplyContext): string {
       const amount = context.intent.amount.value.toFixed(2);
       const token = context.intent.brand ?? 'tokens';
       const walletList = context.error ?? '';
-      return `The user wants to send ${amount} ${token} between their wallets. Available wallets:\n${walletList}\n\nWrite a friendly response listing the available wallets and asking which ones to send from and to. Mention that this transfer uses Particle UA EIP-7702 consolidation and executes with no popups. Keep it concise — a short list plus one question.${historyBlock}`;
+      return `The user wants to send ${amount} ${token} between their wallets. Available wallets:\n${walletList}\n\nWrite a friendly response listing the available wallets and asking which ones to send from and to. Mention that this transfer uses Particle UA EIP-7702 consolidation and executes with no popups. Keep it concise — a short list plus one question.${historyBlock}${liveBlock}`;
     }
 
     case 'send_confirmation': {
       const planSummary = context.planSummary ?? 'transfer';
       const gasEstimate = context.error ?? '~$0.03';
-      return `The user is about to confirm a wallet-to-wallet transfer: ${planSummary}. Estimated gas: ${gasEstimate}. Write a friendly confirmation message showing the details (from, to, amount, token, network Arbitrum, gas sponsored by Openfort). End by asking the user to reply "yes" to confirm or "no" to cancel. Length should fit the details — no filler.${historyBlock}`;
+      return `The user is about to confirm a wallet-to-wallet transfer: ${planSummary}. Estimated gas: ${gasEstimate}. Write a friendly confirmation message showing the details (from, to, amount, token, network Arbitrum, gas sponsored by Openfort). End by asking the user to reply "yes" to confirm or "no" to cancel. Length should fit the details — no filler.${historyBlock}${liveBlock}`;
     }
 
     case 'swap_confirmation': {
       const planSummary = context.planSummary ?? 'swap';
-      return `The user is about to confirm a token swap: ${planSummary}. This uses Uniswap V3 on Arbitrum to swap ARB → ETH (so they can pay for gas). Write a friendly confirmation message showing the details (amount, token in, token out, network Arbitrum). End by asking the user to reply "yes" to confirm or "no" to cancel. Length should fit the details — no filler.${historyBlock}`;
+      return `The user is about to confirm a token swap: ${planSummary}. This uses Uniswap V3 on Arbitrum to swap ARB → ETH (so they can pay for gas). Write a friendly confirmation message showing the details (amount, token in, token out, network Arbitrum). End by asking the user to reply "yes" to confirm or "no" to cancel. Length should fit the details — no filler.${historyBlock}${liveBlock}`;
     }
 
     case 'fallback':
     default:
-      return `The user said something Pouch doesn't understand. Write a friendly reply gently steering them back to what Pouch can do: cash out crypto to gift cards, mobile top-ups, or eSIM, plus wallet operations (send between wallets, swap ARB→ETH, fund gas). Suggest they try "Cash out $50 to Amazon" or "Show my balance". Keep it brief.${historyBlock}`;
+      return `The user said something Pouch doesn't understand. Write a friendly reply gently steering them back to what Pouch can do: cash out crypto to gift cards, mobile top-ups, or eSIM, plus wallet operations (send between wallets, swap ARB→ETH, fund gas). Suggest they try "Cash out $50 to Amazon" or "Show my balance". Keep it brief.${historyBlock}${liveBlock}`;
   }
 }
 
