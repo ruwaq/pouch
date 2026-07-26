@@ -12,13 +12,13 @@ function mockFetch(response: unknown, status = 200) {
   });
 }
 
-function geminiResponse(parts: Array<{ functionCall?: { name: string; args: Record<string, unknown> }; text?: string }>) {
+function geminiResponse(parts: Array<{ functionCall?: { name: string; args: Record<string, unknown> }; text?: string; thought?: boolean }>) {
   return {
     candidates: [{ content: { parts } }],
   };
 }
 
-const provider = new GeminiProvider('test-key', 'gemini-2.0-flash');
+const provider = new GeminiProvider('test-key', 'test-model');
 
 describe('GeminiProvider.generateWithTools', () => {
   it('returns the first function call when the model calls a tool', async () => {
@@ -52,6 +52,44 @@ describe('GeminiProvider.generateWithTools', () => {
     if (!result.ok) return;
     expect(result.value.functionCall).toBeUndefined();
     expect(result.value.text).toContain('how much');
+  });
+
+  it('skips a leading thought part and returns the visible text (gemini-3.6 thinking model)', async () => {
+    globalThis.fetch = mockFetch(
+      geminiResponse([
+        { text: 'Let me think about what the user wants...', thought: true },
+        { text: 'Sure — how much would you like to cash out?' },
+      ]),
+    );
+
+    const result = await provider.generateWithTools({
+      message: 'hi',
+      systemInstruction: POUCH_SYSTEM_PROMPT,
+      tools: POUCH_TOOL_DECLARATIONS,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.text).toBe('Sure — how much would you like to cash out?');
+  });
+
+  it('skips a leading thought part and still routes a subsequent functionCall', async () => {
+    globalThis.fetch = mockFetch(
+      geminiResponse([
+        { text: 'Reasoning about the intent...', thought: true },
+        { functionCall: { name: 'check_balance', args: {} } },
+      ]),
+    );
+
+    const result = await provider.generateWithTools({
+      message: 'show balance',
+      systemInstruction: POUCH_SYSTEM_PROMPT,
+      tools: POUCH_TOOL_DECLARATIONS,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.functionCall).toEqual({ name: 'check_balance', args: {} });
   });
 
   it('returns err (never throws) when fetch rejects', async () => {
@@ -99,6 +137,24 @@ describe('GeminiProvider.generateText', () => {
   it('returns the generated text', async () => {
     globalThis.fetch = mockFetch(
       geminiResponse([{ text: 'Done! Your Amazon card is ready.' }]),
+    );
+
+    const result = await provider.generateText({
+      systemInstruction: 'You are Pouch.',
+      message: 'Say done',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value).toBe('Done! Your Amazon card is ready.');
+  });
+
+  it('skips a leading thought part and returns only the visible text', async () => {
+    globalThis.fetch = mockFetch(
+      geminiResponse([
+        { text: 'Internal reasoning about the reply...', thought: true },
+        { text: 'Done! Your Amazon card is ready.' },
+      ]),
     );
 
     const result = await provider.generateText({

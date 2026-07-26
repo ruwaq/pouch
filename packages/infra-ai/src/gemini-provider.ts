@@ -36,9 +36,27 @@ interface GeminiResponse {
       parts?: Array<{
         functionCall?: GeminiFunctionCall;
         text?: string;
+        thought?: boolean;
       }>;
     };
   }>;
+}
+
+/**
+ * Returns the first "visible" part of a Gemini response, skipping any leading
+ * `thought: true` reasoning parts emitted by thinking models (gemini-3.6-flash).
+ * A part is visible when it has a `functionCall`, OR has `text` without
+ * `thought: true`. Returns undefined when there are no visible parts.
+ */
+function firstVisiblePart(
+  parts: Array<{ functionCall?: GeminiFunctionCall; text?: string; thought?: boolean }> | undefined,
+): { functionCall?: GeminiFunctionCall; text?: string; thought?: boolean } | undefined {
+  if (!parts) return undefined;
+  for (const part of parts) {
+    if (part.functionCall) return part;
+    if (typeof part.text === 'string' && !part.thought) return part;
+  }
+  return undefined;
 }
 
 /**
@@ -76,7 +94,7 @@ export class GeminiProvider implements LLMProvider {
 
     if (!data.ok) return data;
 
-    const part = data.value?.candidates?.[0]?.content?.parts?.[0];
+    const part = firstVisiblePart(data.value?.candidates?.[0]?.content?.parts);
     const out: LlmToolResponse = {};
 
     if (part?.functionCall) {
@@ -108,7 +126,7 @@ export class GeminiProvider implements LLMProvider {
     );
 
     if (!data.ok) return data;
-    return ok(data.value?.candidates?.[0]?.content?.parts?.[0]?.text ?? '');
+    return ok(firstVisiblePart(data.value?.candidates?.[0]?.content?.parts)?.text ?? '');
   }
 
   // ── Model fallback + retry ───────────────────────────────────────────
