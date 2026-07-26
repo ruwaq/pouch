@@ -106,6 +106,7 @@ function evictStaleEntries(): void {
   for (const userId of stale) {
     pendingConfirmations.delete(userId);
     conversationHistory.delete(userId);
+    txHistory.delete(userId);
     entryTimestamps.delete(userId);
   }
 }
@@ -1168,10 +1169,18 @@ export class AgentChatService implements AgentChatServiceLike {
    * Privacy: only labels and truncated addresses are emitted — never full
    * addresses or keys.
    */
-  private async buildLiveContext(userId: string): Promise<LiveWalletContext | undefined> {
+  private async resolveBalance(userId: string): Promise<{ total: number; assets: Array<{ chainId: number; symbol: string; amount: number; usdValue: number; walletLabel?: string; address?: string }> } | undefined> {
     const balanceResult = await this.balanceService.getBalance(userId);
     if (!isOk(balanceResult)) return undefined;
-    const b = balanceResult.value;
+    return balanceResult.value;
+  }
+
+  private async buildLiveContext(
+    userId: string,
+    cachedBalance?: { total: number; assets: Array<{ chainId: number; symbol: string; amount: number; usdValue: number; walletLabel?: string; address?: string }> },
+  ): Promise<LiveWalletContext | undefined> {
+    const b = cachedBalance ?? (await this.resolveBalance(userId));
+    if (!b) return undefined;
 
     // Wallet labels + truncated addresses from the account provider (if present).
     const wallets: Array<{ label: string; addressTruncated: string }> = [];
@@ -1240,7 +1249,10 @@ export class AgentChatService implements AgentChatServiceLike {
     };
     if (extras?.balance) context.balance = extras.balance;
     // Inject live, real wallet context so the LLM can ground specific answers.
-    const live = await this.buildLiveContext(userId);
+    // Skip the extra balance fetch when the caller already provided one.
+    const live = extras?.balance
+      ? await this.buildLiveContext(userId, extras.balance)
+      : await this.buildLiveContext(userId);
     if (live) context.liveContext = live;
     const products = extras?.products;
     if (products) context.products = products;
