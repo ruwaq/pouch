@@ -64,4 +64,18 @@ describe('auth middleware', () => {
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ userId: 'demo-user', evmAddress: undefined });
   });
+
+  it('treats a forged (invalid-signature) cookie like a missing cookie when allowDemoFallback is true', async () => {
+    // Regression guard for the demo-delivery decision (2026-07-26): in production we
+    // now allow demo fallback so judges without a session can use the app. This means
+    // a tampered cookie must NOT 401 — it must silently fall through to demo-user,
+    // exactly like an absent cookie, so a stale/bad cookie never blocks a judge.
+    const app = buildApp({ jwtSecret: 'a'.repeat(32), allowDemoFallback: true });
+
+    const res = await app.request('/balance', {
+      headers: { Cookie: 'pouch_session=this-is-not-a-jwt' },
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ userId: 'demo-user', evmAddress: undefined });
+  });
 });

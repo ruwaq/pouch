@@ -501,30 +501,71 @@ describe('POST /webhooks/bitrefill (C1 raw-body + status codes)', () => {
   });
 });
 
-// ── C2: disable demo auth fallback in production ─────────────────────
-// When NODE_ENV === 'production', the auth middleware must NEVER fall back
+// ── C2: disable demo auth fallback in production (default) ───────────
+// When NODE_ENV === 'production' the auth middleware must NEVER fall back
 // to demo-user, even if the runtime is in demo mode (forced by DEMO_MODE=true
 // or a swallowed boot error). Closes an auth bypass where DEMO_MODE=true in
 // production opened the entire API unauthenticated.
+//
+// The single explicit escape hatch is DEMO_FALLBACK_ENABLED=true, used for
+// live demos where the URL is shared privately with non-malicious judges and
+// the wallet whitelist gate (C5) already blocks external sends. See the
+// companion test in `describe('app demo fallback opt-in (DEMO_FALLBACK_ENABLED)')`.
 describe('app demo auth fallback (C2)', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalDemoMode = process.env.DEMO_MODE;
   const originalJwt = process.env.JWT_SECRET;
+  const originalDemoFallback = process.env.DEMO_FALLBACK_ENABLED;
 
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
     process.env.DEMO_MODE = originalDemoMode;
     process.env.JWT_SECRET = originalJwt;
+    process.env.DEMO_FALLBACK_ENABLED = originalDemoFallback;
   });
 
   it('returns 401 in production even when DEMO_MODE=true forces demo runtime', async () => {
     process.env.NODE_ENV = 'production';
     process.env.DEMO_MODE = 'true';
+    delete process.env.DEMO_FALLBACK_ENABLED; // default = off
     process.env.JWT_SECRET = 'a'.repeat(32);
     const app = createApp();
 
     const res = await app.request('/balance');
     expect(res.status).toBe(401);
+  });
+});
+
+// ── Demo fallback opt-in: DEMO_FALLBACK_ENABLED ──────────────────────
+// For the Jul 30 live demo, the URL is shared privately with non-malicious
+// judges and there is no Magic login. Judges without a session cookie would
+// otherwise get 401. DEMO_FALLBACK_ENABLED=true explicitly re-opens demo
+// fallback in production; the wallet whitelist gate (C5) remains the
+// authoritative guard against any external send.
+describe('app demo fallback opt-in (DEMO_FALLBACK_ENABLED)', () => {
+  const originalNodeEnv = process.env.NODE_ENV;
+  const originalDemoMode = process.env.DEMO_MODE;
+  const originalJwt = process.env.JWT_SECRET;
+  const originalDemoFallback = process.env.DEMO_FALLBACK_ENABLED;
+
+  afterEach(() => {
+    process.env.NODE_ENV = originalNodeEnv;
+    process.env.DEMO_MODE = originalDemoMode;
+    process.env.JWT_SECRET = originalJwt;
+    process.env.DEMO_FALLBACK_ENABLED = originalDemoFallback;
+  });
+
+  it('returns 200 with demo-user in production when DEMO_FALLBACK_ENABLED=true', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DEMO_MODE = 'true';
+    process.env.DEMO_FALLBACK_ENABLED = 'true';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    const app = createApp();
+
+    const res = await app.request('/balance');
+    expect(res.status).toBe(200);
+    const body = await res.json() as { userId: string };
+    expect(body.userId).toBe('demo-user');
   });
 });
 

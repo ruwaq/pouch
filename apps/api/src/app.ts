@@ -79,10 +79,17 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
   }
   const effectiveSecret = jwtSecret ?? 'dev-insecure-secret-change-me';
 
+  // Demo fallback default (C2): production stays fail-closed (401 on missing cookie).
+  // DEMO_FALLBACK_ENABLED is an explicit opt-in for live demos where the URL is shared
+  // privately with non-malicious judges (e.g. the Jul 30 hackathon demo) and the wallet
+  // whitelist gate (C5, private-key-provider.ts:392) already blocks any external send.
+  // Without this flag a judge with no session cookie gets 401 and can't use the app.
+  const demoFallbackExplicitlyEnabled = process.env.DEMO_FALLBACK_ENABLED === 'true';
+
   app.use('*', createAuthMiddleware({
     jwtSecret: effectiveSecret,
     publicPaths: new Set(['/', '/health']),
-    allowDemoFallback: isDemo && !isProduction, // C2: never in production
+    allowDemoFallback: (isDemo && !isProduction) || demoFallbackExplicitlyEnabled,
   }));
 
   app.get('/', (context) => {
