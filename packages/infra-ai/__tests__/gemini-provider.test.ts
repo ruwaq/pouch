@@ -156,6 +156,34 @@ describe('GeminiProvider.generateWithTools', () => {
     if (!result.ok) expect(result.error.type).toBe('UNKNOWN');
   });
 
+  it('aborts the request and returns err when Gemini takes longer than the timeout', async () => {
+    // fetch that never resolves on its own — only the AbortController timeout can end it.
+    // Real AbortSignal fires an AbortError when aborted.
+    globalThis.fetch = vi.fn((_url: RequestInfo | URL, init?: RequestInit): Promise<Response> => {
+      return new Promise((_resolve, reject) => {
+        init?.signal?.addEventListener('abort', () => {
+          const e = new Error('The operation was aborted');
+          e.name = 'AbortError';
+          reject(e);
+        });
+      });
+    });
+
+    const start = Date.now();
+    const result = await provider.generateWithTools({
+      message: 'hi',
+      systemInstruction: POUCH_SYSTEM_PROMPT,
+      tools: POUCH_TOOL_DECLARATIONS,
+    });
+    const elapsed = Date.now() - start;
+
+    expect(result.ok).toBe(false);
+    // GEMINI_TIMEOUT_MS is 15000; allow scheduling slack but it must abort, not hang.
+    expect(elapsed).toBeLessThan(20000);
+    // The abort takes ~15s to fire, so this single test needs a longer
+    // Vitest per-test timeout than the 5s default.
+  }, 30_000);
+
   it('returns an empty tool response when the model returns neither a function call nor text', async () => {
     globalThis.fetch = mockFetch(geminiResponse([]));
 

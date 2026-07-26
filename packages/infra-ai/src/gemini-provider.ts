@@ -38,6 +38,12 @@ const GENERATION_CONFIG = {
   maxOutputTokens: 2048,
 } as const;
 
+/** Max wall-clock time for a single Gemini request. gemini-3.6-flash replies
+ *  in ~1-3s; 15s is generous for a thinking model under load without letting
+ *  a hung connection freeze the demo. On abort → err → caller falls back to
+ *  the template reply (existing safety net). */
+const GEMINI_TIMEOUT_MS = 15_000;
+
 interface GeminiFunctionCall {
   name: string;
   args: Record<string, unknown>;
@@ -162,14 +168,22 @@ export class GeminiProvider implements LLMProvider {
       for (let attempt = 0; attempt < MAX_RETRIES_PER_MODEL; attempt++) {
         try {
           const url = `${GEMINI_BASE}/models/${pathFn(model)}`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'content-type': 'application/json',
-              'x-goog-api-key': this.apiKey,
-            },
-            body: JSON.stringify(body),
-          });
+          const controller = new AbortController();
+          const timeoutHandle = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+          let res: Response;
+          try {
+            res = await fetch(url, {
+              method: 'POST',
+              headers: {
+                'content-type': 'application/json',
+                'x-goog-api-key': this.apiKey,
+              },
+              body: JSON.stringify(body),
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeoutHandle);
+          }
 
           if (res.ok) {
             return ok((await res.json()) as T);
@@ -195,11 +209,13 @@ export class GeminiProvider implements LLMProvider {
           lastError = toUnknownDomainError(
             `Gemini ${model} fetch failed: ${describeError(error)}`,
           );
-          if (attempt < MAX_RETRIES_PER_MODEL - 1) {
-            await sleep(BASE_RETRY_DELAY_MS * Math.pow(2, attempt));
-            continue;
+          // A timeout (AbortError) means the endpoint is hung — don't retry,
+          // it would just multiply the wall-clock before the caller falls back.
+          if (isAbortError(error) || attempt >= MAX_RETRIES_PER_MODEL - 1) {
+            break;
           }
-          break;
+          await sleep(BASE_RETRY_DELAY_MS * Math.pow(2, attempt));
+          continue;
         }
       }
     }
@@ -215,6 +231,16 @@ function toFunctionDeclaration(tool: ToolDeclaration): unknown {
 function describeError(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+/**
+ * True when the fetch was aborted by our AbortController timeout. A timeout
+ * means the endpoint is hung — retrying is pointless and would multiply the
+ * wall-clock (GEMINI_TIMEOUT_MS × attempts) before the caller can fall back
+ * to the template reply. Treat it as a hard failure, not a transient one.
+ */
+function isAbortError(error: unknown): boolean {
+  return error instanceof Error && error.name === 'AbortError';
 }
 
 function sleep(ms: number): Promise<void> {
