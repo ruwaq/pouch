@@ -13,7 +13,7 @@ const GEMINI_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 
 /** Models to try in order. The first successful one wins.
  *  NOTE: gemini-2.0-flash and gemini-2.5-* are NOT available on this API key.
- *  Only gemini-3.5-flash works. Keep this list to just that model. */
+ *  Only gemini-3.6-flash works. Keep this list to just that model. */
 const MODEL_FALLBACKS: string[] = [];
 
 /** HTTP status codes that should trigger a retry (rate-limit, overload). */
@@ -105,7 +105,7 @@ function buildContents(
  * Resilience features:
  * - Retry on 429/503 with exponential backoff (2 attempts per model)
  * - generateText inlines systemInstruction (free tier workaround for 503)
- * - No model fallback — only gemini-3.5-flash works on this API key.
+ * - No model fallback — only gemini-3.6-flash works on this API key.
  *   gemini-2.0-flash and gemini-2.5-* return 404.
  * - API key sent via x-goog-api-key header (not URL query param) to avoid
  *   leaking the key in server/network logs.

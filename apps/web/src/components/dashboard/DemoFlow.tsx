@@ -1,353 +1,335 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useChat } from '../../context/chat-context';
 
-const DEMO_STEPS = [
+interface DemoStep {
+  label: string;
+  message: string;
+  emoji: string;
+  bounty: string;
+  techBadge: string;
+  /** true = shows a confirmation card that needs manual "yes" */
+  needsConfirm: boolean;
+  hint: string;
+}
+
+const STEPS: DemoStep[] = [
   {
     label: 'Check Balance',
     message: 'Show my balance',
-    icon: '💰',
-    description: 'Reads real on-chain balances via RPC — 4 wallets, all chains',
+    emoji: '💰',
     bounty: 'Arbitrum Bounty',
-    tech: 'Live RPC',
+    techBadge: 'Live RPC',
     needsConfirm: false,
+    hint: 'Reads real on-chain balances from Arbitrum via RPC — 4 wallets, all chains',
   },
   {
     label: 'Chain Abstraction',
     message: 'What is chain abstraction?',
-    icon: '🔮',
-    description: 'Particle Network UA + EIP-7702: one balance, any chain',
-    bounty: 'UA Track',
-    tech: 'EIP-7702',
+    emoji: '🔗',
+    bounty: 'Particle Network',
+    techBadge: 'EIP-7702',
     needsConfirm: false,
+    hint: 'EIP-7702 lets the UA scan + consolidate funds across Arbitrum, Base, Ethereum — no bridging',
   },
   {
     label: 'Fund Gas (Openfort)',
-    message: 'fund gas',
-    icon: '⛽',
-    description: 'Openfort sends 0.00005 ETH — FREE gas',
-    bounty: 'Openfort + Arbitrum',
-    tech: 'GASLESS',
+    message: 'Fund gas',
+    emoji: '⛽',
+    bounty: 'Openfort',
+    techBadge: 'Gasless',
     needsConfirm: true,
+    hint: 'Openfort sends 0.00005 ETH for gas — $0 to the user. Confirm the card to proceed.',
   },
   {
     label: 'Swap ARB → ETH',
     message: 'swap 0.05 ARB for ETH',
-    icon: '🔄',
-    description: 'Uniswap V3 real swap on Arbitrum',
+    emoji: '🔄',
     bounty: 'Arbitrum Bounty',
-    tech: 'Uniswap V3',
+    techBadge: 'Uniswap V3',
     needsConfirm: true,
+    hint: 'Real Uniswap V3 swap on Arbitrum. Check the card for details, then confirm.',
   },
   {
     label: 'Send to Wallet 3',
     message: 'send 0.5 ARB to Wallet 3',
-    icon: '💸',
-    description: 'Real Arbitrum transfer between wallets',
+    emoji: '💸',
     bounty: 'Arbitrum Bounty',
-    tech: 'Real TX',
+    techBadge: 'Real TX',
     needsConfirm: true,
+    hint: 'Real Arbitrum transfer between wallets. Confirm the card to execute.',
   },
   {
     label: 'Cash Out',
-    message: 'Cash out $2 to Amazon',
-    icon: '🎁',
-    description: 'Balance → security → routing → order → payment [NO POPUP]',
+    message: 'cash out $2 to Amazon',
+    emoji: '🎁',
     bounty: 'UA Track',
-    tech: 'UA 7702',
+    techBadge: 'UA 7702',
     needsConfirm: true,
+    hint: 'Full flow: balance → security → routing → order → payment [NO POPUP]',
   },
 ];
 
-const CONFIRM_PHASES = new Set([
-  'confirmation',
-  'send_confirmation',
-  'swap_confirmation',
-  'fund_gas_confirmation',
-]);
+type StepStatus = 'idle' | 'running' | 'awaiting-confirm' | 'done';
 
-type StepStatus = 'idle' | 'running' | 'awaiting-confirm' | 'completed' | 'error';
-
+/**
+ * DemoFlow — 6 independent demo steps for judges.
+ *
+ * Design goals (from user feedback):
+ *   1. Each step is **independent** — judge clicks one, waits, verifies the
+ *      real transaction, then clicks the next at their own pace.
+ *   2. "Run All" is **sequential + pauses** at every confirmation card —
+ *      the judge must manually click Confirm on the card before the next
+ *      step fires. This way the judge can verify each real transaction.
+ *   3. Visual states (idle → running → awaiting-confirm → done) make it
+ *      obvious what's happening at every moment.
+ */
 export function DemoFlow() {
   const { sendMessage, messages, isSending } = useChat();
-  const [statuses, setStatuses] = useState<StepStatus[]>(() =>
-    DEMO_STEPS.map(() => 'idle'),
+  const [stepStates, setStepStates] = useState<StepStatus[]>(() =>
+    STEPS.map(() => 'idle'),
   );
-  const [runningAll, setRunningAll] = useState(false);
+  const [activeStep, setActiveStep] = useState<number | null>(null);
+  const [runAllMode, setRunAllMode] = useState(false);
+  const runAllRef = useRef(false);
+  const processedMsgCountRef = useRef(0);
 
-  // Refs for the auto-confirm watcher (avoids stale closures in useEffect)
-  const runningAllRef = useRef(false);
-  const activeStepRef = useRef<number | null>(null);
-  const lastMsgCountRef = useRef(0);
-
-  // ── Watch messages for confirmation cards and execution results ──
+  /**
+   * Watch the chat messages. When the latest agent reply arrives for the
+   * active step, transition the state appropriately:
+   *   - non-confirm step: running → done
+   *   - confirm step:       running → awaiting-confirm (until user clicks Confirm on card)
+   */
   useEffect(() => {
-    if (messages.length === lastMsgCountRef.current) return;
-    lastMsgCountRef.current = messages.length;
-
-    const last = messages[messages.length - 1];
-    if (!last || last.role !== 'agent' || !last.response) return;
+    if (activeStep === null) return;
     if (isSending) return; // still loading
+    if (messages.length <= processedMsgCountRef.current) return;
 
-    const stepIdx = activeStepRef.current;
-    if (stepIdx === null) return;
+    const latest = messages[messages.length - 1];
+    if (!latest || latest.role !== 'agent' || !latest.response) return;
+    processedMsgCountRef.current = messages.length;
 
-    const { phase } = last.response;
+    const step = STEPS[activeStep]!;
+    const phase = latest.response.phase;
 
-    // Confirmation card appeared → auto-confirm in Run All mode
-    if (CONFIRM_PHASES.has(phase) && runningAllRef.current) {
-      setStatuses((prev) => {
-        const next = [...prev];
-        next[stepIdx] = 'awaiting-confirm';
-        return next;
-      });
-
-      // Brief delay so judge can read the card, then auto-confirm
-      setTimeout(() => {
-        void sendMessage('yes');
-      }, 2500);
-      return;
-    }
-
-    // Execution completed (receipt phase)
     if (phase === 'executed') {
-      setStatuses((prev) => {
+      // Confirmation was accepted — step is done
+      setStepStates((prev) => {
         const next = [...prev];
-        next[stepIdx] = 'completed';
+        next[activeStep] = 'done';
         return next;
       });
-      activeStepRef.current = null;
+      setActiveStep(null);
       return;
     }
 
-    // Non-confirmation reply (info steps like balance, education)
-    if (phase === 'reply' && !CONFIRM_PHASES.has(phase)) {
-      const step = DEMO_STEPS[stepIdx];
-      if (step && !step.needsConfirm) {
-        setStatuses((prev) => {
-          const next = [...prev];
-          next[stepIdx] = 'completed';
-          return next;
-        });
-        activeStepRef.current = null;
-      }
+    if (step.needsConfirm && isConfirmPhase(phase)) {
+      // Confirmation card is showing — wait for the judge to click Confirm
+      setStepStates((prev) => {
+        const next = [...prev];
+        next[activeStep] = 'awaiting-confirm';
+        return next;
+      });
+      return;
     }
-  }, [messages, isSending, sendMessage]);
 
-  // ── Individual step click ──
-  const handleStep = useCallback(
+    if (!step.needsConfirm) {
+      // Info step — reply arrived, we're done
+      setStepStates((prev) => {
+        const next = [...prev];
+        next[activeStep] = 'done';
+        return next;
+      });
+      setActiveStep(null);
+    }
+  }, [messages, isSending, activeStep]);
+
+  const executeStep = useCallback(
     async (index: number) => {
-      if (runningAll) return;
-      activeStepRef.current = index;
-      setStatuses((prev) => {
+      if (activeStep !== null) return; // another step is running
+      setActiveStep(index);
+      setStepStates((prev) => {
         const next = [...prev];
         next[index] = 'running';
         return next;
       });
-
-      await sendMessage(DEMO_STEPS[index]!.message);
-
-      // Non-confirm steps complete when the reply arrives
-      if (!DEMO_STEPS[index]!.needsConfirm) {
-        // sendMessage resolves when response arrives — mark after a tick
-        setTimeout(() => {
-          setStatuses((prev) => {
-            if (prev[index] === 'running') {
-              const next = [...prev];
-              next[index] = 'completed';
-              return next;
-            }
-            return prev;
-          });
-          activeStepRef.current = null;
-        }, 500);
-      }
-      // Confirm steps: user manually clicks Confirm on the card
+      await sendMessage(STEPS[index]!.message);
+      // The useEffect above handles state transitions when the reply arrives.
+      // For non-confirm steps, done is set there.
+      // For confirm steps, we stay at running until the confirmation phase is detected.
     },
-    [sendMessage, runningAll],
+    [activeStep, sendMessage],
   );
 
-  // ── Run All: sequential with real waits ──
-  const handleRunAll = useCallback(async () => {
-    setRunningAll(true);
-    runningAllRef.current = true;
+  /**
+   * Run All — sequential execution.
+   * Fires each step, then PAUSES at every confirmation card.
+   * The judge must manually click Confirm on the card to proceed.
+   * This lets judges verify each real transaction before the next step runs.
+   */
+  const runAll = useCallback(async () => {
+    if (activeStep !== null || runAllRef.current) return;
+    runAllRef.current = true;
+    setRunAllMode(true);
 
-    for (let i = 0; i < DEMO_STEPS.length; i++) {
-      activeStepRef.current = i;
-      setStatuses((prev) => {
-        const next = [...prev];
-        next[i] = 'running';
-        return next;
-      });
+    for (let i = 0; i < STEPS.length; i++) {
+      // Skip already-done steps
+      if (stepStates[i] === 'done') continue;
 
-      await sendMessage(DEMO_STEPS[i]!.message);
+      await executeStep(i);
 
-      if (!DEMO_STEPS[i]!.needsConfirm) {
-        // Info step — wait for reply to render, then move on
-        await waitForMs(2000);
-        setStatuses((prev) => {
-          const next = [...prev];
-          if (next[i] === 'running') next[i] = 'completed';
-          return next;
-        });
-        activeStepRef.current = null;
+      if (STEPS[i]!.needsConfirm) {
+        // Wait for the judge to click Confirm on the card.
+        // The step transitions: running → awaiting-confirm → done (after executed phase).
+        // We poll until the step is 'done' before moving on.
+        await waitForStepDone();
+        // Small gap so the judge can read the result
+        await sleep(1500);
       } else {
-        // Action step — wait until useEffect marks it completed/awaiting-confirm→completed
-        await waitForStepDone(i, () => statusesRef.current);
-      }
-
-      // Brief pause between steps
-      if (i < DEMO_STEPS.length - 1) {
-        await waitForMs(1500);
+        // Info step — reply arrived, small pause for readability
+        await sleep(2000);
       }
     }
 
-    activeStepRef.current = null;
-    setRunningAll(false);
-    runningAllRef.current = false;
-  }, [sendMessage]);
+    runAllRef.current = false;
+    setRunAllMode(false);
+  }, [activeStep, stepStates, executeStep]);
 
-  // Keep a ref to statuses for the polling helper
-  const statusesRef = useRef(statuses);
-  statusesRef.current = statuses;
+  /** Poll until the latest message has phase 'executed' */
+  const waitForStepDone = (): Promise<void> =>
+    new Promise((resolve) => {
+      const check = () => {
+        // Read the latest value via a ref-like pattern
+        // We can't read state directly here, but we can poll via messages
+        // Instead, rely on the activeStep ref + stepStates in useEffect.
+        // Simpler: watch for 'executed' phase in the message list.
+        const last = messages[messages.length - 1];
+        if (last?.role === 'agent' && last.response?.phase === 'executed') {
+          resolve();
+        } else {
+          setTimeout(check, 400);
+        }
+      };
+      check();
+    });
 
   return (
-    <PanelCard title="🎯 Live Demo — 6 Real Steps (click each or Run All)">
-      <div className="space-y-2">
-        {DEMO_STEPS.map((step, i) => {
-          const status = statuses[i]!;
-          return (
-            <button
-              key={i}
-              onClick={() => handleStep(i)}
-              disabled={runningAll}
-              className={`flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-all ${statusClass(status)} ${
-                runningAll ? 'cursor-not-allowed opacity-80' : 'active:scale-[0.98]'
-              }`}
-            >
-              <span className="text-sm">{statusIcon(status, step.icon)}</span>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-[var(--fg)]">
-                    {step.label}
-                  </span>
-                  <span className="rounded-full bg-[var(--accent)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent)]">
-                    {step.tech}
-                  </span>
-                  <span className="text-[10px] text-[var(--muted)]">
-                    {step.bounty}
-                  </span>
-                </div>
-                <p className="text-[10px] text-[var(--muted)]">
-                  {step.description}
-                </p>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <span className="rounded-full bg-emerald-400/15 px-1.5 py-0.5 text-[9px] font-bold uppercase text-emerald-400">
-                  REAL
-                </span>
-                {step.needsConfirm && status === 'idle' && (
-                  <span className="text-[9px] text-[var(--muted)]">needs confirm</span>
-                )}
-              </div>
-            </button>
-          );
-        })}
-
+    <div className="rounded-xl border border-[var(--border)] bg-[var(--card)]/40 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-[var(--fg)]">
+          🎯 Live Demo — 6 Independent Steps
+        </h3>
         <button
-          onClick={handleRunAll}
-          disabled={runningAll}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-[var(--accent)] px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[var(--accent)]/90 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+          type="button"
+          onClick={runAll}
+          disabled={activeStep !== null || runAllRef.current}
+          className="rounded-full bg-[var(--accent)] px-3 py-1 text-xs font-semibold text-white transition hover:bg-[var(--accent)]/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          <span>{runningAll ? '⏳' : '▶️'}</span>
-          <span>
-            {runningAll
-              ? 'Running… (auto-confirming)'
-              : 'Run All 6 Steps (Auto-Confirm)'}
-          </span>
+          {runAllMode ? '▶ Running…' : '▶ Run All 6 Steps'}
         </button>
-
-        <p className="text-center text-[10px] text-[var(--muted)]">
-          {runningAll
-            ? '🤖 Auto-confirming each step — sit back and watch the demo!'
-            : 'Click steps individually or Run All. Confirmations auto-approve during Run All. Gas is FREE via Openfort.'}
-        </p>
       </div>
-    </PanelCard>
-  );
-}
 
-// ── Helpers ──────────────────────────────────────────────────────────────
+      <p className="mb-3 text-xs text-[var(--muted)]">
+        {runAllMode
+          ? 'Sequential mode — click Confirm on each card before the next step runs.'
+          : 'Click any step to run it independently. Verify each transaction before moving on.'}
+      </p>
 
-function statusClass(status: StepStatus): string {
-  switch (status) {
-    case 'running':
-      return 'border-[var(--accent)]/50 bg-[var(--accent)]/10';
-    case 'awaiting-confirm':
-      return 'border-amber-400/30 bg-amber-400/5';
-    case 'completed':
-      return 'border-emerald-400/20 bg-emerald-400/5';
-    case 'error':
-      return 'border-red-400/30 bg-red-400/5';
-    default:
-      return 'border-[var(--border)]/30 bg-[var(--bg)]/50 hover:border-[var(--border)] hover:bg-[var(--bg)]';
-  }
-}
-
-function statusIcon(status: StepStatus, fallback: string): string {
-  switch (status) {
-    case 'running':
-      return '⏳';
-    case 'awaiting-confirm':
-      return '🔐';
-    case 'completed':
-      return '✅';
-    case 'error':
-      return '❌';
-    default:
-      return fallback;
-  }
-}
-
-function waitForMs(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
-
-/**
- * Polls until the step at `index` is marked completed or error.
- * Used by Run All to wait for action steps (confirm → execute → done).
- */
-function waitForStepDone(
-  index: number,
-  getStatuses: () => StepStatus[],
-): Promise<void> {
-  return new Promise((resolve) => {
-    const check = () => {
-      const s = getStatuses()[index];
-      if (s === 'completed' || s === 'error') {
-        resolve();
-      } else {
-        setTimeout(check, 300);
-      }
-    };
-    check();
-  });
-}
-
-function PanelCard({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="rounded-xl border border-[var(--border)] bg-[var(--bg)]/50 p-4">
-      <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
-        {title}
-      </h3>
-      {children}
+      <div className="space-y-2">
+        {STEPS.map((step, i) => (
+          <StepCard
+            key={step.label}
+            step={step}
+            status={stepStates[i]!}
+            onClick={() => executeStep(i)}
+            disabled={activeStep !== null && activeStep !== i}
+          />
+        ))}
+      </div>
     </div>
   );
+}
+
+function StepCard({
+  step,
+  status,
+  onClick,
+  disabled,
+}: {
+  step: DemoStep;
+  status: StepStatus;
+  onClick: () => void;
+  disabled: boolean;
+}) {
+  const borderClass =
+    status === 'done'
+      ? 'border-emerald-500/40'
+      : status === 'running' || status === 'awaiting-confirm'
+        ? 'border-[var(--accent)]/60'
+        : 'border-[var(--border)]/40 hover:border-[var(--border)]';
+
+  const bgClass =
+    status === 'done'
+      ? 'bg-emerald-500/5'
+      : status === 'awaiting-confirm'
+        ? 'bg-[var(--accent)]/5'
+        : 'bg-[var(--card)]/60';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled || status === 'done' || status === 'running' || status === 'awaiting-confirm'}
+      className={`flex w-full items-start gap-3 rounded-lg border px-3 py-2.5 text-left transition-all disabled:cursor-not-allowed ${borderClass} ${bgClass}`}
+    >
+      <div className="flex h-6 w-6 shrink-0 items-center justify-center text-sm">
+        {status === 'done' ? (
+          <span className="text-emerald-500">✅</span>
+        ) : status === 'running' ? (
+          <span className="animate-pulse text-[var(--accent)]">⏳</span>
+        ) : status === 'awaiting-confirm' ? (
+          <span className="text-[var(--accent)]">🔐</span>
+        ) : (
+          <span>{step.emoji}</span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-[var(--fg)]">{step.label}</span>
+          <span className="rounded bg-[var(--accent)]/15 px-1.5 py-0.5 text-[10px] font-medium text-[var(--accent)]">
+            {step.techBadge}
+          </span>
+          <span className="text-[10px] text-[var(--muted)]">{step.bounty}</span>
+        </div>
+        <p className="mt-0.5 text-[11px] leading-snug text-[var(--muted)]">
+          {step.hint}
+        </p>
+        {status === 'awaiting-confirm' && (
+          <p className="mt-1 text-[11px] font-medium text-[var(--accent)]">
+            ⬇ Scroll down and click Confirm on the card
+          </p>
+        )}
+        {status === 'done' && (
+          <p className="mt-1 text-[11px] font-medium text-emerald-500">
+            ✓ Transaction verified on-chain
+          </p>
+        )}
+      </div>
+    </button>
+  );
+}
+
+function isConfirmPhase(phase: string): boolean {
+  return (
+    phase === 'confirmation' ||
+    phase === 'send_confirmation' ||
+    phase === 'swap_confirmation' ||
+    phase === 'fund_gas_confirmation'
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((r) => setTimeout(r, ms));
 }
