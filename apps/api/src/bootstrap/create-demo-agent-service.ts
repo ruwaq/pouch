@@ -142,7 +142,9 @@ export function createDemoAppServices(accountProvider?: AccountProvider, agentWa
   const geminiKey = (process.env.GEMINI_API_KEY ?? '').trim();
   const llmModel = (process.env.LLM_MODEL ?? '').trim();
   
-  console.error('[demo] LLM config:', { llmProvider, hasKey: Boolean(geminiKey), model: llmModel || 'default' });
+  if (process.env.DEBUG_LLM === 'true') {
+    console.error('[demo] LLM config:', { llmProvider, hasKey: Boolean(geminiKey), model: llmModel || 'default' });
+  }
   
   const { intentParser, replyStrategy } = createAgentLlm({
     LLM_PROVIDER: llmProvider || undefined,
@@ -150,7 +152,9 @@ export function createDemoAppServices(accountProvider?: AccountProvider, agentWa
     LLM_MODEL: llmModel || undefined,
   } as unknown as Parameters<typeof createAgentLlm>[0]);
   
-  console.error('[demo] replyStrategy configured:', Boolean(replyStrategy));
+  if (process.env.DEBUG_LLM === 'true') {
+    console.error('[demo] replyStrategy configured:', Boolean(replyStrategy));
+  }
   const balanceService = new BalanceService(realAccountProvider);
   const agentService = replyStrategy
     ? new AgentChatService(intentParser, executor, repository, balanceService, providers, realAccountProvider, replyStrategy, demoSecurityChecker, agentWallet)
