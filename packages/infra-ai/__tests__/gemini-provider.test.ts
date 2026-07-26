@@ -92,6 +92,28 @@ describe('GeminiProvider.generateWithTools', () => {
     expect(result.value.functionCall).toEqual({ name: 'check_balance', args: {} });
   });
 
+  it('returns an empty tool response when every part is a thought (nothing visible)', async () => {
+    // Exercises the helper's `return undefined` tail with non-empty input —
+    // the only path not covered by the empty-`[]` test.
+    globalThis.fetch = mockFetch(
+      geminiResponse([
+        { text: 'reasoning step 1', thought: true },
+        { text: 'reasoning step 2', thought: true },
+      ]),
+    );
+
+    const result = await provider.generateWithTools({
+      message: 'hmm',
+      systemInstruction: POUCH_SYSTEM_PROMPT,
+      tools: POUCH_TOOL_DECLARATIONS,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.functionCall).toBeUndefined();
+    expect(result.value.text).toBeUndefined();
+  });
+
   it('returns err (never throws) when fetch rejects', async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new Error('network down'));
 
