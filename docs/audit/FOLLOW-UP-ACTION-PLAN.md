@@ -21,6 +21,16 @@
 
 These must land before Jul 30. Each is independent enough to ship as its own commit.
 
+> **Update 2026-07-26:** PASO 0 (the public-repo JWT-secret exposure) is **DONE** —
+> Vercel secrets rotated by the agent, `vercel.json` cleaned (commit `8115431`),
+> verified cryptographically. See `SESSION-HANDOFF.md`.
+>
+> **C2 nuance:** the `[x]` on C2 means "production currently has `allowDemoFallback=false`".
+> This is correct as a *default*, but it breaks the no-login judge demo (judges get 401).
+> Build queue item 6 re-enables demo fallback in production AFTER the whitelist (H11)
+> and H2 land — at that point C2's defense is replaced by the whitelist + correct swap
+> math, which is the agreed risk model. See handoff for full reasoning.
+
 | # | Fix | Files | Status | Effort |
 |---|-----|-------|--------|--------|
 | C1 | Bitrefill webhook HMAC verification with `crypto.timingSafeEqual` + `WEBHOOK_SECRET`; require in route before `service.handle` | `packages/infra-offramp/src/bitrefill/adapter.ts`, `apps/api/src/routes/webhooks/bitrefill.ts`, `apps/api/src/services/bitrefill-webhook-service.ts` | `[x]` | S |
