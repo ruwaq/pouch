@@ -70,7 +70,7 @@ function buildPrompt(context: ReplyContext): string {
       const userSaid = lastUserMsg && lastUserMsg !== context.intent.brand
         ? `"${lastUserMsg.slice(0, 150)}"`
         : 'a greeting';
-      return `The user said: ${userSaid}. Write a single short, friendly sentence. If the user asked for something Pouch cannot do (send crypto, swap tokens, transfer between chains), politely explain that Pouch is a crypto off-ramp agent — it converts crypto to gift cards, mobile top-ups, and eSIMs. If the user is just greeting you, introduce yourself briefly in 1-2 sentences and suggest one concrete thing they can try. Length should match the message — a plain "hi" gets a short reply.${historyBlock}`;
+      return `The user said: ${userSaid}. Write a short, friendly reply. If the user asked for something Pouch cannot do (send crypto, swap tokens, transfer between chains), politely explain that Pouch is a crypto off-ramp agent — it converts crypto to gift cards, mobile top-ups, and eSIMs. If the user is just greeting you, introduce yourself briefly in 1-2 sentences and suggest one concrete thing they can try. Length should match the message — a plain "hi" gets a short reply.${historyBlock}`;
     }
 
     case 'balance':
@@ -128,7 +128,10 @@ function balancePrompt(context: ReplyContext): string {
   const b = context.balance;
   if (!b) return 'The user asked for their balance but no data is available. Write a friendly message saying you cannot retrieve the balance right now.';
 
-  const assets = b.assets.map((a) => `  ${a.symbol} on chain ${a.chainId}: $${a.usdValue.toFixed(2)}`).join('\n');
+  const assets = b.assets.map((a) => {
+    const label = a.walletLabel ? `[${a.walletLabel}] ` : '';
+    return `  ${label}${a.amount} ${a.symbol}: $${a.usdValue.toFixed(2)}`;
+  }).join('\n');
   return [
     `The user asked for their balance. Here's what they have:`,
     `Total: $${b.total.toFixed(2)} across ${b.assets.length} asset${b.assets.length === 1 ? '' : 's'}:`,
