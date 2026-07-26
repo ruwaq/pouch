@@ -92,11 +92,6 @@ function touchEntry(userId: string): void {
   entryTimestamps.set(userId, Date.now());
 }
 
-/** Demo users see simulated receipts on real failures; real users get the error. */
-function isDemo(userId: string): boolean {
-  return userId === 'demo-user' || userId === '0xdemo';
-}
-
 function evictStaleEntries(): void {
   const now = Date.now();
   const stale: string[] = [];
@@ -614,48 +609,8 @@ export class AgentChatService implements AgentChatServiceLike {
     });
 
     if (!isOk(result)) {
-      // Real user, real failure — propagate the error (C6: no fake receipt).
-      if (!isDemo(userId)) return result;
-      // Demo fallback: simulate success with mock tx
-      const mockTxHash = `0xsend-${Date.now().toString(16)}`;
-      const mockBlockNumber = Math.floor(Math.random() * 1000000) + 28000000;
-
-      const sendReceipt: SendReceipt = {
-        txHash: mockTxHash,
-        blockNumber: mockBlockNumber,
-        fromAddress: fromAddress || fromLabel,
-        fromLabel,
-        toAddress: toAddress || toLabel,
-        toLabel,
-        amount: { value: amount, currency: 'USD' },
-        token,
-        chainId,
-        explorerUrl: `https://arbiscan.io/tx/${mockTxHash}`,
-        gasSponsored: true,
-      };
-
-      const trace = [
-        { id: '1', label: 'Checking balance', status: 'complete' as const, badge: `${token}` },
-        { id: '2', label: 'Security check', status: 'complete' as const, badge: 'SAFE ✓' },
-        { id: '3', label: 'Signing transaction', status: 'complete' as const, badge: 'NO POPUP' },
-        { id: '4', label: 'Broadcasting to Arbitrum', status: 'complete' as const, badge: 'Arbitrum' },
-        { id: '5', label: 'Confirmed (demo)', status: 'complete' as const, badge: `Block #${mockBlockNumber}`, ...(sendReceipt.explorerUrl ? { explorerUrl: sendReceipt.explorerUrl } : {}) },
-      ];
-
-      const reply = `✅ **Sent ${amount} ${token}!** (demo mode)\n\n📤 From: ${fromLabel}\n📥 To: ${toLabel}\n⛽ Gas: Sponsored by Openfort\n⛓️ Network: Arbitrum One\n\n📋 Tx: \`${mockTxHash}\`\n🔗 [View on Arbiscan](${sendReceipt.explorerUrl})\n\n⚠️ Demo mode: send ETH to Wallet 1 for real transactions. Architecture is production-ready.`;
-
-      pushHistory(userId, 'agent', reply);
-
-      return ok({
-        orderId: mockTxHash,
-        status: 'delivered',
-        trace,
-        intent,
-        reply,
-        phase: 'executed',
-        llmReply: false,
-        sendReceipt,
-      });
+      // Real failure — propagate. No mock receipt (spec: everything real).
+      return result;
     }
 
     const tx = result.value;
@@ -849,46 +804,8 @@ export class AgentChatService implements AgentChatServiceLike {
     });
 
     if (!isOk(result)) {
-      // Real user, real failure — propagate the error (C6: no fake receipt).
-      if (!isDemo(userId)) return result;
-      // Demo fallback: simulate success with mock tx
-      const mockTxHash = `0xswap-${Date.now().toString(16)}`;
-      const mockBlockNumber = Math.floor(Math.random() * 1000000) + 28000000;
-
-      const swap: SwapResult = {
-        txHash: mockTxHash,
-        chainId,
-        blockNumber: mockBlockNumber,
-        tokenIn,
-        amountIn: amount,
-        tokenOut,
-        amountOut: Number((amount * 0.00025).toFixed(6)), // approx ARB→ETH rate
-        walletLabel: fromLabel,
-        explorerUrl: `https://arbiscan.io/tx/${mockTxHash}`,
-      };
-
-      const trace: TraceStep[] = [
-        { id: '1', label: 'Checking ARB balance', status: 'complete' as const, badge: `${amount} ARB` },
-        { id: '2', label: 'Approving Uniswap router', status: 'complete' as const, badge: 'Uniswap V3' },
-        { id: '3', label: 'Swapping ARB → WETH', status: 'complete' as const, badge: 'Arbitrum' },
-        { id: '4', label: 'Unwrapping WETH → ETH', status: 'complete' as const, badge: 'GAS READY' },
-        { id: '5', label: 'Confirmed (demo)', status: 'complete' as const, badge: `Block #${mockBlockNumber}`, ...(swap.explorerUrl ? { explorerUrl: swap.explorerUrl } : {}) },
-      ];
-
-      const reply = `✅ **Swapped ${amount} ARB → ~${swap.amountOut} ETH!** (demo mode)\n\n📤 From: ${fromLabel}\n🔄 Route: Uniswap V3 on Arbitrum\n\n📋 Tx: \`${mockTxHash}\`\n🔗 [View on Arbiscan](${swap.explorerUrl})\n\n💡 You now have ETH for gas! Try sending ARB to another wallet.\n\n⚠️ Demo mode: send ETH to Wallet 1 for real swaps. Architecture is production-ready.`;
-
-      pushHistory(userId, 'agent', reply);
-
-      return ok({
-        orderId: mockTxHash,
-        status: 'delivered',
-        trace,
-        intent,
-        reply,
-        phase: 'executed',
-        llmReply: false,
-        swapReceipt: swap,
-      });
+      // Real failure — propagate. No mock receipt (spec: everything real).
+      return result;
     }
 
     const swap = result.value;
@@ -1066,45 +983,8 @@ export class AgentChatService implements AgentChatServiceLike {
     const result = await wallet.sendEth({ to: walletAddress, amountEth, chainId });
 
     if (!isOk(result)) {
-      // Real user, real failure — propagate the error (C6: no fake receipt).
-      if (!isDemo(userId)) return result;
-      // In demo mode, simulate success with a mock tx hash
-      // (Openfort backend wallet needs funding for real ETH sends)
-      const mockTxHash = `0xopenfort-gas-${Date.now().toString(16)}`;
-      const explorerUrl = getExplorerUrl(chainId, 'tx', mockTxHash);
-
-      const fundGasReceipt: FundGasReceipt = {
-        txHash: mockTxHash,
-        chainId,
-        amountEth,
-        fromLabel: 'Openfort Backend',
-        fromAddress: '0xOpenfort...Demo',
-        toLabel: fromLabel,
-        toAddress: walletAddress,
-        gasSponsored: true,
-        explorerUrl,
-      };
-
-      const trace = [
-        { id: '1', label: 'Openfort backend wallet', status: 'complete' as const, badge: 'GASLESS' },
-        { id: '2', label: `Sending ${amountEth} ETH to ${fromLabel}`, status: 'complete' as const, badge: 'Arbitrum' },
-        { id: '3', label: 'Gas sponsored by Openfort', status: 'complete' as const, badge: 'NO POPUP', explorerUrl },
-      ];
-
-      const reply = `⛽ **Gas funded!** (demo mode)\n\n📥 Sent ${amountEth} ETH to ${fromLabel}\n💰 Cost: $0.00 (sponsored by Openfort)\n\n📋 Tx: \`${mockTxHash}\`\n🔗 [View on Arbiscan](${explorerUrl})\n\n💡 You now have ETH for gas! Try "send 0.1 ARB to Wallet 3".\n\n⚠️ Demo mode: Openfort backend wallet needs funding for real ETH transfers. The architecture is production-ready.`;
-
-      pushHistory(userId, 'agent', reply);
-
-      return ok({
-        orderId: mockTxHash,
-        status: 'delivered',
-        trace,
-        intent,
-        reply,
-        phase: 'executed',
-        llmReply: false,
-        fundGasReceipt,
-      });
+      // Real failure — propagate. No mock receipt (spec: everything real).
+      return result;
     }
 
     const tx = result.value;

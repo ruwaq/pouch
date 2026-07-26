@@ -66,8 +66,10 @@ function makeSendIntent() {
   };
 }
 
-describe('AgentChatService.executeSend fake-receipt gate (C6)', () => {
-  it('fabricates a delivered receipt for demo-user when send fails', async () => {
+describe('AgentChatService.executeSend error routing (no mock receipts)', () => {
+  it('propagates the error for demo-user when send fails (no mock receipt)', async () => {
+    // Spec: real failures route to the error scenario for EVERYONE, including
+    // demo users. The 0xsend-/0xswap-/0xopenfort-gas- mocks are gone.
     const service = buildServiceWithFailingSend();
     const executeSend = (service as unknown as {
       executeSend: (this: unknown, u: string, i: unknown) => Promise<Result<AgentChatResponse, DomainError>>;
@@ -75,10 +77,9 @@ describe('AgentChatService.executeSend fake-receipt gate (C6)', () => {
 
     const result = await executeSend('demo-user', makeSendIntent());
 
-    expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.value.status).toBe('delivered');
-      expect(result.value.sendReceipt?.txHash).toMatch(/^0xsend-/);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error.type).toBe('UNKNOWN');
     }
   });
 
