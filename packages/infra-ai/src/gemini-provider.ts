@@ -79,6 +79,25 @@ function firstVisiblePart(
 }
 
 /**
+ * Builds the Gemini `contents` array. When the request carries conversation
+ * history, it becomes multi-turn: each history turn maps to {role, parts:[{text}]},
+ * with the AI's turns using role: 'model' (NOT 'assistant' — Gemini rejects that).
+ * The current `message` is always the final user turn.
+ */
+function buildContents(
+  request: LlmTextRequest,
+): Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }> {
+  const history = (request.contents ?? []).map((turn) => ({
+    role: turn.role,
+    parts: [{ text: turn.text }],
+  }));
+  return [
+    ...history,
+    { role: 'user', parts: [{ text: request.message }] },
+  ];
+}
+
+/**
  * Adapts the Gemini REST API (generativelanguage.googleapis.com) to the
  * LLMProvider port. Uses plain fetch() — no SDK, no ESM imports, works
  * reliably in Vercel serverless.
@@ -131,7 +150,7 @@ export class GeminiProvider implements LLMProvider {
 
   async generateText(request: LlmTextRequest): Promise<Result<string, DomainError>> {
     const body: Record<string, unknown> = {
-      contents: [{ parts: [{ text: request.message }] }],
+      contents: buildContents(request),
     };
 
     if (request.systemInstruction) {

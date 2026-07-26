@@ -34,9 +34,24 @@ export interface LlmToolResponse {
   text?: string;
 }
 
+/**
+ * One turn of conversation history for multi-turn generation.
+ * `role` follows the Gemini convention: 'user' for the human, 'model' for the AI.
+ */
+export interface ConversationTurn {
+  role: 'user' | 'model';
+  text: string;
+}
+
 export interface LlmTextRequest {
   systemInstruction: string;
   message: string;
+  /**
+   * Optional conversation history (oldest → newest). When present, the provider
+   * sends a multi-turn `contents` array: [...history, current message]. When
+   * absent, a single-turn `contents` with just the current message is sent.
+   */
+  contents?: ConversationTurn[];
 }
 
 /**

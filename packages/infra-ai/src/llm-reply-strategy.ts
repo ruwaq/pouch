@@ -1,7 +1,7 @@
 import type { ReplyContext, ReplyStrategy } from '@pouch/domain';
 import { isOk } from '@pouch/shared';
 
-import type { LLMProvider } from './llm-provider';
+import type { LLMProvider, LlmTextRequest } from './llm-provider';
 import { POUCH_SYSTEM_PROMPT } from './system-prompt';
 
 /**
@@ -17,10 +17,22 @@ export class LlmReplyStrategy implements ReplyStrategy {
 
     try {
       const prompt = buildPrompt(context);
-      const result = await this.llm.generateText({
+      // Pass real conversation history as multi-turn contents (Gemini roles).
+      // buildPrompt still inlines a short "Recent conversation" block for scenarios
+      // that reference it explicitly (kept for backward compat with the prompt text),
+      // but the model now ALSO sees structured turns for true conversational memory.
+      const historyContents = (context.history ?? []).map((m) => ({
+        role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model',
+        text: m.content,
+      }));
+      const request: LlmTextRequest = {
         systemInstruction: POUCH_SYSTEM_PROMPT,
         message: prompt,
-      });
+      };
+      if (historyContents.length > 0) {
+        request.contents = historyContents;
+      }
+      const result = await this.llm.generateText(request);
 
       if (!isOk(result) || !result.value.trim()) {
         return fallback();

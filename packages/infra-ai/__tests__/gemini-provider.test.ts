@@ -241,4 +241,25 @@ describe('GeminiProvider.generateText', () => {
 
     expect(result.ok).toBe(false);
   });
+
+  it('sends multi-turn contents when request.contents is provided (role: model for AI turns)', async () => {
+    const fetchSpy = mockFetch(geminiResponse([{ text: 'reply' }]));
+    globalThis.fetch = fetchSpy;
+
+    await provider.generateText({
+      systemInstruction: 'sys',
+      message: 'current',
+      contents: [
+        { role: 'user', text: 'earlier user msg' },
+        { role: 'model', text: 'earlier AI reply' },
+      ],
+    });
+
+    const callBody = JSON.parse((fetchSpy.mock.calls[0]![1] as RequestInit).body as string);
+    expect(Array.isArray(callBody.contents)).toBe(true);
+    expect(callBody.contents).toHaveLength(3); // 2 history + 1 current
+    expect(callBody.contents[0]).toEqual({ role: 'user', parts: [{ text: 'earlier user msg' }] });
+    expect(callBody.contents[1]).toEqual({ role: 'model', parts: [{ text: 'earlier AI reply' }] });
+    expect(callBody.contents[2]).toEqual({ role: 'user', parts: [{ text: 'current' }] });
+  });
 });

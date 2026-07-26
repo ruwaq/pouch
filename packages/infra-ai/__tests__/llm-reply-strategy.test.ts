@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { CashOutIntent, CashOutResult, Order } from '@pouch/domain';
+import type { CashOutIntent, CashOutResult, Order, ReplyContext } from '@pouch/domain';
 import { err, ok } from '@pouch/shared';
 import { toUnknownDomainError } from '@pouch/domain';
 
@@ -214,5 +214,36 @@ describe('LlmReplyStrategy', () => {
 
     expect(reply).toContain('Pouch');
     expect(reply).toContain('cash-out');
+  });
+
+  it('passes conversation history as multi-turn contents with Gemini roles (agent→model)', async () => {
+    let capturedContents: Array<{ role: 'user' | 'model'; text: string }> | undefined;
+    const provider: LLMProvider = {
+      async generateText(req) {
+        capturedContents = req.contents;
+        return ok('reply');
+      },
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const strategy = new LlmReplyStrategy(provider);
+
+    const context: ReplyContext = {
+      scenario: 'greeting',
+      intent: { action: 'off_topic', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+      history: [
+        { role: 'user', content: 'hola' },
+        { role: 'agent', content: 'hi there' },
+      ],
+    };
+
+    await strategy.buildReply(context);
+
+    expect(capturedContents).toBeDefined();
+    expect(capturedContents).toEqual([
+      { role: 'user', text: 'hola' },
+      { role: 'model', text: 'hi there' },
+    ]);
   });
 });
