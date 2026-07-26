@@ -1,4 +1,4 @@
-import type { LiveWalletContext, ReplyContext, ReplyStrategy } from '@pouch/domain';
+import type { LiveWalletContext, ReplyContext, ReplyScenario, ReplyStrategy } from '@pouch/domain';
 import { isOk } from '@pouch/shared';
 
 import type { LLMProvider, LlmTextRequest } from './llm-provider';
@@ -43,7 +43,7 @@ function renderLiveContext(live: LiveWalletContext | undefined): string {
     lines.push(`Active technologies/bounties: ${live.technologies.join(', ')}`);
   }
 
-  lines.push('Ground your answer in this real data when relevant. Be specific (e.g. "you have 113 ARB in Wallet 1 on Arbitrum"), not generic.');
+  lines.push('Ground your answer in this real data when relevant. Be specific (e.g. "you have X TOKEN in Wallet Y on CHAIN"), not generic.');
   return lines.join('\n');
 }
 
@@ -103,7 +103,18 @@ export class LlmReplyStrategy implements ReplyStrategy {
 // ── Prompt builders per scenario ──────────────────────────────────────────
 
 function buildPrompt(context: ReplyContext): string {
-  const liveBlock = renderLiveContext(context.liveContext);
+  // Inject live wallet context only for scenarios where grounding in the user's
+  // real balance/wallets helps. Skip it for success/error/cancelled (success
+  // explicitly tells the model NOT to mention wallets/chains; the others don't
+  // benefit from a wallet dump).
+  const SCENARIOS_WITHOUT_LIVE_CONTEXT: ReadonlySet<ReplyScenario> = new Set([
+    'success',
+    'error',
+    'cancelled',
+  ]);
+  const liveBlock = SCENARIOS_WITHOUT_LIVE_CONTEXT.has(context.scenario)
+    ? ''
+    : renderLiveContext(context.liveContext);
   const historyBlock = context.history?.length
     ? `\n\nRecent conversation:\n${context.history.map((m) => `${m.role === 'user' ? 'User' : 'Pouch'}: ${m.content}`).join('\n')}`
     : '';

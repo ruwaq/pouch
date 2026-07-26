@@ -341,19 +341,21 @@ describe('LlmReplyStrategy', () => {
     await strategy.buildReply({
       scenario: 'balance',
       intent: { action: 'check_balance', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
-      balance: { total: 113, assets: [{ chainId: 42161, symbol: 'ARB', amount: 113, usdValue: 10 }] },
+      balance: { total: 42, assets: [{ chainId: 42161, symbol: 'ARB', amount: 42, usdValue: 7 }] },
       liveContext: {
-        totalUsd: 10,
-        assets: [{ symbol: 'ARB', chainId: 42161, amount: 113, usdValue: 10, walletLabel: 'Wallet 1' }],
-        wallets: [{ label: 'Wallet 1', addressTruncated: '0x1234…abcd' }],
+        totalUsd: 7,
+        assets: [{ symbol: 'ARB', chainId: 42161, amount: 42, usdValue: 7, walletLabel: 'Wallet 7' }],
+        wallets: [{ label: 'Wallet 7', addressTruncated: '0x9876…zyxw' }],
         technologies: ['EIP-7702', 'Arbitrum'],
       },
     });
 
     expect(seen).toContain('## Live wallet context');
-    expect(seen).toContain('113 ARB');
-    expect(seen).toContain('Wallet 1');
-    expect(seen).toContain('0x1234…abcd');
+    // These values are distinct from any example string in the prompt, so they
+    // can only be present if the data block actually rendered.
+    expect(seen).toContain('42 ARB');
+    expect(seen).toContain('Wallet 7');
+    expect(seen).toContain('0x9876…zyxw');
     expect(seen).toContain('EIP-7702');
   });
 
