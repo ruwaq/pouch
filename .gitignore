@@ -63,6 +63,9 @@ seed.txt
 .zcode/
 .agents/
 
+# Project docs (local only — only README.md goes to GitHub)
+docs/
+
 # Deploy
 .vercel/
 
@@ -74,3 +77,4 @@ seed.txt
 
 # CI (requires workflow token scope to push)
 .github/workflows/
+.env.bak.*
