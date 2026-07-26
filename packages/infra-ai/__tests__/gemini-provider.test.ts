@@ -21,6 +21,23 @@ function geminiResponse(parts: Array<{ functionCall?: { name: string; args: Reco
 const provider = new GeminiProvider('test-key', 'test-model');
 
 describe('GeminiProvider.generateWithTools', () => {
+  it('sends generationConfig sized for a thinking model on every request', async () => {
+    const fetchSpy = mockFetch(geminiResponse([{ text: 'ok' }]));
+    globalThis.fetch = fetchSpy;
+
+    await provider.generateWithTools({
+      message: 'hi',
+      systemInstruction: POUCH_SYSTEM_PROMPT,
+      tools: POUCH_TOOL_DECLARATIONS,
+    });
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+    const callBody = JSON.parse((fetchSpy.mock.calls[0]![1] as RequestInit).body as string);
+    expect(callBody.generationConfig).toBeDefined();
+    expect(callBody.generationConfig.maxOutputTokens).toBeGreaterThanOrEqual(2048);
+    expect(callBody.generationConfig.temperature).toBeTypeOf('number');
+  });
+
   it('returns the first function call when the model calls a tool', async () => {
     globalThis.fetch = mockFetch(
       geminiResponse([{ functionCall: { name: 'cash_out', args: { amount: 50, brand: 'amazon' } } }]),

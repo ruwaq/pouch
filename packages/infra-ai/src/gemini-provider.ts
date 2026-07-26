@@ -25,6 +25,19 @@ const MAX_RETRIES_PER_MODEL = 2;
 /** Base delay in ms for exponential backoff (200ms, 400ms, 800ms). */
 const BASE_RETRY_DELAY_MS = 200;
 
+/**
+ * Generation config for all requests. gemini-3.6-flash is a thinking model —
+ * hidden reasoning tokens and visible answer tokens draw from the SAME
+ * maxOutputTokens budget. Empirically a simple greeting spent 241 thinking
+ * tokens (2026-07-26), so 2048 leaves room for a full multi-sentence answer.
+ * thinkingConfig is intentionally left at the model default (enabled).
+ */
+const GENERATION_CONFIG = {
+  temperature: 0.7,
+  topP: 0.95,
+  maxOutputTokens: 2048,
+} as const;
+
 interface GeminiFunctionCall {
   name: string;
   args: Record<string, unknown>;
@@ -85,6 +98,7 @@ export class GeminiProvider implements LLMProvider {
       },
       contents: [{ parts: [{ text: request.message }] }],
       tools: [{ functionDeclarations: request.tools.map(toFunctionDeclaration) }],
+      generationConfig: GENERATION_CONFIG,
     };
 
     const data = await this.fetchWithFallback<GeminiResponse>(
@@ -119,6 +133,8 @@ export class GeminiProvider implements LLMProvider {
         parts: [{ text: request.systemInstruction }],
       };
     }
+
+    body.generationConfig = GENERATION_CONFIG;
 
     const data = await this.fetchWithFallback<GeminiResponse>(
       (model) => `${model}:generateContent`,
