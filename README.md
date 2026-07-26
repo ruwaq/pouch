@@ -198,19 +198,19 @@ Pouch renders a **split-screen experience** — conversation on the left, live s
 
 **1. Open the app** → [pouch-orpin.vercel.app](https://pouch-orpin.vercel.app)
 
-**2. Click "Try Demo"** → No wallet, no keys, no signup. You're in demo mode instantly.
+**2. Demo mode** → With `DEMO_MODE=true` and a funded `PRIVATE_KEY` set, Pouch runs entirely on real Arbitrum funds. No signup needed; the agent acts on the funded wallet's behalf.
 
 **3. Type anything natural:**
    - *"Cash out $25 to Amazon"* — see the full agent trace
-   - *"Show my balance"* — see your simulated $100 across 3 chains
-   - *"Swap 1 ARB for ETH"* — simulated Uniswap V3 swap
-   - *"Send 5 ARB to Wallet 3"* — simulated on-chain transfer
-   - *"Fund gas"* — simulated Openfort gas sponsorship
+   - *"Show my balance"* — real on-chain balances across your Arbitrum wallets via RPC
+   - *"Swap 1 ARB for ETH"* — real Uniswap V3 swap on Arbitrum
+   - *"Send 5 ARB to Wallet 3"* — real on-chain transfer between your wallets
+   - *"Fund gas"* — real Openfort gas sponsorship ($0 to you)
    - *"What is chain abstraction?"* — educational response about EIP-7702
 
-**4. Or use the Demo Flow panel** → Click **"Run All 6 Steps"** for a guided tour that executes balance check → chain abstraction education → fund gas → swap → send → cash out in sequence.
+**4. Or use the Demo Flow panel** → 6 independent steps. Click any one (balance → chain abstraction → fund gas → swap → send → cash out), verify the real transaction on Arbiscan, then click the next at your own pace.
 
-**5. With real keys** → Set `PRIVATE_KEY` in `.env` and Pouch operates with real on-chain balances, real Uniswap swaps, real transfers, and real Bitrefill orders.
+> **Every number, balance, and transaction is real on Arbitrum.** The only demo is the final gift-card payment itself (no real gift-card provider integrated yet). Set a funded `PRIVATE_KEY` in `.env` — the app fails loud without it.
 
 ---
 
@@ -435,7 +435,7 @@ pouch/
 
 ## 🚀 Quick Start
 
-### Run in Demo Mode (no keys, no wallet, no signup)
+### Run in Demo Mode (real Arbitrum funds, no signup)
 
 ```bash
 git clone https://github.com/ruwaq/pouch.git
@@ -451,14 +451,14 @@ Open [localhost:3000](http://localhost:3000) — Pouch starts in **demo mode** a
 | Command | What happens |
 |---------|-------------|
 | *"Cash out $25 to Amazon"* | Full agent trace: balance → security → routing → order → payment → delivery |
-| *"Show my balance"* | Unified balance across 3 simulated assets ($100 total) |
-| *"Swap 1 ARB for ETH"* | Simulated Uniswap V3 swap with approval card |
-| *"Send 5 ARB to Wallet 3"* | Simulated on-chain transfer with receipt |
-| *"Fund gas"* | Simulated Openfort gas sponsorship |
+| *"Show my balance"* | Real unified balance across your Arbitrum wallets (via RPC) |
+| *"Swap 1 ARB for ETH"* | Real Uniswap V3 swap on Arbitrum with confirmation card |
+| *"Send 5 ARB to Wallet 3"* | Real on-chain transfer with receipt + Arbiscan link |
+| *"Fund gas"* | Real Openfort gas sponsorship ($0 to you) |
 | *"What is chain abstraction?"* | Educational response about EIP-7702 and Particle UA |
 | *"Show me gift cards under $50"* | Product catalog from Bitrefill |
 
-**Or click "Run All 6 Steps"** in the Demo Flow panel for a guided tour.
+**Or click any of the 6 independent steps** in the Demo Flow panel — each runs on its own and verifies on Arbiscan.
 
 ### Run with Real On-Chain Execution
 
