@@ -645,14 +645,14 @@ describe('app /health gemini model source', () => {
     // Spy on global fetch to capture the probe URL
     const fetchCalls: string[] = [];
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = ((url: string) => {
+    globalThis.fetch = ((url: string | URL | Request) => {
       fetchCalls.push(typeof url === 'string' ? url : String(url));
       return Promise.resolve({
         ok: true,
         status: 200,
         json: async () => ({ candidates: [{ content: { parts: [{ text: 'ok' }] } }] }),
         text: async () => '',
-      }) as unknown as Response;
+      } as unknown as Response);
     }) as typeof fetch;
 
     try {
