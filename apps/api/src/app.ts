@@ -144,8 +144,9 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
   // Demo login — creates a session for judges who don't want to sign up.
   // Issues a valid JWT for 'demo-user' so the app works without Magic.
   // C3: only mount outside production so anonymous clients can't mint demo
-  // tokens in prod.
-  if (!isProduction) {
+  // tokens in prod.  DEMO_FALLBACK_ENABLED re-opens it for live demos (see
+  // auth middleware comment at L82-86 for the full threat-model rationale).
+  if (!isProduction || demoFallbackExplicitlyEnabled) {
     app.post('/auth/demo', async (context) => {
       const secret = new TextEncoder().encode(effectiveSecret);
       const jwt = await new SignJWT({ sub: 'demo-user', evmAddress: '0xdemo' })

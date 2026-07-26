@@ -577,10 +577,12 @@ describe('app /auth/demo mount (C3)', () => {
   const originalNodeEnv = process.env.NODE_ENV;
   const originalDemoMode = process.env.DEMO_MODE;
   const originalJwt = process.env.JWT_SECRET;
+  const originalDemoFallback = process.env.DEMO_FALLBACK_ENABLED;
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
     process.env.DEMO_MODE = originalDemoMode;
     process.env.JWT_SECRET = originalJwt;
+    process.env.DEMO_FALLBACK_ENABLED = originalDemoFallback;
   });
 
   it('does not mount /auth/demo in production', async () => {
@@ -603,5 +605,18 @@ describe('app /auth/demo mount (C3)', () => {
 
     const res = await app.request('/auth/demo', { method: 'POST' });
     expect(res.status).toBe(200);
+  });
+
+  it('mounts /auth/demo in production when DEMO_FALLBACK_ENABLED=true', async () => {
+    process.env.NODE_ENV = 'production';
+    process.env.DEMO_MODE = 'true';
+    process.env.JWT_SECRET = 'a'.repeat(32);
+    process.env.DEMO_FALLBACK_ENABLED = 'true';
+    const app = createApp();
+
+    const res = await app.request('/auth/demo', { method: 'POST' });
+    expect(res.status).toBe(200);
+    const body = await res.json() as Record<string, string>;
+    expect(body.userId).toBe('demo-user');
   });
 });
