@@ -17,10 +17,6 @@ export class LlmReplyStrategy implements ReplyStrategy {
 
     try {
       const prompt = buildPrompt(context);
-      // Pass real conversation history as multi-turn contents (Gemini roles).
-      // buildPrompt still inlines a short "Recent conversation" block for scenarios
-      // that reference it explicitly (kept for backward compat with the prompt text),
-      // but the model now ALSO sees structured turns for true conversational memory.
       const historyContents = (context.history ?? []).map((m) => ({
         role: (m.role === 'user' ? 'user' : 'model') as 'user' | 'model',
         text: m.content,
@@ -32,13 +28,30 @@ export class LlmReplyStrategy implements ReplyStrategy {
       if (historyContents.length > 0) {
         request.contents = historyContents;
       }
-      const result = await this.llm.generateText(request);
 
-      if (!isOk(result) || !result.value.trim()) {
-        return fallback();
+      const MAX_ATTEMPTS = 3; // 1 initial + 2 retries.
+      let lastError: unknown = undefined;
+      for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+        try {
+          const result = await this.llm.generateText(request);
+          if (isOk(result) && result.value.trim()) {
+            return result.value.trim();
+          }
+          lastError = new Error('LLM returned empty response');
+        } catch (e) {
+          lastError = e;
+        }
+        if (attempt < MAX_ATTEMPTS) {
+          await sleep(300 * 2 ** (attempt - 1)); // 300ms, then 600ms.
+        }
       }
-      return result.value.trim();
-    } catch {
+
+      const message = lastError instanceof Error ? lastError.message : String(lastError);
+      console.warn(`[LLM] reply strategy exhausted ${MAX_ATTEMPTS} attempts; falling back to template. Last error: ${message}`);
+      return fallback();
+    } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn(`[LLM] reply strategy hit an unexpected error; falling back to template. Error: ${message}`);
       return fallback();
     }
   }
@@ -265,4 +278,8 @@ case 'help': {
       return "I can help you cash out crypto, check your balance, or search for gift cards. Try saying \"Cash out $50 to Amazon\" or \"Show my balance\".";
     }
   }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

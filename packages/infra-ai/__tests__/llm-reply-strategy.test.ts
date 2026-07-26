@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { CashOutIntent, CashOutResult, Order, ReplyContext } from '@pouch/domain';
 import { err, ok } from '@pouch/shared';
@@ -245,5 +245,60 @@ describe('LlmReplyStrategy', () => {
       { role: 'user', text: 'hola' },
       { role: 'model', text: 'hi there' },
     ]);
+  });
+
+  it('retries up to 2 times before falling back, and warns with [LLM] prefix', async () => {
+    const generateText = vi.fn(async () => {
+      throw new Error('network down');
+    });
+    const provider: LLMProvider = {
+      generateText,
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const strategy = new LlmReplyStrategy(provider);
+
+    const reply = await strategy.buildReply({
+      scenario: 'success',
+      intent: fakeIntent(),
+      result: fakeResult(),
+      order: fakeOrder(),
+    });
+
+    // 1 initial attempt + 2 retries = 3 calls total.
+    expect(generateText).toHaveBeenCalledTimes(3);
+    expect(warnSpy).toHaveBeenCalled();
+    expect(warnSpy.mock.calls[0]?.[0]).toMatch(/\[LLM\]/);
+    // Template fallback content.
+    expect(reply).toContain('Amazon');
+  });
+
+  it('succeeds on the second attempt without warning', async () => {
+    let calls = 0;
+    const provider: LLMProvider = {
+      async generateText() {
+        calls += 1;
+        if (calls === 1) throw new Error('transient');
+        return ok('Recovered reply');
+      },
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const strategy = new LlmReplyStrategy(provider);
+
+    const reply = await strategy.buildReply({
+      scenario: 'success',
+      intent: fakeIntent(),
+      result: fakeResult(),
+      order: fakeOrder(),
+    });
+
+    expect(reply).toBe('Recovered reply');
+    expect(calls).toBe(2);
+    expect(warnSpy).not.toHaveBeenCalled();
   });
 });
