@@ -8,6 +8,7 @@ import { resolve } from 'path';
 for (const candidate of [
   resolve(process.cwd(), '.env'),
   resolve(process.cwd(), '..', '.env'),
+  resolve(process.cwd(), '..', '..', '.env'),
 ]) {
   const result = config({ path: candidate });
   if (result.parsed && Object.keys(result.parsed).length > 0) {
