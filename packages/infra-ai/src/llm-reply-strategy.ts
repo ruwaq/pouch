@@ -70,7 +70,7 @@ function buildPrompt(context: ReplyContext): string {
       const userSaid = lastUserMsg && lastUserMsg !== context.intent.brand
         ? `"${lastUserMsg.slice(0, 150)}"`
         : 'a greeting';
-      return `The user said: ${userSaid}. Write a single short, friendly sentence. If the user asked for something Pouch cannot do (send crypto, swap tokens, transfer between chains), politely explain that Pouch is a crypto off-ramp agent — it converts crypto to gift cards, mobile top-ups, and eSIMs. If the user is just greeting you, introduce yourself briefly. Keep it under 2 lines.${historyBlock}`;
+      return `The user said: ${userSaid}. Write a single short, friendly sentence. If the user asked for something Pouch cannot do (send crypto, swap tokens, transfer between chains), politely explain that Pouch is a crypto off-ramp agent — it converts crypto to gift cards, mobile top-ups, and eSIMs. If the user is just greeting you, introduce yourself briefly in 1-2 sentences and suggest one concrete thing they can try. Length should match the message — a plain "hi" gets a short reply.${historyBlock}`;
     }
 
     case 'balance':
@@ -86,17 +86,17 @@ function buildPrompt(context: ReplyContext): string {
       return successPrompt(context) + historyBlock;
 
     case 'cancelled':
-      return `The user cancelled their pending cash-out. Write a single short, friendly sentence acknowledging the cancellation and asking what they'd like to do instead.${historyBlock}`;
+      return `The user cancelled their pending cash-out. Write a friendly reply acknowledging the cancellation and asking what they'd like to do instead. Keep it brief.${historyBlock}`;
 
     case 'insufficient':
       return insufficientPrompt(context) + historyBlock;
 
     case 'error':
-      return `Something went wrong while processing the user's request. The error was: "${context.error ?? 'unknown error'}". Write a single short, friendly sentence apologizing and suggesting they try again or ask for help. Do NOT mention technical details. Keep it under 2 lines.${historyBlock}`;
+      return `Something went wrong while processing the user's request. The error was: "${context.error ?? 'unknown error'}". Write a friendly reply apologizing and suggesting they try again or ask for help. Keep it brief (1-2 sentences) — the user is already aware something went wrong. Do NOT expose raw stack traces or internal error codes, but you MAY name the general problem in plain words (e.g. "the Arbitrum network seems slow").${historyBlock}`;
 
     case 'help': {
       const topic = context.topic ?? 'general';
-      return `The user asked about: "${topic}". They want to learn how Pouch works. Use your educational knowledge (from the system prompt) to explain clearly in plain language. Use analogies. Keep it under 3 sentences. Never use technical jargon. Be encouraging — offer to help them cash out after.${historyBlock}`;
+      return `The user asked about: "${topic}". They want to learn how Pouch works. Use your technical knowledge (from the system prompt) to explain thoroughly in plain language — use analogies, break the concept into steps, and explicitly connect it to how Pouch uses this technology and why it matters for the hackathon. Scale the length to the topic: a quick definition can be 2-3 sentences, but a deep concept like EIP-7702 or chain abstraction deserves a fuller paragraph or two. Map the topic to the right technology (eip-7702, chain-abstraction, particle-ua, openfort, magic, no-popups, security, fees, chains, how-it-works, general). End with one concrete suggestion the user can act on (e.g. "try Show my balance" or "cash out $5 to Amazon").${historyBlock}`;
     }
 
     case 'send': {
@@ -104,23 +104,23 @@ function buildPrompt(context: ReplyContext): string {
       const amount = context.intent.amount.value.toFixed(2);
       const token = context.intent.brand ?? 'tokens';
       const walletList = context.error ?? '';
-      return `The user wants to send ${amount} ${token} between their wallets. Available wallets:\n${walletList}\n\nWrite a short, friendly response listing the available wallets and asking which ones to send from and to. Mention that this transfer uses Particle UA EIP-7702 consolidation. Keep it under 3 lines.${historyBlock}`;
+      return `The user wants to send ${amount} ${token} between their wallets. Available wallets:\n${walletList}\n\nWrite a friendly response listing the available wallets and asking which ones to send from and to. Mention that this transfer uses Particle UA EIP-7702 consolidation and executes with no popups. Keep it concise — a short list plus one question.${historyBlock}`;
     }
 
     case 'send_confirmation': {
       const planSummary = context.planSummary ?? 'transfer';
       const gasEstimate = context.error ?? '~$0.03';
-      return `The user is about to confirm a wallet-to-wallet transfer: ${planSummary}. Estimated gas: ${gasEstimate}. Write a short, friendly confirmation message showing the details (from, to, amount, token, network Arbitrum, gas sponsored by Openfort). End with asking the user to reply "yes" to confirm or "no" to cancel. Keep it under 4 lines.${historyBlock}`;
+      return `The user is about to confirm a wallet-to-wallet transfer: ${planSummary}. Estimated gas: ${gasEstimate}. Write a friendly confirmation message showing the details (from, to, amount, token, network Arbitrum, gas sponsored by Openfort). End by asking the user to reply "yes" to confirm or "no" to cancel. Length should fit the details — no filler.${historyBlock}`;
     }
 
     case 'swap_confirmation': {
       const planSummary = context.planSummary ?? 'swap';
-      return `The user is about to confirm a token swap: ${planSummary}. This uses Uniswap V3 on Arbitrum to swap ARB → ETH (so they can pay for gas). Write a short, friendly confirmation message showing the details (amount, token in, token out, network Arbitrum). End with asking the user to reply "yes" to confirm or "no" to cancel. Keep it under 4 lines.${historyBlock}`;
+      return `The user is about to confirm a token swap: ${planSummary}. This uses Uniswap V3 on Arbitrum to swap ARB → ETH (so they can pay for gas). Write a friendly confirmation message showing the details (amount, token in, token out, network Arbitrum). End by asking the user to reply "yes" to confirm or "no" to cancel. Length should fit the details — no filler.${historyBlock}`;
     }
 
     case 'fallback':
     default:
-      return `The user said something Pouch doesn't understand. Write a single short, friendly sentence gently steering them back to what Pouch can do: cash out crypto to gift cards, mobile top-ups, or eSIM. Suggest they try "Cash out $50 to Amazon" or "Show my balance".${historyBlock}`;
+      return `The user said something Pouch doesn't understand. Write a friendly reply gently steering them back to what Pouch can do: cash out crypto to gift cards, mobile top-ups, or eSIM, plus wallet operations (send between wallets, swap ARB→ETH, fund gas). Suggest they try "Cash out $50 to Amazon" or "Show my balance". Keep it brief.${historyBlock}`;
   }
 }
 
@@ -134,7 +134,7 @@ function balancePrompt(context: ReplyContext): string {
     `Total: $${b.total.toFixed(2)} across ${b.assets.length} asset${b.assets.length === 1 ? '' : 's'}:`,
     assets,
     '',
-    `Write a single short, friendly sentence summarizing their balance naturally. Mention the total and hint they can cash out. Do NOT mention chain IDs or technical details. Keep it under 3 lines.`,
+    `Write a friendly summary of their balance. Mention the total and the per-asset breakdown by symbol and wallet label (never chain IDs). Hint at what they could cash out. Scale the length to how many assets they hold — one or two assets gets a sentence, many assets gets a short list.`,
   ].join('\n');
 }
 
@@ -152,7 +152,7 @@ function searchPrompt(context: ReplyContext): string {
     `The user searched for ${category} products${brand ? ` matching "${brand}"` : ''}. Results:`,
     ...lines,
     '',
-    `Write a single short, friendly sentence presenting these results and asking if they want to cash out to one of them. Keep it under 3 lines.`,
+    `Write a friendly message presenting these results and asking if they want to cash out to one of them. Length should fit the number of results shown.`,
   ].join('\n');
 }
 
@@ -163,7 +163,7 @@ function confirmationPrompt(context: ReplyContext): string {
 
   return [
     `The user wants to ${plan}.${balanceLine}`,
-    `Write a single short, friendly sentence confirming the plan and asking them to confirm (say "yes" or "sí"). Keep it under 2 lines.`,
+    `Write a friendly message confirming the plan and asking them to confirm (reply "yes" or "sí"). Keep it to a sentence or two — confirm what will happen, then ask.`,
   ].join('\n');
 }
 
@@ -175,7 +175,7 @@ function successPrompt(context: ReplyContext): string {
   return [
     `The cash-out just completed successfully.`,
     `Brand: ${brand}; Amount: $${amount}; Order ID: ${orderId}.`,
-    `Write a single short, friendly sentence confirming the order. Do NOT invent a gift card code. Do NOT mention wallets, chains, or gas. Address the user directly. Keep it under 2 lines.`,
+    `Write a friendly message confirming the order. Address the user directly. Do NOT invent a gift card code. Do NOT mention wallets, chains, or gas — keep the celebration focused on the result. A sentence or two is right.`,
   ].join(' ');
 }
 
@@ -186,7 +186,7 @@ function insufficientPrompt(context: ReplyContext): string {
 
   return [
     `The user wants to cash out $${amount} but only has $${total}.`,
-    `Write a single short, friendly sentence explaining they don't have enough and suggesting a smaller amount. Keep it under 2 lines.`,
+    `Write a friendly message explaining they don't have enough and suggesting a smaller amount they CAN afford. A sentence or two is right.`,
   ].join('\n');
 }
 

@@ -301,4 +301,27 @@ describe('LlmReplyStrategy', () => {
     expect(calls).toBe(2);
     expect(warnSpy).not.toHaveBeenCalled();
   });
+
+  it('does not push "Keep it under" length caps into the help prompt', async () => {
+    let seen = '';
+    const provider: LLMProvider = {
+      async generateText(req) {
+        seen = req.message;
+        return ok('here is an explanation');
+      },
+      async generateWithTools() {
+        throw new Error('not used');
+      },
+    };
+    const strategy = new LlmReplyStrategy(provider);
+
+    await strategy.buildReply({
+      scenario: 'help',
+      intent: { action: 'help', category: 'giftcard', amount: { value: 0, currency: 'USD' } },
+      topic: 'eip-7702',
+    });
+
+    expect(seen).not.toMatch(/keep it under/i);
+    expect(seen).toContain('eip-7702');
+  });
 });
