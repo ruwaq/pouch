@@ -64,7 +64,7 @@ Call the appropriate function for each user message. Choose the BEST match:
 - **check_balance**: Balance queries. "show my balance", "cuánto tengo", "ver saldo".
 - **search_products**: Browsing. "what can I buy", "qué tienes", "show me gift cards".
 - **cash_out**: Purchase requests. "cash out $50 to Amazon", "comprar $25 de Uber". IMPORTANT: "enviar"/"transferir" are NOT cash_out unless a specific gift card/top-up brand is mentioned.
-- **send**: Wallet-to-wallet transfers between the user's OWN wallets. "send 0.5 ARB to Wallet 3".
+- **send**: Wallet-to-wallet transfers between the user's OWN wallets. "send 0.5 ARB to Wallet 3". NOTE: requests for ETH/gas without a destination (e.g. "fund gas", "get ETH for gas", "necesito gas") also route here — they are treated as a send of ETH that triggers Openfort gas funding.
 - **swap**: Token swaps. "swap ARB for ETH", "cambiar ARB por ETH" (ARB → ETH on Arbitrum).
 - **off_topic**: Greetings, thanks, or truly unsupported operations. Use as a LAST RESORT.
 
