@@ -1,3 +1,22 @@
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load the monorepo-root .env so server-side route handlers (the /api catch-all
+// proxy) see PRIVATE_KEY, DEMO_MODE, GEMINI_API_KEY, OPENFORT_*, etc.
+// Vercel injects env directly in production, so this is a no-op there
+// (dotenv never overrides already-set vars). Mirrors what apps/api/src/server.ts does.
+for (const candidate of [
+  resolve(process.cwd(), '.env'),
+  resolve(process.cwd(), '..', '.env'),
+]) {
+  const result = config({ path: candidate });
+  if (result.parsed && Object.keys(result.parsed).length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[web] Loaded .env from ${candidate} (${Object.keys(result.parsed).length} vars)`);
+    break;
+  }
+}
+
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {

@@ -76,26 +76,6 @@ class DemoProvider implements OffRampProvider {
   }
 }
 
-const demoAccountProvider: AccountProvider = {
-  async getUnifiedBalance() {
-    return ok({
-      total: 100,
-      assets: [
-        { chainId: 42161, symbol: 'USDC', amount: 45, usdValue: 45 },
-        { chainId: 8453, symbol: 'USDC', amount: 30, usdValue: 30 },
-        { chainId: 8453, symbol: 'ETH', amount: 0.007, usdValue: 25 },
-      ],
-      requiresConsolidation: true,
-    });
-  },
-  async consolidate() {
-    return ok({ txHash: '0xdemo-consolidation' });
-  },
-  async sendPayment() {
-    return ok({ txHash: '0xdemo-payment' });
-  },
-};
-
 const logger: LoggerPort = {
   info() {},
   error() {},
@@ -111,19 +91,7 @@ const demoPolicyStore: SecurityPolicyPort = {
 
 const demoSecurityChecker = new SecurityChecker(demoPolicyStore);
 
-export function createDemoAgentService(): AgentChatService {
-  return createDemoAppServices().agentService;
-}
-
-export function createDemoBalanceService(): BalanceService {
-  return createDemoAppServices().balanceService;
-}
-
-export function createDemoOrderService(): OrderService {
-  return createDemoAppServices().orderService;
-}
-
-export function createDemoAppServices(accountProvider?: AccountProvider, agentWallet?: AgentWalletPort): {
+export function createDemoAppServices(accountProvider: AccountProvider, agentWallet?: AgentWalletPort): {
   agentService: AgentChatService;
   balanceService: BalanceService;
   orderService: OrderService;
@@ -131,7 +99,7 @@ export function createDemoAppServices(accountProvider?: AccountProvider, agentWa
   const providers = [new DemoProvider()];
   const repository = new MemoryOrderRepository();
   const router = new OffRampRouter(providers);
-  const realAccountProvider = accountProvider ?? demoAccountProvider;
+  const realAccountProvider = accountProvider;
   const executor = new CashOutExecutor(router, providers, realAccountProvider, repository, logger, agentWallet, demoSecurityChecker);
 
   // Use Gemini LLM when configured, fall back to regex parser + template reply.

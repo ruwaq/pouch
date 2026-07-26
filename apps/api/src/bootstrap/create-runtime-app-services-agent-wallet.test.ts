@@ -1,9 +1,41 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AccountProvider, AgentWalletPort, OffRampProvider, OrderRepository } from '@pouch/domain';
 import { ok } from '@pouch/shared';
 
 import { createRuntimeAppServices } from './create-runtime-app-services';
+
+// These tests pass an explicit env to drive the 'configured' branch, so clear
+// the process.env keys that createRuntimeAppServices falls back to (DEMO_MODE /
+// PRIVATE_KEY would otherwise force the demo branch). Keeps tests isolated from
+// the developer's local .env (loaded globally for app.test.ts by
+// vitest.setup.ts).
+const ENV_KEYS_UNDER_TEST = [
+  'NODE_ENV',
+  'DEMO_MODE',
+  'PRIVATE_KEY',
+  'SECOND_PRIVATE_KEY',
+  'SEED_PHRASE_1',
+  'SEED_PHRASE_2',
+  'SEED_PHRASE_3',
+] as const;
+
+let savedEnv: Record<string, string | undefined> = {};
+
+beforeEach(() => {
+  savedEnv = {};
+  for (const key of ENV_KEYS_UNDER_TEST) {
+    savedEnv[key] = process.env[key];
+    delete process.env[key];
+  }
+});
+
+afterEach(() => {
+  for (const key of ENV_KEYS_UNDER_TEST) {
+    if (savedEnv[key] === undefined) delete process.env[key];
+    else process.env[key] = savedEnv[key];
+  }
+});
 
 const validEnv = {
   NODE_ENV: 'development',

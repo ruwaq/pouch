@@ -1,9 +1,45 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { AccountProvider, OffRampProvider, OrderRepository } from '@pouch/domain';
 import { ok } from '@pouch/shared';
 
 import { createRuntimeAppServices } from './create-runtime-app-services';
+
+// Keys that createRuntimeAppServices reads via `options.env ?? process.env`
+// fallback. Each test below passes an explicit env to control the branch, so we
+// clear these from process.env to keep tests isolated from the developer's
+// local .env (loaded globally for app.test.ts by vitest.setup.ts).
+const ENV_KEYS_UNDER_TEST = [
+  'NODE_ENV',
+  'DEMO_MODE',
+  'PRIVATE_KEY',
+  'SECOND_PRIVATE_KEY',
+  'SEED_PHRASE_1',
+  'SEED_PHRASE_2',
+  'SEED_PHRASE_3',
+  'SETTLEMENT_CHAIN_ID',
+  'SUPPORTED_CHAINS',
+  'OPENFORT_SECRET_KEY',
+  'OPENFORT_WALLET_SECRET',
+  'OPENFORT_FEE_SPONSORSHIP_ID',
+] as const;
+
+let savedEnv: Record<string, string | undefined> = {};
+
+beforeEach(() => {
+  savedEnv = {};
+  for (const key of ENV_KEYS_UNDER_TEST) {
+    savedEnv[key] = process.env[key];
+    delete process.env[key];
+  }
+});
+
+afterEach(() => {
+  for (const key of ENV_KEYS_UNDER_TEST) {
+    if (savedEnv[key] === undefined) delete process.env[key];
+    else process.env[key] = savedEnv[key];
+  }
+});
 
 const validEnv = {
   NODE_ENV: 'development',
@@ -70,13 +106,11 @@ const fakeAccountProvider: AccountProvider = {
 };
 
 describe('createRuntimeAppServices', () => {
-  it('falls back to demo wiring in development when env config is incomplete', () => {
-    const services = createRuntimeAppServices({ env: { NODE_ENV: 'development' } });
-
-    expect(services.mode).toBe('demo');
-    expect(services.agentService).toBeDefined();
-    expect(services.balanceService).toBeDefined();
-    expect(services.bitrefillWebhookService).toBeUndefined();
+  it('throws when env config is incomplete (never silently falls back to mock)', () => {
+    // The owner's rule: a failure must surface as a failure, never as fake
+    // data. With incomplete config the runtime must NOT return simulated
+    // demo services — it must throw so the misconfiguration is visible.
+    expect(() => createRuntimeAppServices({ env: { NODE_ENV: 'development' } })).toThrow();
   });
 
   it('fails fast in production when required env config is missing', () => {

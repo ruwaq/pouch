@@ -569,7 +569,21 @@ describe('app demo fallback opt-in (DEMO_FALLBACK_ENABLED)', () => {
     process.env.DEMO_FALLBACK_ENABLED = 'true';
     process.env.JWT_SECRET = 'a'.repeat(32);
     process.env.PRIVATE_KEY = '0x' + '1'.repeat(64);
-    const app = createApp();
+    // This test asserts auth fallback (demo-user), not real on-chain balances.
+    // Inject a stub balance service so /balance returns without hitting the
+    // network (PrivateKeyAccountProvider would otherwise call Arbitrum RPCs).
+    const stubBalanceService = new BalanceService({
+      async getUnifiedBalance() {
+        return ok({ total: 0, assets: [], requiresConsolidation: false });
+      },
+      async consolidate() {
+        return ok({ txHash: '0xstub' });
+      },
+      async sendPayment() {
+        return ok({ txHash: '0xstub' });
+      },
+    });
+    const app = createApp({ balanceService: stubBalanceService });
 
     const res = await app.request('/balance');
     expect(res.status).toBe(200);

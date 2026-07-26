@@ -134,10 +134,6 @@ function createHybridOrderRepository(drizzleRepo: OrderRepository): OrderReposit
     },
   };
 }
-function shouldFailFast(env: Record<string, string | undefined>): boolean {
-  if ((env.DEMO_MODE ?? process.env.DEMO_MODE ?? '').trim() === 'true') return false;
-  return (env.NODE_ENV ?? process.env.NODE_ENV ?? 'development') === 'production';
-}
 
 export function createRuntimeAppServices(options: {
   env?: Record<string, string | undefined>;
@@ -207,16 +203,8 @@ export function createRuntimeAppServices(options: {
   try {
     config = loadConfig(env);
   } catch (error) {
-    if (shouldFailFast(env)) {
-      throw error;
-    }
-
-    const demoServices = createDemoAppServices();
-
-    return {
-      mode: 'demo',
-      ...demoServices,
-    };
+    // NEVER silently fall back to mock services — surface the failure.
+    throw error;
   }
 
   try {
@@ -284,15 +272,8 @@ export function createRuntimeAppServices(options: {
       ...(bitrefillWebhookService ? { bitrefillWebhookService } : {}),
     };
   } catch (error) {
-    if (shouldFailFast(env)) {
-      throw error;
-    }
-
-    const demoServices = createDemoAppServices();
-
-    return {
-      mode: 'demo',
-      ...demoServices,
-    };
+    // NEVER silently fall back to mock services — surface the failure.
+    // The owner's rule: a failure must show as a failure, never as fake data.
+    throw error;
   }
 }
