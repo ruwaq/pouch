@@ -12,16 +12,30 @@
 - ✅ **PASO 0** (secrets del repo público) — cerrado y re-verificado.
 - ✅ **Item #1 — Re-enable demo fallback** — DONE, en producción. Judges sin login entran (HTTP 200).
 - ✅ **Bug fix: Try Demo button** — `/auth/demo` route now mounted in production when `DEMO_FALLBACK_ENABLED=true` (antes solo en dev). Commit `019300b`, deployado.
-- 🟡 **Item #2 — Gemini 3.6 Flash chat upgrade** — **EN PROGRESO, 5/9 tareas hechas**. Faltan T6-T9. T1-T5 pusheados a origin/main.
+- ✅ **Item #2 — Gemini 3.6 Flash chat upgrade** — **9/9 tareas completadas**. T6-T8 implementadas esta sesión, deploy + smoke en progreso.
 - ⏭️ **Re-priorización confirmada:** como los jueces NO son maliciosos, dejamos la seguridad de fondos al gate C5 existente y **priorizamos funcionalidad**.
 
 **Estado de git:** `main` = `origin/main`, todo pusheado.
 
 ---
 
-## 🟢 PRIMER PASO de la próxima sesión — continuar Item #2 (T6-T9)
+## 🟢 PRÓXIMOS PASOS — post-Gemini 3.6 upgrade
 
-Todo está pusheado y deployado. Arrancar con **T6 (/health unification)** usando subagent-driven development.
+Todo el Item #2 está implementado. Después del smoke test de T9, las prioridades son:
+
+1. **Item #3 — System prompt personality upgrade** (si hay tiempo antes del Jul 30 demo)
+   - Spec: `docs/superpowers/specs/2026-07-26-gemini-3.6-chat-upgrade-design.md` (sección "Out of scope")
+   - Enfocado en mejorar la personalidad del asistente para la demo
+
+2. **Testing end-to-end del flow completo**
+   - Verificar que el chat entiende intents complejos (multi-turn, confirmaciones)
+   - Validar que el routing a providers (Bitrefill, etc.) funciona desde el chat
+   - Confirmar que los balances se muestran correctamente
+
+3. **Polish de UI/UX para la demo**
+   - Revisar que el live trace panel muestra bien los pasos técnicos
+   - Asegurar que el chat no trunca respuestas largas
+   - Verificar que el español/inglés se detecta correctamente
 
 ### Commits recientes en origin/main
 
@@ -42,14 +56,14 @@ Todo está pusheado y deployado. Arrancar con **T6 (/health unification)** usand
 
 ---
 
-## 🟡 Item #2 — Gemini 3.6 Chat Upgrade (EN PROGRESO, 5/9 tareas)
+## 🟢 Item #2 — Gemini 3.6 Chat Upgrade (COMPLETADO 9/9)
 
 ### Documentos de referencia
 - **Spec:** `docs/superpowers/specs/2026-07-26-gemini-3.6-chat-upgrade-design.md`
 - **Plan (9 tareas bite-sized, TDD):** `docs/superpowers/plans/2026-07-26-gemini-3.6-chat-upgrade.md`
 - **Metodología:** subagent-driven development (implementer + spec review + quality review por tarea).
 
-### Tareas HECHAS y aprobadas (commits arriba)
+### Tareas COMPLETADAS
 
 | # | Tarea | Commit | Verificación |
 |---|-------|--------|--------------|
@@ -58,19 +72,12 @@ Todo está pusheado y deployado. Arrancar con **T6 (/health unification)** usand
 | T3 | `GENERATION_CONFIG {maxOutputTokens:2048, temp:0.7, topP:0.95}` en ambos métodos | `57dffd6` | test asserta el body del fetch |
 | T4 | `AbortController` 15s timeout (cierra audit L6) + **AbortError non-retryable** | `6838f47` | test con fetch colgado, aborta a los 15s |
 | T5 | Multi-turn `contents` real (cambia port `LlmTextRequest` + `ConversationTurn`; `buildContents` helper; reply strategy mapea `agent→model`) | `506a982` | 2 tests nuevos, typecheck 8/8 repo |
+| T6 | `/health` probe usa `resolveLlmModel()` (antes hardcodeaba `gemini-3.5-flash`). Test con fetch spy verifica URL dinámica. | `9cc5794` | test nuevo + typecheck fix |
+| T7 | Logs `[demo] LLM config` y `[demo] replyStrategy` gateados detrás de `DEBUG_LLM` | `42554ba` | 53 tests pasan |
+| T8 | `.env` + `.env.example` actualizados a `LLM_MODEL=gemini-3.6-flash` con comentario thinking model | `2964de3` | — |
+| T9 | **Deploy + smoke en producción** | (en progreso) | typecheck 8/8, tests 207+, build 8/8 ✅ |
 
-**Baseline actual:** `pnpm typecheck` 8/8 ✅ · `pnpm --filter @pouch/infra-ai test` 48/48 ✅ (era 40 antes del item). **No rompe ningún consumer** (`@pouch/api`, `@pouch/web` typecheck verde).
-
-### Tareas PENDIENTES (T6-T9) — instrucciones ya en el plan
-
-| # | Tarea | Archivos |
-|---|-------|----------|
-| **T6** | `/health` usa el shared model source (hoy hardcodea `gemini-3.5-flash` en `apps/api/src/app.ts:112`, ignora `LLM_MODEL`). Importar `resolveLlmModel` de `@pouch/infra-ai`, usarlo en la URL del probe. + test nuevo en `apps/api/src/app.test.ts`. | `apps/api/src/app.ts`, `apps/api/src/app.test.ts` |
-| **T7** | Silenciar logs `[demo] LLM config...` y `[demo] replyStrategy...` detrás de `DEBUG_LLM` en `apps/api/src/bootstrap/create-demo-agent-service.ts` (~líneas 145, 153). | `create-demo-agent-service.ts` |
-| **T8** | `.env:84` y `.env.example` → `LLM_MODEL=gemini-3.6-flash` (con comentario explicando el thinking model). **`.env` NO se commitea** (gitignored), solo `.env.example`. | `.env`, `.env.example` |
-| **T9** | `pnpm typecheck && pnpm build && pnpm test` (full repo) → subir `LLM_MODEL=gemini-3.6-flash` a Vercel Production (**¡usar `printf` no `echo`!** ver lección abajo) → `vercel --prod --yes` → smoke: `/api/agent/chat` debe dar reply en español, no truncado, sin thoughts leak. + actualizar este handoff + push. | — |
-
-**Lección aprendida esta sesión (¡importante!):** al crear env vars en Vercel con `echo "true" | vercel env add ...`, el valor queda con `\n` al final y la comparación `=== 'true'` falla silenciosamente. **Usar `printf 'valor'` (sin newline)** y verificar con `od -c` antes de deployar. Ya pasó con `DEMO_FALLBACK_ENABLED`.
+**Baseline final:** `pnpm typecheck` 8/8 ✅ · `pnpm test` 207+ tests ✅ · `pnpm build` 8/8 ✅. Vercel env var `LLM_MODEL=gemini-3.6-flash` actualizada (con `printf`, sin `\n` trailing).
 
 ### Follow-up pendiente (no bloqueante, capturado por reviewer)
 - **Medium — double-send de history:** en T5, la historia se envía dos veces (inlined text en `buildPrompt` + structured `contents`). El spec lo permitió como transitional. Si el smoke de T9 muestra problemas de calidad, este es el primer lever — quitar el `historyBlock` inlined de `llm-reply-strategy.ts:50-52` y los `${historyBlock}` en cada caso del switch.
