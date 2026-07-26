@@ -18,6 +18,42 @@ export type ReplyScenario =
   | 'fallback';      // unknown intent / unhandled action
 
 /**
+ * Live, real wallet context injected per turn so the LLM can ground specific
+ * answers ("You have 113 ARB in Wallet 1 on Arbitrum") instead of generic ones.
+ * Populated by the chat service from the real account provider + an in-memory
+ * transaction log. Privacy invariant: only wallet labels and TRUNCATED addresses
+ * are sent to the LLM — never full keys or full addresses.
+ */
+export interface LiveWalletContext {
+  /** Total USD across all assets (sum of asset.usdValue). */
+  totalUsd: number;
+  /** Per-asset breakdown. */
+  assets: Array<{
+    symbol: string;
+    chainId: number;
+    amount: number;
+    usdValue: number;
+    walletLabel?: string;
+  }>;
+  /** Wallets available this session: labels + TRUNCATED addresses only. */
+  wallets: Array<{ label: string; addressTruncated: string }>;
+  /**
+   * The user's last few real transactions. OMITTED entirely (undefined) when the
+   * log is empty — never rendered as "no history".
+   */
+  recentTransactions?: Array<{
+    type: 'send' | 'swap' | 'fund_gas' | 'cash_out';
+    amount: number;
+    token?: string;
+    chainId: number;
+    txHash: string;
+    timestamp: string;
+  }>;
+  /** Active technologies/bounties the agent may reference. */
+  technologies: string[];
+}
+
+/**
  * Context passed to the ReplyStrategy so it can compose a natural-language
  * response for any scenario. Only the fields relevant to the scenario are set.
  */
@@ -43,6 +79,8 @@ export interface ReplyContext {
    * Most recent message is last. Max 10 entries.
    */
   history?: Array<{ role: 'user' | 'agent'; content: string }>;
+  /** Live, real wallet context (optional; set by the chat service per turn). */
+  liveContext?: LiveWalletContext;
 }
 
 /**
