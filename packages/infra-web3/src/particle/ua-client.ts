@@ -33,8 +33,7 @@ export interface UaClientLike {
   }): Promise<UaTransactionPlan>;
 }
 
-import type { Wallet } from 'ethers';
-import { hashAuthorization } from 'ethers';
+import { getBytes, hashAuthorization, type Wallet } from 'ethers';
 
 /**
  * Build the 7702 authorizations array for a transaction's userOps.
@@ -42,8 +41,8 @@ import { hashAuthorization } from 'ethers';
  * - Skips userOps that are already delegated (eip7702Delegated: true) — the
  *   upgrade is one-time and persists.
  * - Skips userOps with no eip7702Auth object.
- * - Deduplicates the signature by nonce: cross-chain bundles share a chainId=0
- *   nonce, so the same digest is signed once and reused across legs.
+ * - Deduplicates the signature by (chainId, nonce, address): cross-chain bundles
+ *   share all three, so the same digest is signed once and reused across legs.
  *
  * Pure + synchronous — no SDK calls. Tested directly.
  */
@@ -52,14 +51,17 @@ export function buildAuthorizations(
   wallet: Wallet,
 ): { userOpHash: string; signature: string }[] {
   const authorizations: { userOpHash: string; signature: string }[] = [];
-  const nonceMap = new Map<number, string>();
+  // The signed digest depends on (chainId, nonce, address). Cross-chain bundles
+  // share all three today, but key on the full tuple so distinct auths never collide.
+  const signatureCache = new Map<string, string>();
   for (const userOp of userOps) {
     const auth = userOp.eip7702Auth;
     if (!auth || userOp.eip7702Delegated) continue;
-    let serialized = nonceMap.get(auth.nonce);
+    const key = `${auth.chainId}:${auth.nonce}:${auth.address}`;
+    let serialized = signatureCache.get(key);
     if (!serialized) {
       serialized = wallet.signingKey.sign(hashAuthorization(auth)).serialized;
-      nonceMap.set(auth.nonce, serialized);
+      signatureCache.set(key, serialized);
     }
     authorizations.push({ userOpHash: userOp.userOpHash, signature: serialized });
   }
@@ -72,7 +74,6 @@ export interface UaClientConfig {
   projectClientKey: string;
   projectAppUuid: string;
   ownerAddress: string; // the demo EOA (0xA5fA…Fe3DD)
-  privateKey: string;   // the demo EOA's key (from .env)
 }
 
 /**
@@ -148,7 +149,6 @@ export class UaClient implements UaClientLike {
         authorizations: { userOpHash: string; signature: string }[],
       ): Promise<{ transactionId: string }>;
     }>();
-    const { getBytes } = await import('ethers');
     const signature = this.wallet.signMessageSync(getBytes(transaction.rootHash));
     const authorizations = buildAuthorizations(transaction.userOps, this.wallet);
     return ua.sendTransaction(transaction, signature, authorizations);

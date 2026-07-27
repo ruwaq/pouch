@@ -43,6 +43,16 @@ describe('buildAuthorizations', () => {
     expect(result[0]!.signature).toBe(result[1]!.signature); // but the SAME signature bytes
   });
 
+  it('produces different signatures for different nonces', () => {
+    const userOps: UaUserOp[] = [
+      { userOpHash: '0xop1', eip7702Auth: { chainId: 0, nonce: 9, address: '0x' + '00'.repeat(19) + '01' }, eip7702Delegated: false },
+      { userOpHash: '0xop2', eip7702Auth: { chainId: 0, nonce: 10, address: '0x' + '00'.repeat(19) + '01' }, eip7702Delegated: false },
+    ];
+    const result = buildAuthorizations(userOps, wallet);
+    expect(result).toHaveLength(2);
+    expect(result[0]!.signature).not.toBe(result[1]!.signature);
+  });
+
   it('skips userOps with no eip7702Auth even if undelegated', () => {
     const userOps: UaUserOp[] = [
       { userOpHash: '0xop1', eip7702Delegated: false }, // no auth object
