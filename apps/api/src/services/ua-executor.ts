@@ -15,7 +15,7 @@ export interface UaExecutorClient {
   sendTransaction(
     transaction: { transactionId: string; rootHash: string; userOps: unknown[] },
   ): Promise<{ transactionId: string }>;
-  getTransaction(transactionId: string): Promise<{ status: number }>;
+  getTransaction(transactionId: string): Promise<{ status?: number }>;
 }
 
 export interface ConsolidateParams {
@@ -35,6 +35,10 @@ export interface ConsolidateReceipt {
 }
 
 const RATE_LIMIT_PATTERN = /converted once per minute|rate.?limit/i;
+
+// Particle UA transaction statuses (see ua-client.ts getTransaction).
+const STATUS_FINISHED = 7;
+const STATUS_FAILED = 6;
 
 export class UaExecutor {
   constructor(
@@ -65,12 +69,19 @@ export class UaExecutor {
     const activityUrl = `https://universalx.app/activity/details?id=${transactionId}`;
     let status = -1;
     for (let i = 0; i < this.opts.maxPolls; i++) {
-      const detail = await this.client.getTransaction(transactionId);
-      status = detail.status ?? -1;
-      if (status === 7) {
+      try {
+        const detail = await this.client.getTransaction(transactionId);
+        status = detail.status ?? -1;
+      } catch {
+        // Transient poll error (network blip, Particle 5xx) — skip this tick.
+        // The tx was already sent; retry the poll or time out cleanly.
+        await new Promise((r) => setTimeout(r, this.opts.pollIntervalMs));
+        continue;
+      }
+      if (status === STATUS_FINISHED) {
         return { ok: true, transactionId, activityUrl, status };
       }
-      if (status === 6) {
+      if (status === STATUS_FAILED) {
         return { ok: false, transactionId, activityUrl, status, error: 'UA transaction failed (status 6).' };
       }
       await new Promise((r) => setTimeout(r, this.opts.pollIntervalMs));

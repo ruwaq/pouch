@@ -75,4 +75,23 @@ describe('UaExecutor.executeConsolidation', () => {
     expect(receipt.ok).toBe(false);
     expect(receipt.rateLimited).toBe(true);
   });
+
+  it('returns a timed-out receipt (with transactionId) if getTransaction always throws', async () => {
+    const client = fakeClient({
+      async getTransaction() {
+        throw new Error('transient network error');
+      },
+    });
+    const executor = new UaExecutor(client, { pollIntervalMs: 0, maxPolls: 3 });
+    const receipt = await executor.executeConsolidation({
+      targetChainId: 42161,
+      token: 'USDC',
+      amount: '2',
+    });
+    // The tx was sent successfully — the receipt must preserve transactionId + activityUrl.
+    expect(receipt.ok).toBe(false);
+    expect(receipt.timedOut).toBe(true);
+    expect(receipt.transactionId).toBe('tx-1');
+    expect(receipt.activityUrl).toContain('universalx.app/activity/details?id=tx-1');
+  });
 });
