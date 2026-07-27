@@ -15,6 +15,8 @@ import { AgentChatService, type AgentChatServiceLike } from '../services/agent-c
 import { BalanceService, type BalanceServiceLike } from '../services/balance-service';
 import { OrderService, type OrderServiceLike } from '../services/order-service';
 import { MemoryOrderRepository } from '../support/memory-order-repository';
+import { TransactionPlanner } from '../services/transaction-planner';
+import { UaExecutor } from '../services/ua-executor';
 import { createDemoAppServices } from './create-demo-agent-service';
 
 export interface RuntimeAppServices {
@@ -23,6 +25,8 @@ export interface RuntimeAppServices {
   balanceService: BalanceServiceLike;
   orderService: OrderServiceLike;
   bitrefillWebhookService?: BitrefillWebhookService;
+  transactionPlanner?: TransactionPlanner;
+  uaExecutor?: UaExecutor;
 }
 
 interface RuntimeDependencies {

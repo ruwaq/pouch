@@ -18,6 +18,7 @@ import type { AgentChatServiceLike } from './services/agent-chat-service';
 import type { AuthService } from './services/auth-service';
 import type { OrderServiceLike } from './services/order-service';
 import type { TransactionPlanner } from './services/transaction-planner';
+import type { UaExecutor } from './services/ua-executor';
 
 // ── Rate limiter (in-memory, per-IP) ──────────────────────────────────
 
@@ -45,12 +46,13 @@ setInterval(() => {
   }
 }, 300_000);
 
-export function createApp(options: { agentService?: AgentChatServiceLike; balanceService?: BalanceServiceLike; orderService?: OrderServiceLike; bitrefillWebhookService?: BitrefillWebhookService; authService?: AuthService; transactionPlanner?: TransactionPlanner } = {}): Hono<AuthEnv> {
+export function createApp(options: { agentService?: AgentChatServiceLike; balanceService?: BalanceServiceLike; orderService?: OrderServiceLike; bitrefillWebhookService?: BitrefillWebhookService; authService?: AuthService; transactionPlanner?: TransactionPlanner; uaExecutor?: UaExecutor } = {}): Hono<AuthEnv> {
   const app = new Hono<AuthEnv>();
   const runtimeServices = createRuntimeAppServices();
   const agentService = options.agentService ?? runtimeServices.agentService;
   const balanceService = options.balanceService ?? runtimeServices.balanceService;
   const orderService = options.orderService ?? runtimeServices.orderService;
+  const uaExecutor = options.uaExecutor ?? runtimeServices.uaExecutor;
   const bitrefillWebhookService = options.bitrefillWebhookService ?? runtimeServices.bitrefillWebhookService;
 
   // ── Rate limiter middleware ───────────────────────────────────────
@@ -179,7 +181,7 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
   }
 
   if (options.transactionPlanner) {
-    app.route('/transactions', createTransactionRoutes(options.transactionPlanner));
+    app.route('/transactions', createTransactionRoutes(options.transactionPlanner, uaExecutor));
   }
 
   return app;

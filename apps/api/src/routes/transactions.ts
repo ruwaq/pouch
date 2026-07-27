@@ -2,8 +2,12 @@ import { Hono } from 'hono';
 
 import type { AuthEnv } from '../middleware/auth';
 import type { TransactionPlanner } from '../services/transaction-planner';
+import type { UaExecutor } from '../services/ua-executor';
 
-export function createTransactionRoutes(planner: TransactionPlanner): Hono<AuthEnv> {
+export function createTransactionRoutes(
+  planner: TransactionPlanner,
+  uaExecutor?: UaExecutor,
+): Hono<AuthEnv> {
   const router = new Hono<AuthEnv>();
 
   // Plan a consolidation (frontend will sign the rootHash + 7702 auths via Magic)
@@ -60,6 +64,27 @@ export function createTransactionRoutes(planner: TransactionPlanner): Hono<AuthE
       return context.json({ error: error instanceof Error ? error.message : 'Planning failed.' }, 500);
     }
   });
+
+  // Execute a consolidation server-side (frictionless: server signs, no browser signer).
+  // Only mounted when DEMO_USE_UA=true wired a real UaExecutor.
+  if (uaExecutor) {
+    router.post('/execute', async (context) => {
+      const body = (await context.req.json().catch(() => null)) as {
+        targetChainId?: number;
+        token?: string;
+        amount?: string;
+      } | null;
+      if (!body?.targetChainId || !body.token || !body.amount) {
+        return context.json({ error: 'targetChainId, token, and amount are required.' }, 400);
+      }
+      const receipt = await uaExecutor.executeConsolidation({
+        targetChainId: body.targetChainId,
+        token: body.token,
+        amount: body.amount,
+      });
+      return context.json(receipt, receipt.ok ? 200 : 500);
+    });
+  }
 
   return router;
 }
