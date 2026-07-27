@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useChat } from '../../context/chat-context';
+import { apiPost } from '../../lib/api-client';
+import type { UaConsolidateReceipt } from '../../lib/types';
+import { UaReceiptCard } from '../chat/UaReceiptCard';
+
+const COOLDOWN_MS = 70_000;
 
 interface DemoStep {
   label: string;
@@ -25,13 +30,13 @@ const STEPS: DemoStep[] = [
     hint: 'Reads real on-chain balances from Arbitrum via RPC — 4 wallets, all chains',
   },
   {
-    label: 'Chain Abstraction',
-    message: 'What is chain abstraction?',
+    label: 'Consolidate $2 (Cross-Chain)',
+    message: '__ua_consolidate__', // sentinel: handled by direct API, not chat
     emoji: '🔗',
     bounty: 'Particle Network',
     techBadge: 'EIP-7702',
     needsConfirm: false,
-    hint: 'EIP-7702 lets the UA scan + consolidate funds across Arbitrum, Base, Ethereum — no bridging',
+    hint: 'One signature moves $2 USDC Base→Arbitrum via EIP-7702. 70s cooldown (Particle rate-limit).',
   },
   {
     label: 'Fund Gas (Openfort)',
@@ -138,19 +143,78 @@ export function DemoFlow() {
     }
   }, [messages, isSending, activeStep]);
 
+  const [uaReceipt, setUaReceipt] = useState<UaConsolidateReceipt | null>(null);
+  const [uaRunning, setUaRunning] = useState(false);
+  const [cooldownEndsAt, setCooldownEndsAt] = useState<number | null>(null);
+  const [now, setNow] = useState(Date.now());
+
+  // Tick once a second while a cooldown is active (for the countdown display).
+  useEffect(() => {
+    if (cooldownEndsAt === null) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [cooldownEndsAt]);
+
+  const runConsolidate = useCallback(async () => {
+    if (uaRunning || activeStep !== null) return;
+    if (cooldownEndsAt !== null && Date.now() < cooldownEndsAt) return;
+    setUaRunning(true);
+    setUaReceipt(null);
+    setStepStates((prev) => {
+      const next = [...prev];
+      next[1] = 'running'; // the consolidate step
+      return next;
+    });
+    try {
+      const receipt = await apiPost<UaConsolidateReceipt>('/transactions/execute', {
+        targetChainId: 42161,
+        token: 'USDC',
+        amount: '2',
+      });
+      setUaReceipt(receipt);
+      setStepStates((prev) => {
+        const next = [...prev];
+        next[1] = receipt.ok ? 'done' : 'idle';
+        return next;
+      });
+      if (receipt.ok) {
+        setCooldownEndsAt(Date.now() + COOLDOWN_MS);
+      }
+    } catch (e) {
+      setUaReceipt({
+        ok: false,
+        transactionId: '',
+        activityUrl: '',
+        error: e instanceof Error ? e.message : 'Consolidation request failed.',
+      });
+      setStepStates((prev) => {
+        const next = [...prev];
+        next[1] = 'idle';
+        return next;
+      });
+    } finally {
+      setUaRunning(false);
+    }
+  }, [uaRunning, activeStep, cooldownEndsAt]);
+
   const executeStep = useCallback(
     async (index: number) => {
       if (activeStep !== null) return; // another step is running
+      const step = STEPS[index]!;
+      if (step.message === '__ua_consolidate__') {
+        await runConsolidate();
+        return;
+      }
       setActiveStep(index);
       setStepStates((prev) => {
         const next = [...prev];
         next[index] = 'running';
         return next;
       });
-      await sendMessage(STEPS[index]!.message);
+      await sendMessage(step.message);
       // The useEffect above handles state transitions when the reply arrives.
     },
-    [activeStep, sendMessage],
+    [activeStep, sendMessage, runConsolidate],
   );
 
   return (
@@ -172,10 +236,17 @@ export function DemoFlow() {
             step={step}
             status={stepStates[i]!}
             onClick={() => executeStep(i)}
-            disabled={activeStep !== null && activeStep !== i}
+            disabled={(activeStep !== null && activeStep !== i) || uaRunning}
           />
         ))}
       </div>
+
+      {uaReceipt && <UaReceiptCard receipt={uaReceipt} />}
+      {cooldownEndsAt !== null && now < cooldownEndsAt && (
+        <p className="text-[11px] font-medium text-amber-400">
+          ⏱️ Cooldown: {Math.ceil((cooldownEndsAt - now) / 1000)}s before next consolidate
+        </p>
+      )}
     </div>
   );
 }
