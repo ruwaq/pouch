@@ -30,13 +30,13 @@ const STEPS: DemoStep[] = [
     hint: 'Reads real on-chain balances from Arbitrum via RPC — 4 wallets, all chains',
   },
   {
-    label: 'Consolidate $2 (Cross-Chain)',
+    label: 'Consolidate $0.50 (Cross-Chain)',
     message: '__ua_consolidate__', // sentinel: handled by direct API, not chat
     emoji: '🔗',
     bounty: 'Particle Network',
     techBadge: 'EIP-7702',
     needsConfirm: false,
-    hint: 'One signature moves $2 USDC Base→Arbitrum via EIP-7702. 70s cooldown (Particle rate-limit).',
+    hint: 'One signature moves $0.50 USDC Base→Arbitrum via EIP-7702. 70s cooldown (Particle rate-limit).',
   },
   {
     label: 'Fund Gas (Openfort)',
@@ -169,7 +169,7 @@ export function DemoFlow() {
       const receipt = await apiPost<UaConsolidateReceipt>('/transactions/execute', {
         targetChainId: 42161,
         token: 'USDC',
-        amount: '2',
+        amount: '0.5',
       });
       setUaReceipt(receipt);
       setStepStates((prev) => {

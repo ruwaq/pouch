@@ -39,7 +39,7 @@ export function UaReceiptCard({ receipt }: { receipt: UaConsolidateReceipt }) {
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--muted)]">💰 Amount</span>
-          <span className="font-semibold text-[var(--fg)]">$2.00 USDC</span>
+          <span className="font-semibold text-[var(--fg)]">$0.50 USDC</span>
         </div>
         <div className="flex justify-between">
           <span className="text-[var(--muted)]">✍️ Signed</span>
