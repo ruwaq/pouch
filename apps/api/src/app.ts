@@ -53,6 +53,7 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
   const balanceService = options.balanceService ?? runtimeServices.balanceService;
   const orderService = options.orderService ?? runtimeServices.orderService;
   const uaExecutor = options.uaExecutor ?? runtimeServices.uaExecutor;
+  const transactionPlanner = options.transactionPlanner ?? runtimeServices.transactionPlanner;
   const bitrefillWebhookService = options.bitrefillWebhookService ?? runtimeServices.bitrefillWebhookService;
 
   // ── Rate limiter middleware ───────────────────────────────────────
@@ -180,8 +181,8 @@ export function createApp(options: { agentService?: AgentChatServiceLike; balanc
     app.route('/auth', createAuthRoutes(options.authService));
   }
 
-  if (options.transactionPlanner) {
-    app.route('/transactions', createTransactionRoutes(options.transactionPlanner, uaExecutor));
+  if (transactionPlanner) {
+    app.route('/transactions', createTransactionRoutes(transactionPlanner, uaExecutor));
   }
 
   return app;

@@ -33,7 +33,36 @@ export interface UaClientLike {
   }): Promise<UaTransactionPlan>;
 }
 
+import { createRequire } from 'node:module';
+import { dirname } from 'node:path';
+import { pathToFileURL } from 'node:url';
+
 import { getBytes, hashAuthorization, type Wallet } from 'ethers';
+
+/**
+ * Resolve the Particle UA SDK's ESM bundle as a file URL and import it.
+ *
+ * `tsx` (esbuild) mis-handles a bare `import('@particle-network/...')` when the
+ * package mixes ESM with CJS deps (axios etc.): the named exports come back as
+ * `undefined`, so `new UniversalAccount(...)` throws "not a constructor" at
+ * runtime even though the SDK's `dist/index.mjs` exports it correctly. Next.js
+ * (SWC) interops fine; the API dev server (`tsx watch`) does not.
+ *
+ * The fix: resolve the package's main entry, derive its `dist/` directory, and
+ * `import()` the `.mjs` directly as a `file://` URL. This works under tsx, plain
+ * Node ESM, and Next.js alike — no caller-side difference.
+ */
+async function importUniversalAccountSdk(): Promise<{
+  UniversalAccount: new (opts: unknown) => unknown;
+  UNIVERSAL_ACCOUNT_VERSION: string;
+  SUPPORTED_TOKEN_TYPE: Record<string, string>;
+}> {
+  // `createRequire` works in both ESM and CJS host contexts.
+  const require = createRequire(import.meta.url);
+  const mainPath = require.resolve('@particle-network/universal-account-sdk');
+  const mjsUrl = pathToFileURL(`${dirname(mainPath)}/index.mjs`).href;
+  return import(mjsUrl);
+}
 
 /**
  * Build the 7702 authorizations array for a transaction's userOps.
@@ -97,9 +126,7 @@ export class UaClient implements UaClientLike {
   }
 
   private async buildUa(config: UaClientConfig): Promise<unknown> {
-    const { UNIVERSAL_ACCOUNT_VERSION, UniversalAccount } = await import(
-      '@particle-network/universal-account-sdk'
-    );
+    const { UNIVERSAL_ACCOUNT_VERSION, UniversalAccount } = await importUniversalAccountSdk();
     return new UniversalAccount({
       projectId: config.projectId,
       projectClientKey: config.projectClientKey,
