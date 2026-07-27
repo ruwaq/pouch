@@ -34,7 +34,7 @@ importers:
         version: 1.19.14(hono@4.12.29)
       '@magic-sdk/admin':
         specifier: ^2.8.2
-        version: 2.8.2
+        version: 2.8.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       '@pouch/domain':
         specifier: workspace:*
         version: link:../../packages/domain
@@ -56,6 +56,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      ethers:
+        specifier: ^6.17.0
+        version: 6.17.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       hono:
         specifier: ^4.9.1
         version: 4.12.29
@@ -3455,7 +3458,7 @@ snapshots:
 
   '@magic-ext/evm@1.7.0': {}
 
-  '@magic-sdk/admin@2.8.2':
+  '@magic-sdk/admin@2.8.2(bufferutil@4.1.0)(utf-8-validate@6.0.6)':
     dependencies:
       ethereum-cryptography: 3.2.0
       ethers: 6.17.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)

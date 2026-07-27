@@ -15,8 +15,10 @@ import { AgentChatService, type AgentChatServiceLike } from '../services/agent-c
 import { BalanceService, type BalanceServiceLike } from '../services/balance-service';
 import { OrderService, type OrderServiceLike } from '../services/order-service';
 import { MemoryOrderRepository } from '../support/memory-order-repository';
-import { TransactionPlanner } from '../services/transaction-planner';
-import { UaExecutor } from '../services/ua-executor';
+import { TransactionPlanner, type UaTransactionPlan } from '../services/transaction-planner';
+import { UaExecutor, type UaExecutorClient } from '../services/ua-executor';
+import { UaClient } from '@pouch/infra-web3';
+import { Wallet } from 'ethers';
 import { createDemoAppServices } from './create-demo-agent-service';
 
 export interface RuntimeAppServices {
@@ -188,9 +190,51 @@ export function createRuntimeAppServices(options: {
       }
       const demoServices = createDemoAppServices(realAccountProvider, agentWallet);
 
+      // DEMO_USE_UA=true: build the real UaClient + executor so /transactions/execute
+      // runs the frictionless cross-chain consolidation (server signs with PRIVATE_KEY).
+      const demoUseUa = (env.DEMO_USE_UA ?? process.env.DEMO_USE_UA ?? '').trim() === 'true';
+      let transactionPlanner: TransactionPlanner | undefined;
+      let uaExecutor: UaExecutor | undefined;
+      if (demoUseUa) {
+        const particleProjectId = (env.PARTICLE_PROJECT_ID ?? process.env.PARTICLE_PROJECT_ID ?? '').trim();
+        const particleClientKey = (env.PARTICLE_CLIENT_KEY ?? process.env.PARTICLE_CLIENT_KEY ?? '').trim();
+        const particleAppUuid = (env.PARTICLE_APP_ID ?? process.env.PARTICLE_APP_ID ?? '').trim();
+        if (!particleProjectId || !particleClientKey || !particleAppUuid) {
+          throw new Error(
+            'DEMO_USE_UA=true requires PARTICLE_PROJECT_ID, PARTICLE_CLIENT_KEY, PARTICLE_APP_ID. ' +
+              'Set them in .env or unset DEMO_USE_UA.',
+          );
+        }
+        const wallet = new Wallet(privateKey);
+        const uaClient = new UaClient(
+          {
+            projectId: particleProjectId,
+            projectClientKey: particleClientKey,
+            projectAppUuid: particleAppUuid,
+            ownerAddress: wallet.address,
+          },
+          wallet,
+        );
+        const uaExecutorClient: UaExecutorClient = {
+          createConvertTransaction: (p) => uaClient.createConvertTransaction(p),
+          // UaExecutorClient.sendTransaction is typed loose (unknown[] userOps) but
+          // the executor only ever feeds it the UaTransactionPlan returned from
+          // createConvertTransaction above, so the cast to UaTransactionPlan is sound.
+          sendTransaction: (tx) => uaClient.sendTransaction(tx as UaTransactionPlan),
+          getTransaction: (id) => uaClient.getTransaction(id),
+        };
+        transactionPlanner = new TransactionPlanner(uaClient);
+        uaExecutor = new UaExecutor(uaExecutorClient, {
+          pollIntervalMs: 3000,
+          maxPolls: 60, // up to ~3 min for cross-chain
+        });
+      }
+
       return {
         mode: 'demo',
         ...demoServices,
+        ...(transactionPlanner ? { transactionPlanner } : {}),
+        ...(uaExecutor ? { uaExecutor } : {}),
       };
     }
 

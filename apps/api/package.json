@@ -25,6 +25,7 @@
     "@pouch/infra-web3": "workspace:*",
     "@pouch/shared": "workspace:*",
     "dotenv": "^17.4.2",
+    "ethers": "^6.17.0",
     "hono": "^4.9.1",
     "jose": "^6.2.3"
   },
