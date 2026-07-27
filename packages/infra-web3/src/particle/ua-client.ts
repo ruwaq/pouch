@@ -34,34 +34,58 @@ export interface UaClientLike {
 }
 
 import { createRequire } from 'node:module';
+import { realpathSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { getBytes, hashAuthorization, type Wallet } from 'ethers';
 
 /**
- * Resolve the Particle UA SDK's ESM bundle as a file URL and import it.
+ * Load the Particle UA SDK robustly across runtimes.
  *
  * `tsx` (esbuild) mis-handles a bare `import('@particle-network/...')` when the
- * package mixes ESM with CJS deps (axios etc.): the named exports come back as
- * `undefined`, so `new UniversalAccount(...)` throws "not a constructor" at
- * runtime even though the SDK's `dist/index.mjs` exports it correctly. Next.js
- * (SWC) interops fine; the API dev server (`tsx watch`) does not.
+ * package mixes ESM with CJS deps (axios etc.): named exports come back as
+ * `undefined`, so `new UniversalAccount(...)` throws "not a constructor".
+ * Next.js (SWC) interops fine via serverExternalPackages.
  *
- * The fix: resolve the package's main entry, derive its `dist/` directory, and
- * `import()` the `.mjs` directly as a `file://` URL. This works under tsx, plain
- * Node ESM, and Next.js alike — no caller-side difference.
+ * Strategy: try the bare import first (works under Next.js + plain Node); if the
+ * named exports are missing (the tsx bug), fall back to importing the SDK's
+ * `.mjs` bundle directly via a `file://` URL resolved from this module's own
+ * location (tsx serves source files, so import.meta.url points at the real
+ * `packages/infra-web3/src/...` path, whose node_modules has the SDK).
  */
 async function importUniversalAccountSdk(): Promise<{
   UniversalAccount: new (opts: unknown) => unknown;
   UNIVERSAL_ACCOUNT_VERSION: string;
   SUPPORTED_TOKEN_TYPE: Record<string, string>;
 }> {
-  // `createRequire` works in both ESM and CJS host contexts.
+  // Phase 1: bare import. Works under Next.js and plain Node ESM.
+  const bare = (await import('@particle-network/universal-account-sdk')) as {
+    UniversalAccount?: unknown;
+    UNIVERSAL_ACCOUNT_VERSION?: string;
+  };
+  if (typeof bare.UniversalAccount === 'function') {
+    return bare as {
+      UniversalAccount: new (opts: unknown) => unknown;
+      UNIVERSAL_ACCOUNT_VERSION: string;
+      SUPPORTED_TOKEN_TYPE: Record<string, string>;
+    };
+  }
+
+  // Phase 2: tsx fallback. Resolve the SDK's .mjs from this module's location.
+  // import.meta.url under tsx points at the real source file under
+  // packages/infra-web3/src/, so createRequire here searches this package's
+  // node_modules (where the SDK is a direct dependency).
   const require = createRequire(import.meta.url);
   const mainPath = require.resolve('@particle-network/universal-account-sdk');
-  const mjsUrl = pathToFileURL(`${dirname(mainPath)}/index.mjs`).href;
-  return import(mjsUrl);
+  const realDir = dirname(realpathSync(mainPath));
+  const mjsUrl = pathToFileURL(`${realDir}/index.mjs`).href;
+  const bundled = await import(mjsUrl);
+  return bundled as {
+    UniversalAccount: new (opts: unknown) => unknown;
+    UNIVERSAL_ACCOUNT_VERSION: string;
+    SUPPORTED_TOKEN_TYPE: Record<string, string>;
+  };
 }
 
 /**
@@ -149,9 +173,22 @@ export class UaClient implements UaClientLike {
     expectToken: { type: string; amount: string };
   }): Promise<UaTransactionPlan> {
     const ua = await this.sdk<{
-      createConvertTransaction(p: typeof payload): Promise<UaTransactionPlan>;
+      createConvertTransaction(p: {
+        chainId: number;
+        expectToken: { type: string; amount: string };
+      }): Promise<UaTransactionPlan>;
     }>();
-    return ua.createConvertTransaction(payload);
+    // The SDK's SUPPORTED_TOKEN_TYPE enum uses lowercase values
+    // (eth/usdt/usdc/bnb/sol). Callers pass uppercase symbols ("ETH", "USDC");
+    // map them so we don't depend on the enum object (whose exports are one of
+    // the things that break under tsx).
+    return ua.createConvertTransaction({
+      chainId: payload.chainId,
+      expectToken: {
+        type: payload.expectToken.type.toLowerCase(),
+        amount: payload.expectToken.amount,
+      },
+    });
   }
 
   async createTransferTransaction(payload: {
