@@ -304,7 +304,7 @@ export class AgentChatService implements AgentChatServiceLike {
     // Try to get wallet info from the account provider (if it's PrivateKeyAccountProvider)
     const accountProvider = this.accountProvider;
     let walletLabels: string[] = [];
-    let walletAddresses: Map<string, string> = new Map();
+    const walletAddresses: Map<string, string> = new Map();
 
     if (accountProvider && typeof (accountProvider as unknown as { getWalletLabels?: () => string[] }).getWalletLabels === 'function') {
       walletLabels = (accountProvider as unknown as { getWalletLabels(): string[] }).getWalletLabels();

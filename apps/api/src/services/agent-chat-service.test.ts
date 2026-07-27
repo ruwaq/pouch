@@ -152,9 +152,13 @@ describe('AgentChatService.executeSend error routing (no mock receipts)', () => 
 
   it('routes the error scenario to the LLM reply strategy (friendly error explanation)', async () => {
     const service = buildServiceWithFailingSendAndReplyStrategy();
-    const executeSend = (service as unknown as {
+    // executeSend is bound here for reference; this test drives the error path
+    // via handleMessage (which calls buildReply internally), so the bound fn
+    // is intentionally unused. Prefix with _ to satisfy no-unused-vars.
+    const _executeSend = (service as unknown as {
       executeSend: (this: unknown, u: string, i: unknown) => Promise<Result<AgentChatResponse, DomainError>>;
     }).executeSend.bind(service);
+    void _executeSend;
 
     // sendPayment fails → executeSend propagates the error → AgentChatService...
     // Actually executeSend returns the raw error Result; the LLM routing happens

@@ -155,7 +155,6 @@ function buildPrompt(context: ReplyContext): string {
     }
 
     case 'send': {
-      const balance = context.balance;
       const amount = context.intent.amount.value.toFixed(2);
       const token = context.intent.brand ?? 'tokens';
       const walletList = context.error ?? '';

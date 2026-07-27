@@ -188,8 +188,16 @@ export class OpenfortAgentWallet implements AgentWalletPort {
       const amountWei = ethers.parseEther(params.amountEth.toString()).toString();
 
       // Native ETH transfer: only to + value, no data or contract
-      // Cast through unknown to bypass strict type checking on the SDK
-      const sendTx = clientResult.value.accounts.evm.backend.sendTransaction as Function;
+      // Cast through an explicit function type to bypass strict type checking
+      // on the SDK (the bare `Function` type is rejected by the lint rule
+      // @typescript-eslint/no-unsafe-function-type).
+      type SendNativeTx = (opts: {
+        account: unknown;
+        chainId: number;
+        interactions: { to: string; value: string }[];
+        policy: string;
+      }) => Promise<{ response: { transactionHash: string } }>;
+      const sendTx = clientResult.value.accounts.evm.backend.sendTransaction as SendNativeTx;
       const result = await sendTx({
         account: this.cachedAccount,
         chainId: params.chainId,

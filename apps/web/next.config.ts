@@ -12,7 +12,6 @@ for (const candidate of [
 ]) {
   const result = config({ path: candidate });
   if (result.parsed && Object.keys(result.parsed).length > 0) {
-    // eslint-disable-next-line no-console
     console.log(`[web] Loaded .env from ${candidate} (${Object.keys(result.parsed).length} vars)`);
     break;
   }
