@@ -226,7 +226,10 @@ export function createRuntimeAppServices(options: {
         transactionPlanner = new TransactionPlanner(uaClient);
         uaExecutor = new UaExecutor(uaExecutorClient, {
           pollIntervalMs: 3000,
-          maxPolls: 60, // up to ~3 min for cross-chain
+          // Cross-chain UA converts can take several minutes end-to-end (swap +
+          // bridge legs). 100 polls × 3s ≈ 5 min gives headroom; the browser
+          // observed tx that "timed out" at 3 min still settled on-chain.
+          maxPolls: 100,
         });
       }
 

@@ -20,7 +20,11 @@ export function UaReceiptCard({ receipt }: { receipt: UaConsolidateReceipt }) {
         <div className="flex items-center gap-2">
           <span className="text-lg">🔗</span>
           <span className="text-sm font-semibold text-[var(--fg)]">
-            {receipt.ok ? 'Cross-Chain Consolidated' : 'Consolidation Failed'}
+            {receipt.ok
+              ? 'Cross-Chain Consolidated'
+              : receipt.timedOut
+                ? 'Consolidation In Progress'
+                : 'Consolidation Failed'}
           </span>
         </div>
         <span className="rounded-full bg-sky-400/10 px-2 py-0.5 text-[10px] font-medium text-sky-400">
@@ -47,8 +51,10 @@ export function UaReceiptCard({ receipt }: { receipt: UaConsolidateReceipt }) {
           </div>
         )}
         {receipt.error && !receipt.rateLimited && (
-          <div className="rounded bg-red-400/10 px-2 py-1 text-xs text-red-400">
-            {receipt.error}
+          <div className={`rounded px-2 py-1 text-xs ${receipt.timedOut ? 'bg-amber-400/10 text-amber-400' : 'bg-red-400/10 text-red-400'}`}>
+            {receipt.timedOut
+              ? `${receipt.error} Check the activity link below — cross-chain converts keep settling after this view closes.`
+              : receipt.error}
           </div>
         )}
       </div>
