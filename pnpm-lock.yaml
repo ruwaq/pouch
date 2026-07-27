@@ -87,6 +87,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      ethers:
+        specifier: ^6.17.0
+        version: 6.17.0(bufferutil@4.1.0)(utf-8-validate@6.0.6)
       hono:
         specifier: ^4.12.29
         version: 4.12.29
@@ -3663,7 +3666,7 @@ snapshots:
 
   '@scure/bip32@1.7.0':
     dependencies:
-      '@noble/curves': 1.9.1
+      '@noble/curves': 1.9.7
       '@noble/hashes': 1.8.0
       '@scure/base': 1.2.6
 
