@@ -1,21 +1,7 @@
-// Structural type matching the UA SDK's ITransaction (the fields the planner exposes).
-export interface UaTransactionPlan {
-  transactionId: string;
-  rootHash: string;
-  userOps: UaUserOp[];
-}
-
-export interface UaUserOp {
-  userOpHash: string;
-  eip7702Auth?: { chainId: number; nonce: number; address: string };
-  eip7702Delegated?: boolean;
-}
-
-// Minimal UA client interface (mockable; real impl wraps UniversalAccount).
-export interface UaClientLike {
-  createConvertTransaction(payload: { chainId: number; expectToken: { type: string; amount: string } }): Promise<UaTransactionPlan>;
-  createTransferTransaction(payload: { token: { chainId: number; address: string }; amount: string; receiver: string }): Promise<UaTransactionPlan>;
-}
+// Types now live in @pouch/infra-web3 (canonical home, next to the UaClient
+// implementation). Re-exported here so existing imports keep working.
+export type { UaClientLike, UaTransactionPlan, UaUserOp } from '@pouch/infra-web3';
+import type { UaClientLike, UaTransactionPlan } from '@pouch/infra-web3';
 
 export interface UnsignedTransactionPlan {
   transactionId: string;
