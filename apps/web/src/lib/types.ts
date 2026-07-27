@@ -68,3 +68,21 @@ export interface AgentChatResponse extends CashOutResult {
   /** Receipt for gas funding operations. */
   fundGasReceipt?: FundGasReceipt;
 }
+
+/**
+ * Receipt for a UA cross-chain consolidation (POST /transactions/execute).
+ *
+ * NOTE: The canonical `ConsolidateReceipt` interface lives in the API app
+ * (`apps/api/src/services/ua-executor.ts`). It is NOT exported from
+ * `@pouch/domain`, and the web app does not depend on `@pouch/api`. We mirror
+ * that exact shape here. If the API's response shape changes, update this.
+ */
+export interface UaConsolidateReceipt {
+  ok: boolean;
+  transactionId: string;
+  activityUrl: string;
+  status?: number;
+  error?: string;
+  timedOut?: boolean;
+  rateLimited?: boolean;
+}
